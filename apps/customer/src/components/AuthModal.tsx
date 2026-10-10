@@ -86,7 +86,7 @@ export default function AuthModal() {
       type="button"
       onClick={() => setShowPassword(v => !v)}
       className={`absolute right-3 top-1/2 -translate-y-1/2 ${isLight ? 'text-slate-400' : 'text-[#7A6450]'}`}
-      aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+      aria-label={showPassword ? t('auth.hidePassword', 'Ẩn mật khẩu') : t('auth.showPassword', 'Hiện mật khẩu')}
     >
       {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
     </button>

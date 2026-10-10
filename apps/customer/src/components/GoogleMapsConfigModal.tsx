@@ -33,7 +33,7 @@ export default function GoogleMapsConfigModal({
   onSaveKey
 }: GoogleMapsConfigModalProps) {
   const { theme } = useTheme();
-  const { language } = useLanguage();
+  const { language, t } = useLanguage();
   const isLight = theme === 'light';
 
   const [inputKey, setInputKey] = useState<string>(currentKey || '');
@@ -135,10 +135,10 @@ export default function GoogleMapsConfigModal({
               </div>
               <div>
                 <h3 className="text-sm font-bold tracking-tight">
-                  {language === 'vi' ? 'Cấu hình Google Maps Platform' : 'Google Maps Platform Setup'}
+                  {t('gmaps.title', 'Cấu hình Google Maps Platform')}
                 </h3>
                 <p className="text-[11px] opacity-70">
-                  {language === 'vi' ? 'Khắc phục lỗi Billing & lựa chọn chế độ hiển thị bản đồ' : 'Fix Billing errors & choose map display mode'}
+                  {t('gmaps.subtitle', 'Khắc phục lỗi Billing & lựa chọn chế độ hiển thị bản đồ')}
                 </p>
               </div>
             </div>
@@ -162,7 +162,7 @@ export default function GoogleMapsConfigModal({
                 <AlertTriangle size={18} className="text-amber-600 shrink-0 mt-0.5" />
                 <div className="text-xs space-y-1">
                   <p className="font-bold">
-                    {language === 'vi' ? 'Phát hiện BillingNotEnabledMapError' : 'BillingNotEnabledMapError Detected'}
+                    {t('gmaps.billingError', 'Phát hiện BillingNotEnabledMapError')}
                   </p>
                   <p className="leading-relaxed text-[11px] opacity-90">
                     {language === 'vi' 
@@ -176,7 +176,7 @@ export default function GoogleMapsConfigModal({
             {/* Recommended Options */}
             <div className="space-y-2.5">
               <span className="text-[11px] font-bold uppercase tracking-wider opacity-60">
-                {language === 'vi' ? 'Các lựa chọn giải pháp:' : 'Available Solutions:'}
+                {t('gmaps.options', 'Các lựa chọn giải pháp:')}
               </span>
 
               {/* Option 1: Maps Demo Key (Free, Zero Cost) */}
@@ -187,11 +187,11 @@ export default function GoogleMapsConfigModal({
                   <div className="flex items-center gap-1.5">
                     <Sparkles size={14} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
                     <h4 className="text-xs font-bold text-emerald-900 dark:text-emerald-300">
-                      {language === 'vi' ? '1. Tạo Google Maps Demo Key (Miễn phí 100%)' : '1. Use Free Maps Demo Key'}
+                      {t('gmaps.opt1', '1. Tạo Google Maps Demo Key (Miễn phí 100%)')}
                     </h4>
                   </div>
                   <span className="text-[9px] font-bold uppercase px-2 py-0.5 rounded-full bg-emerald-600 text-white">
-                    {language === 'vi' ? 'Khuyên dùng' : 'Recommended'}
+                    {t('common.recommended', 'Khuyên dùng')}
                   </span>
                 </div>
                 <p className="text-[11px] mt-1 text-slate-600 dark:text-slate-300 leading-relaxed">
@@ -206,7 +206,7 @@ export default function GoogleMapsConfigModal({
                     rel="noreferrer"
                     className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 dark:text-emerald-400 hover:underline"
                   >
-                    <span>{language === 'vi' ? 'Mở trang cấp Maps Demo Key' : 'Open Maps Demo Key Portal'}</span>
+                    <span>{t('gmaps.opt1Link', 'Mở trang cấp Maps Demo Key')}</span>
                     <ExternalLink size={12} />
                   </a>
                 </div>
@@ -219,7 +219,7 @@ export default function GoogleMapsConfigModal({
                 <div className="flex items-center gap-1.5">
                   <ShieldCheck size={14} className="text-[#800020] dark:text-[#D4AF37] shrink-0" />
                   <h4 className="text-xs font-bold">
-                    {language === 'vi' ? '2. Bật thanh toán cho Google Cloud Project' : '2. Enable Billing on Google Cloud'}
+                    {t('gmaps.opt2', '2. Bật thanh toán cho Google Cloud Project')}
                   </h4>
                 </div>
                 <p className="text-[11px] mt-1 opacity-75 leading-relaxed">
@@ -248,7 +248,7 @@ export default function GoogleMapsConfigModal({
                   <div className="flex items-center gap-1.5">
                     <Compass size={14} className="text-blue-500 shrink-0" />
                     <h4 className="text-xs font-bold">
-                      {language === 'vi' ? '3. Dùng Bản đồ Vector Nội bộ' : '3. Built-in Vector Map'}
+                      {t('gmaps.opt3', '3. Dùng Bản đồ Vector Nội bộ')}
                     </h4>
                   </div>
                   <p className="text-[10px] opacity-75 mt-0.5">
@@ -266,7 +266,7 @@ export default function GoogleMapsConfigModal({
                       : 'bg-[#2A211B] border-[#4A3B2C] hover:bg-[#342922] text-[#EBE3DB]'
                   }`}
                 >
-                  {language === 'vi' ? 'Dùng Vector Map' : 'Use Vector Map'}
+                  {t('gmaps.useVector', 'Dùng Vector Map')}
                 </button>
               </div>
             </div>
@@ -276,7 +276,7 @@ export default function GoogleMapsConfigModal({
               <label className="text-xs font-bold flex items-center justify-between">
                 <span className="flex items-center gap-1.5">
                   <Key size={13} className="text-[#800020] dark:text-[#D4AF37]" />
-                  {language === 'vi' ? 'Nhập API Key mới hoặc Maps Demo Key:' : 'Enter new API Key or Demo Key:'}
+                  {t('gmaps.enterKey', 'Nhập API Key mới hoặc Maps Demo Key:')}
                 </span>
                 {currentKey && (
                   <span className="text-[10px] font-mono opacity-60">
@@ -308,7 +308,7 @@ export default function GoogleMapsConfigModal({
                   } disabled:opacity-50`}
                 >
                   {isTesting && <RefreshCw size={13} className="animate-spin" />}
-                  <span>{language === 'vi' ? 'Kiểm tra & Lưu' : 'Verify & Save'}</span>
+                  <span>{t('gmaps.testSave', 'Kiểm tra & Lưu')}</span>
                 </button>
               </div>
 
@@ -355,7 +355,7 @@ export default function GoogleMapsConfigModal({
               }`}
             >
               <Layers size={13} />
-              <span>{language === 'vi' ? 'Dùng Vector Map' : 'Use Vector Map'}</span>
+              <span>{t('gmaps.useVector', 'Dùng Vector Map')}</span>
             </button>
 
             <button
@@ -367,7 +367,7 @@ export default function GoogleMapsConfigModal({
                   : 'bg-[#D4AF37] text-black hover:bg-[#b8952b]'
               }`}
             >
-              {language === 'vi' ? 'Đóng' : 'Close'}
+              {t('common.close', 'Đóng')}
             </button>
           </div>
         </motion.div>

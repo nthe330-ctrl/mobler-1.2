@@ -825,7 +825,7 @@ function SettingsModal({
                     : 'bg-[#D4AF37] text-black border-[#D4AF37] hover:bg-[#b8952b]'
                 }`}
               >
-                <span>Cấu hình Key</span>
+                <span>{t('profile.configKey', 'Cấu hình Key')}</span>
                 <ExternalLink size={12} />
               </button>
             </div>
@@ -1520,7 +1520,7 @@ function SystemProgressModal({ onClose, isLight, achievements, stats, rank }: { 
                     </div>
                     <p className="text-[11px] text-white/60 truncate">{rankSubtitle(tier)}</p>
                   </div>
-                  <span className="text-[10px] font-mono font-bold text-amber-200 shrink-0">{tier.minPoints.toLocaleString('vi-VN')}đ</span>
+                  <span className="text-[10px] font-mono font-bold text-amber-200 shrink-0">{tier.minPoints.toLocaleString()} {t('profile.pointsShort', 'đ')}</span>
                 </div>
               );
             })}
@@ -1828,7 +1828,11 @@ function WalletTab({ isLight }: { isLight: boolean }) {
 
   const card = isLight ? 'bg-white border-red-200' : 'bg-[#201A16] border-[#4A3B2C]';
   const muted = isLight ? 'text-slate-500' : 'text-[#A48F7A]';
-  const statusLabel: Record<string, string> = { active: 'Có thể dùng', used: 'Đã dùng', expired: 'Hết hạn' };
+  const statusLabel: Record<string, string> = {
+    active: t('wallet.active', 'Có thể dùng'),
+    used: t('wallet.used', 'Đã dùng'),
+    expired: t('wallet.expired', 'Hết hạn')
+  };
 
   return (
     <div className="space-y-6 animate-in fade-in">
@@ -1849,7 +1853,7 @@ function WalletTab({ isLight }: { isLight: boolean }) {
       {/* Reward vouchers */}
       <div>
         <h3 className={`text-[11px] font-bold uppercase tracking-widest mb-3 px-1 ${isLight ? 'text-red-900' : 'text-[#A48F7A]'}`}>
-          Voucher thưởng của bạn
+          {t('profile.walletVouchers', 'Voucher thưởng của bạn')}
         </h3>
         {!isAuthenticated ? (
           <p className={`text-sm ${muted}`}>{t('profile.signInForRewards', 'Đăng nhập để xem điểm và voucher thưởng.')}</p>
@@ -1865,8 +1869,8 @@ function WalletTab({ isLight }: { isLight: boolean }) {
               <div key={v.id} className={`p-4 rounded-2xl border ${card} ${v.status !== 'active' ? 'opacity-60' : ''}`}>
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className={`font-bold text-sm ${isLight ? 'text-[#1E1B18]' : 'text-[#EBE3DB]'}`}>{v.title}</p>
-                    <p className={`text-xs mt-0.5 ${muted}`}>{v.description}</p>
+                    <p className={`font-bold text-sm ${isLight ? 'text-[#1E1B18]' : 'text-[#EBE3DB]'}`}>{t(`voucher.${String(v.achievement_id).replace('-', '')}.title`, v.title)}</p>
+                    <p className={`text-xs mt-0.5 ${muted}`}>{t(`voucher.${String(v.achievement_id).replace('-', '')}.desc`, v.description)}</p>
                     <p className={`text-[10px] mt-1 ${muted}`}>HSD: {new Date(v.expires_at).toLocaleDateString('vi-VN')}</p>
                   </div>
                   <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border shrink-0 ${

@@ -3,6 +3,7 @@ import { CoffeeShop, ShopStyle, SpecialModel, Amenity, Mood } from '../types';
 import { getGoogleMapsUrl } from '../utils/googleMapsUrl';
 
 // Preset real city coordinates (including international explore cities)
+/** `id` doubles as the translation key suffix (city.hcm, city.hanoi, …). */
 export const VIETNAM_CITIES = [
   { id: 'hcm_q1', name: 'TP. Hồ Chí Minh', lat: 10.7769, lng: 106.7009, country: 'Vietnam', lang: 'vi-VN' },
   { id: 'taipei', name: 'Taipei (台北, Taiwan)', lat: 25.0330, lng: 121.5654, country: 'Taiwan', lang: 'zh-TW' },
@@ -442,12 +443,12 @@ async function ipLocationFromBrowser(): Promise<{ lat: number; lng: number; city
 }
 
 /** Friendly place name ("Phường Bến Nghé, Quận 1") for coordinates, via the backend (free Nominatim fallback). */
-export async function resolveLocationLabel(lat: number, lng: number): Promise<string | null> {
+export async function resolveLocationLabel(lat: number, lng: number, language = 'vi'): Promise<string | null> {
   try {
     const res = await fetch('/api/search/resolve-location', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ latitude: lat, longitude: lng }),
+      body: JSON.stringify({ latitude: lat, longitude: lng, language }),
       signal: AbortSignal.timeout(9000)
     });
     if (!res.ok) return null;

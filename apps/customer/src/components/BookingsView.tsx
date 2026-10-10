@@ -110,12 +110,12 @@ export default function BookingsView({ shops, onNavigate, highlightBookingId }: 
       http,
       onEvent: (event, data) => {
         if (event === 'achievement' && data?.unlocked?.length) {
-          setToast(`🏆 Mở khóa thành tựu: ${data.unlocked.map((a: any) => `${a.icon} ${a.title} (${a.rewardLabel})`).join(', ')}`);
+          setToast(t('bookings.missionUnlockedToast', '🏆 Mở khóa nhiệm vụ: {list}').replace('{list}', data.unlocked.map((a: any) => `${a.icon} ${a.title} (${a.rewardLabel})`).join(', ')));
           setTimeout(() => setToast(null), 7000);
           return;
         }
         if (event === 'achievement' && data?.rankedUp) {
-          setToast(`${data.rankedUp.icon} Lên hạng mới: ${data.rankedUp.title}!`);
+          setToast(t('bookings.rankUpToast', '{icon} Lên hạng mới: {rank}!').replace('{icon}', data.rankedUp.icon).replace('{rank}', t(`rank.${data.rankedUp.id}.title`, data.rankedUp.title)));
           setTimeout(() => setToast(null), 7000);
           return;
         }
@@ -142,7 +142,7 @@ export default function BookingsView({ shops, onNavigate, highlightBookingId }: 
       sessionStorage.removeItem('mobler_new_achievements');
       const list = JSON.parse(raw) as { icon: string; title: string; rewardLabel: string }[];
       if (list.length) {
-        setToast(`🏆 Mở khóa thành tựu: ${list.map(a => `${a.icon} ${a.title} (${a.rewardLabel})`).join(', ')}`);
+        setToast(t('bookings.missionUnlockedToast', '🏆 Mở khóa nhiệm vụ: {list}').replace('{list}', list.map(a => `${a.icon} ${a.title} (${a.rewardLabel})`).join(', ')));
         setTimeout(() => setToast(null), 7000);
       }
     } catch { /* ignore */ }
@@ -585,7 +585,7 @@ export default function BookingsView({ shops, onNavigate, highlightBookingId }: 
                     <span className={`font-bold ${
                       selectedBooking.paymentStatus === 'paid_online' ? 'text-emerald-600' : 'text-purple-600'
                     }`}>
-                      {selectedBooking.paymentStatus === 'paid_online' ? 'Đã thanh toán online' : 'Thanh toán tại quầy khi đến'}
+                      {selectedBooking.paymentStatus === 'paid_online' ? t('booking.paidOnline', 'Đã thanh toán online') : t('booking.payAtCounterOnArrival', 'Thanh toán tại quầy khi đến')}
                     </span>
                   </div>
 
@@ -611,7 +611,7 @@ export default function BookingsView({ shops, onNavigate, highlightBookingId }: 
                   )}
 
                   <div className="flex justify-between pt-2 border-t border-slate-200 dark:border-[#2D231A] text-sm">
-                    <span className="font-bold">Tổng thanh toán:</span>
+                    <span className="font-bold">{t('bookings.grandTotal', 'Tổng thanh toán:')}</span>
                     <span className={`font-black text-base ${isLight ? 'text-[#800020]' : 'text-[#D4AF37]'}`}>
                       {formatPrice(selectedBooking.grandTotal || selectedBooking.order?.total)}
                     </span>
@@ -632,7 +632,7 @@ export default function BookingsView({ shops, onNavigate, highlightBookingId }: 
                   onClick={() => handleCancel(selectedBooking.id)}
                   className="w-full py-2.5 rounded-xl font-bold text-xs border border-rose-300 text-rose-700 bg-rose-50 hover:bg-rose-100 disabled:opacity-60"
                 >
-                  {cancelling ? 'Đang hủy…' : 'Hủy lịch đặt bàn'}
+                  {cancelling ? t('bookings.cancelling', 'Đang hủy…') : t('bookings.cancelBooking', 'Hủy lịch đặt bàn')}
                 </button>
               )}
 

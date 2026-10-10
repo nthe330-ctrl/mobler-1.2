@@ -21,7 +21,7 @@ import {
 import { SearchController, SearchPipelineResponse } from '@shared/services/search/SearchController';
 import { LocalLanguageResolver } from '@shared/services/search/LocalLanguageResolver';
 import { TaxonomyService } from '@shared/services/taxonomy/TaxonomyService';
-import FreeMap from './FreeMap';
+import FreeMap, { setMapLabels } from './FreeMap';
 import { useTheme } from '@shared/context/ThemeContext';
 import { useLanguage } from '@shared/context/LanguageContext';
 import { useUser } from '../context/UserContext';
@@ -316,6 +316,15 @@ export default function HomeView({
     return parts.join(' — ');
   };
 
+  /** Show a place name in the active language when we have a translation for it. */
+  const localizePlace = (name: string): string =>
+    name.split(', ').map(part => t(`cityName.${part.trim()}`, part.trim())).join(', ');
+
+  // Map pin labels follow the UI language (the map is plain DOM, so it is told explicitly).
+  useEffect(() => {
+    setMapLabels(t('map.cafePin', 'Quán'), t('map.yourLocation', 'Vị trí của bạn'));
+  }, [language]);
+
   // ---------------- Locality data (shared internal store) ----------------
   const loadLocality = async (lat: number, lng: number, enqueue = true): Promise<LocalitySearchResponse | null> => {
     // Only a ~1.1 km grid cell is sent to the server, never the exact GPS position.
@@ -448,10 +457,10 @@ export default function HomeView({
         setLocationAccuracy(loc.accuracy ?? null);
         if (loc.source === 'gps') {
           setIsGpsActive(true);
-          setLocationLabel(language === 'vi' ? 'Vị trí GPS của bạn' : 'Your GPS location');
-          resolveLocationLabel(loc.lat, loc.lng).then(name => isMounted && name && setLocationLabel(name));
+          setLocationLabel(t('location.gpsYours', 'Vị trí GPS của bạn'));
+          resolveLocationLabel(loc.lat, loc.lng, language).then(name => isMounted && name && setLocationLabel(localizePlace(name)));
         } else {
-          setLocationLabel(`${loc.city} (${t('location.approxIp', 'ước tính theo IP')})`);
+          setLocationLabel(`${localizePlace(loc.city)} (${t('location.approxIp', 'ước tính theo IP')})`);
           if (loc.gpsError) showLocationProblem(loc.gpsError, true);
         }
         // Internal shared data first; the paid Google search only runs when the server allows a fallback.
@@ -488,7 +497,7 @@ export default function HomeView({
         const last = lastFetchPointRef.current;
         if (!last || calculateDistanceKm(last.lat, last.lng, pos.lat, pos.lng) >= 1) {
           lastFetchPointRef.current = { lat: pos.lat, lng: pos.lng };
-          resolveLocationLabel(pos.lat, pos.lng).then(name => name && setLocationLabel(name));
+          resolveLocationLabel(pos.lat, pos.lng, language).then(name => name && setLocationLabel(localizePlace(name)));
           loadLocality(pos.lat, pos.lng, false);
           if (last) handleFetchGooglePlaces(pos.lat, pos.lng, searchQuery || undefined, undefined, selectedSpecialModel, selectedStyle, language);
         }
@@ -527,7 +536,7 @@ export default function HomeView({
   // Switch City
   const handleSelectCity = (city: typeof VIETNAM_CITIES[0]) => {
     setSelectedCity(city);
-    setLocationLabel(city.name);
+    setLocationLabel(localizePlace(city.name));
     setIsGpsActive(false);
     setLocationSource('city');
     setLocationAccuracy(null);
@@ -544,14 +553,14 @@ export default function HomeView({
       if (!selectedCity) {
         // No city chosen: stop live tracking but keep the last real position (never jump to a default city).
         setLocationSource(null);
-        setPlacesNotice(language === 'vi' ? 'Đã tắt theo dõi GPS • Giữ vị trí cuối cùng' : 'GPS tracking off • Keeping last position');
+        setPlacesNotice(t('location.gpsOffKeep', 'Đã tắt theo dõi GPS • Giữ vị trí cuối cùng'));
         setTimeout(() => setPlacesNotice(null), 3000);
         return;
       }
       setLocationSource('city');
       const targetCity = selectedCity;
       setCurrentCoords({ lat: targetCity.lat, lng: targetCity.lng });
-      setLocationLabel(targetCity.name);
+      setLocationLabel(localizePlace(targetCity.name));
       const offMsg = language === 'vi'
         ? `Đã tắt GPS • Chuyển về ${targetCity.name}`
         : language === 'zh-TW'
@@ -576,14 +585,14 @@ export default function HomeView({
       setLocationAccuracy(coords.accuracy ?? null);
       setIsGpsActive(true);
       const gpsLabel = language === 'vi' 
-        ? 'Vị trí GPS của bạn' 
+        ? t('location.gpsYours', 'Vị trí GPS của bạn') 
         : language === 'zh-TW'
         ? '您的 GPS 位置'
         : language === 'th'
         ? 'ตำแหน่ง GPS ของคุณ'
         : 'Your GPS Location';
       setLocationLabel(gpsLabel);
-      resolveLocationLabel(coords.lat, coords.lng).then(name => name && setLocationLabel(name));
+      resolveLocationLabel(coords.lat, coords.lng, language).then(name => name && setLocationLabel(localizePlace(name)));
       const acc = coords.accuracy ? ` (±${coords.accuracy < 1000 ? `${Math.round(coords.accuracy)} m` : `${(coords.accuracy / 1000).toFixed(1)} km`})` : '';
       const onMsg = language === 'vi'
         ? `Đã bật GPS${acc} • Đang tìm quán gần bạn`
@@ -604,7 +613,7 @@ export default function HomeView({
         setCurrentCoords({ lat: loc.lat, lng: loc.lng });
         setLocationSource('ip');
         setLocationAccuracy(loc.accuracy ?? null);
-        setLocationLabel(`${loc.city} (${t('location.approxIp', 'ước tính theo IP')})`);
+        setLocationLabel(`${localizePlace(loc.city)} (${t('location.approxIp', 'ước tính theo IP')})`);
         handleFetchGooglePlaces(loc.lat, loc.lng, searchQuery || undefined, loc.city, selectedSpecialModel, selectedStyle, language);
         showLocationProblem(err, true);
       } else {
@@ -1261,7 +1270,7 @@ export default function HomeView({
             {locality.status === 'enriching' ? <Loader2 size={13} className="animate-spin shrink-0" /> : <Database size={13} className="shrink-0" />}
             <span className="flex-1 min-w-0">
               {localityMessage(locality)}
-              {locality.attributions.length > 0 && <span className="block opacity-70 truncate">{t('locality.sources', 'Nguồn')}: {locality.attributions.join(' · ')}</span>}
+              {locality.attributions.length > 0 && <span className="block opacity-70 truncate">{t('locality.sources', 'Nguồn')}: {locality.attributions.map(a => a === 'Thông tin do quán đối tác cung cấp trên Mobler Shop' ? t('locality.attrPartner', a) : a).join(' · ')}</span>}
             </span>
             <button
               type="button"
@@ -1382,7 +1391,7 @@ export default function HomeView({
               
               <div className="absolute top-2.5 right-2.5 bg-white/95 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-bold text-[#800020] border border-red-200 shadow-md flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                Bản đồ miễn phí ({filteredShops.filter(sh => sh.location).length} điểm)
+                {t('home.freeMapBadge', 'Bản đồ miễn phí ({n} điểm)').replace('{n}', String(filteredShops.filter(sh => sh.location).length))}
               </div>
 
               {/* Selected Shop Floating Card on Google Map */}

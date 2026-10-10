@@ -11,7 +11,9 @@ export class ReverseGeocodingService {
   public static async reverseGeocode(
     latitude: number,
     longitude: number,
-    apiKey?: string
+    apiKey?: string,
+    /** UI language for the returned place names (BCP-47, e.g. 'en', 'th', 'zh-TW'). */
+    uiLanguage = 'vi'
   ): Promise<ResolvedLocationContext> {
     // 1. Try Google Maps Geocoding API if key is available
     if (apiKey) {
@@ -67,14 +69,14 @@ export class ReverseGeocodingService {
     //    at most 1 request/second per the Nominatim usage policy.
     if (typeof window === 'undefined') {
       try {
-        const key = `${latitude.toFixed(3)},${longitude.toFixed(3)}`;
+        const key = `${latitude.toFixed(3)},${longitude.toFixed(3)},${uiLanguage}`;
         let data = nominatimCache.get(key);
         if (!data) {
           const wait = Math.max(0, lastNominatimCall + 1100 - Date.now());
           if (wait) await new Promise(r => setTimeout(r, wait));
           lastNominatimCall = Date.now();
           const res = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}&zoom=14&accept-language=vi`,
+            `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}&zoom=14&accept-language=${encodeURIComponent(uiLanguage)}`,
             { headers: { 'User-Agent': (globalThis as any).process?.env?.NOMINATIM_USER_AGENT || 'Mobler/2.0 (admin@mobler.vn)' }, signal: AbortSignal.timeout(6000) }
           );
           if (res.ok) {

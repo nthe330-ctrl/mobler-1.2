@@ -85,6 +85,7 @@ function partnerDTOs(cellIds: Set<string>): LocalityPlaceDTO[] {
       review_count: reviews.length,
       photos: (s.images || []).slice(0, 6).map((url, i) => ({ id: `${s.id}-${i}`, url, attribution: 'Ảnh do quán cung cấp' })),
       reviews: [],
+      // `source` identifies the origin; the client renders its own localized attribution line.
       sources: [{ source: 'mobler_partner', attribution: 'Thông tin do quán đối tác cung cấp trên Mobler Shop', fetched_at: new Date().toISOString() }],
       updated_at: new Date().toISOString(),
       is_partner: true

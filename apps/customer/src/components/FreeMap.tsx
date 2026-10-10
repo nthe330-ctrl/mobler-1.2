@@ -8,6 +8,13 @@ import 'maplibre-gl/dist/maplibre-gl.css';
  * Map data © OpenStreetMap contributors (attribution is shown automatically).
  * https://openfreemap.org
  */
+/** Accessible labels for the map pins; the host app sets them in its own language. */
+const fallbackLabels = { cafe: 'Quán', you: 'Vị trí của bạn' };
+export function setMapLabels(cafe: string, you: string) {
+  fallbackLabels.cafe = cafe;
+  fallbackLabels.you = you;
+}
+
 const STYLE_LIGHT = 'https://tiles.openfreemap.org/styles/liberty';
 const STYLE_DARK = 'https://tiles.openfreemap.org/styles/dark';
 
@@ -36,7 +43,7 @@ interface Props {
 function pinElement(selected: boolean, label?: string) {
   const el = document.createElement('button');
   el.type = 'button';
-  el.setAttribute('aria-label', label || 'Quán');
+  el.setAttribute('aria-label', label || fallbackLabels.cafe);
   el.title = label || '';
   el.style.cssText = `width:${selected ? 34 : 28}px;height:${selected ? 34 : 28}px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);` +
     `background:${selected ? '#D4AF37' : '#800020'};border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.35);cursor:pointer;padding:0;`;
@@ -51,7 +58,7 @@ function pinElement(selected: boolean, label?: string) {
 
 function userDot() {
   const el = document.createElement('div');
-  el.setAttribute('aria-label', 'Vị trí của bạn');
+  el.setAttribute('aria-label', fallbackLabels.you);
   el.style.cssText = 'width:16px;height:16px;border-radius:50%;background:#2563eb;border:3px solid #fff;box-shadow:0 0 0 6px rgba(37,99,235,.25);';
   return el;
 }

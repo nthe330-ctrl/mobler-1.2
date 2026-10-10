@@ -1274,12 +1274,12 @@ app.post('/api/search/engine', async (req: Request, res: Response) => {
 // 1. Resolve Location & Search Language
 app.post('/api/search/resolve-location', async (req: Request, res: Response) => {
   try {
-    const { latitude, longitude, cityName } = req.body;
+    const { latitude, longitude, cityName, language } = req.body;
     let resolved;
     if (typeof latitude === 'number' && typeof longitude === 'number') {
       recordUsage('google.geocoding');
       const { ReverseGeocodingService } = await import('../shared/services/search/ReverseGeocodingService');
-      resolved = await ReverseGeocodingService.reverseGeocode(latitude, longitude, process.env.VITE_GOOGLE_MAPS_API_KEY);
+      resolved = await ReverseGeocodingService.reverseGeocode(latitude, longitude, process.env.VITE_GOOGLE_MAPS_API_KEY, typeof language === 'string' ? language : 'vi');
     } else {
       const { LocalLanguageResolver } = await import('../shared/services/search/LocalLanguageResolver');
       resolved = LocalLanguageResolver.resolve(null, null, cityName);

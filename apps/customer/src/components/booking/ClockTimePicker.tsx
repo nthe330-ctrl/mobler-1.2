@@ -245,7 +245,7 @@ export default function ClockTimePicker({
                 key={h12}
                 type="button"
                 onClick={() => handleHourClick(h12)}
-                aria-label={`Chọn ${h24}:00`}
+                aria-label={t('booking.pickHour', 'Chọn {h}:00').replace('{h}', String(h24))}
                 className={`absolute w-7 h-7 -translate-x-1/2 -translate-y-1/2 rounded-full flex flex-col items-center justify-center font-bold text-xs transition-all z-20 ${
                   isSelected
                     ? isLight

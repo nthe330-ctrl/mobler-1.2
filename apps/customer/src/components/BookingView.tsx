@@ -635,10 +635,13 @@ export default function BookingView({ id, shops, initialVoucher, onNavigate }: P
             }`}>
               <span className="flex items-center gap-2">
                 <span className={`inline-block w-2 h-2 rounded-full ${liveStatus === 'live' ? 'bg-emerald-500 animate-pulse' : 'bg-amber-400'}`} />
-                {liveStatus === 'live' ? 'Tình trạng bàn cập nhật trực tiếp' : 'Đang kết nối cập nhật trực tiếp…'}
+                {liveStatus === 'live' ? t('booking.liveTables', 'Tình trạng bàn cập nhật trực tiếp') : t('booking.connectingLive', 'Đang kết nối cập nhật trực tiếp…')}
               </span>
               {availability && (
-                <span>{availability.tables.filter(tb => isTableFree(availability, tb.id, selectedTime)).length}/{availability.tables.length} bàn trống lúc {selectedTime}</span>
+                <span>{t('booking.freeTablesAt', '{free}/{total} bàn trống lúc {time}')
+                  .replace('{free}', String(availability.tables.filter(tb => isTableFree(availability, tb.id, selectedTime)).length))
+                  .replace('{total}', String(availability.tables.length))
+                  .replace('{time}', selectedTime)}</span>
               )}
             </div>
           )}
@@ -872,7 +875,7 @@ export default function BookingView({ id, shops, initialVoucher, onNavigate }: P
                     Đang kích hoạt Mua 1 Tặng 1: {appliedVoucher?.code}
                   </h4>
                   <p className="text-[11px] text-amber-800/80 dark:text-amber-400/90 mt-0.5 leading-relaxed">
-                    Chọn các món gắn nhãn <strong className="text-red-700 dark:text-amber-300 font-bold bg-amber-200/60 dark:bg-black/40 px-1 rounded">Mua 1 Tặng 1</strong> {t('booking.bogoAuto', 'sẽ tự động nhận')} <strong>2 ly</strong> và được tặng 100% giá trị ly thứ 2 khi thanh toán!
+                    Chọn các món gắn nhãn <strong className="text-red-700 dark:text-amber-300 font-bold bg-amber-200/60 dark:bg-black/40 px-1 rounded">{t('booking.bogoTag', 'Mua 1 Tặng 1')}</strong> {t('booking.bogoAuto', 'sẽ tự động nhận')} <strong>2 ly</strong> và được tặng 100% giá trị ly thứ 2 khi thanh toán!
                   </p>
                 </div>
               </div>
@@ -1481,7 +1484,7 @@ export default function BookingView({ id, shops, initialVoucher, onNavigate }: P
                       className="flex items-center gap-1 text-[11px] font-bold px-2 py-1 rounded bg-slate-200 dark:bg-[#251E18] text-slate-700 dark:text-[#EBE3DB]"
                     >
                       {copiedField === 'acc' ? <Check size={12} className="text-emerald-600" /> : <Copy size={12} />}
-                      {copiedField === 'acc' ? 'Đã chép' : 'Sao chép'}
+                      {copiedField === 'acc' ? t('common.copied', 'Đã chép') : t('common.copy', 'Sao chép')}
                     </button>
                   </div>
 
@@ -1495,7 +1498,7 @@ export default function BookingView({ id, shops, initialVoucher, onNavigate }: P
                       className="flex items-center gap-1 text-[11px] font-bold px-2 py-1 rounded bg-slate-200 dark:bg-[#251E18] text-slate-700 dark:text-[#EBE3DB]"
                     >
                       {copiedField === 'content' ? <Check size={12} className="text-emerald-600" /> : <Copy size={12} />}
-                      {copiedField === 'content' ? 'Đã chép' : 'Sao chép'}
+                      {copiedField === 'content' ? t('common.copied', 'Đã chép') : t('common.copy', 'Sao chép')}
                     </button>
                   </div>
                 </div>
@@ -1574,7 +1577,7 @@ export default function BookingView({ id, shops, initialVoucher, onNavigate }: P
                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full mt-1 ${
                   paymentMethod === 'at_store' ? 'bg-purple-100 text-purple-800' : 'bg-emerald-100 text-emerald-800'
                 }`}>
-                  {paymentMethod === 'at_store' ? 'Thanh toán tại quán' : 'Đã thanh toán online'}
+                  {paymentMethod === 'at_store' ? t('booking.payAtShop', 'Thanh toán tại quán') : t('booking.paidOnline', 'Đã thanh toán online')}
                 </span>
               </div>
 
@@ -1621,7 +1624,7 @@ export default function BookingView({ id, shops, initialVoucher, onNavigate }: P
                 )}
 
                 <div className="flex justify-between pt-2 border-t border-slate-100 dark:border-[#251E18]">
-                  <span className="font-bold">Tổng thanh toán:</span>
+                  <span className="font-bold">{t('booking.totalLabel', 'Tổng thanh toán:')}</span>
                   <span className={`font-bold ${isLight ? 'text-[#800020]' : 'text-[#D4AF37]'}`}>{formatCurrency(grandTotal)}</span>
                 </div>
               </div>
@@ -1663,7 +1666,7 @@ export default function BookingView({ id, shops, initialVoucher, onNavigate }: P
               <div className="flex items-center gap-2">
                 <Coffee size={18} className={isLight ? 'text-[#800020]' : 'text-[#D4AF37]'} />
                 <h3 className="font-bold text-sm">
-                  {editingCartId ? 'Chỉnh sửa món' : 'Tùy chỉnh món nước'}
+                  {editingCartId ? t('booking.editItem', 'Chỉnh sửa món') : t('booking.customizeItem', 'Tùy chỉnh món nước')}
                 </h3>
               </div>
               <button 
