@@ -769,12 +769,14 @@ export function registerCoreRoutes(app: Express) {
     // Missions (and their points) only advance when a booking is COMPLETED (checked in).
     if (next === 'completed') {
       const ach = syncUserAchievements(updated.user_id);
-      if (ach.newlyUnlocked.length) {
-        publish([topics.user(updated.user_id)], 'achievement', {
-          unlocked: ach.newlyUnlocked,
-          rank: getUserRank(updated.user_id)
-        });
-      }
+      // Always notify: a completed check-in moves mission progress even when nothing
+      // unlocks yet, and the customer's open screens need to redraw their bars.
+      publish([topics.user(updated.user_id)], 'achievement', {
+        unlocked: ach.newlyUnlocked,
+        stats: ach.stats,
+        points: db.findUserById(updated.user_id)?.points || 0,
+        rank: getUserRank(updated.user_id)
+      });
     }
     res.json({ message: 'Đã cập nhật lịch đặt', booking: updated });
   });

@@ -904,13 +904,27 @@ function PassportTab({ isLight }: { isLight: boolean }) {
     return () => { alive = false; };
   }, [isAuthenticated, reloadKey, emptyMissions]);
 
-  // Live rank/achievement updates (a booking confirmed or completed elsewhere bumps points).
+  /**
+   * Keep mission progress live. A completed check-in raises progress even when no
+   * mission unlocks, so refresh on any achievement OR booking event, and again
+   * whenever the window regains focus (the shop may have completed it while away).
+   */
   useEffect(() => {
     if (!isAuthenticated) return;
-    return connectRealtime({
+    const stop = connectRealtime({
       http,
-      onEvent: (event) => { if (event === 'achievement') setReloadKey(k => k + 1); }
+      onEvent: (event) => {
+        if (event === 'achievement' || event === 'booking') setReloadKey(k => k + 1);
+      }
     });
+    const refresh = () => { if (document.visibilityState === 'visible') setReloadKey(k => k + 1); };
+    window.addEventListener('focus', refresh);
+    document.addEventListener('visibilitychange', refresh);
+    return () => {
+      stop();
+      window.removeEventListener('focus', refresh);
+      document.removeEventListener('visibilitychange', refresh);
+    };
   }, [isAuthenticated]);
 
   const ACH = serverAch.map((a: any) => {
