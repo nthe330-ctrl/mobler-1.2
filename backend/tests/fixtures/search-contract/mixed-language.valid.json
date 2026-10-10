@@ -1,0 +1,43 @@
+{
+  "normalized_query": "cafe quiet work 咖啡廳",
+  "language": "vi",
+  "secondary_languages": [
+    "en",
+    "zh-TW"
+  ],
+  "intent": "search_by_experience",
+  "entities": [],
+  "location": null,
+  "requirements": [
+    {
+      "id": "req_pt_1",
+      "type": "place_type",
+      "canonical_id": "cafe",
+      "priority": "must",
+      "polarity": "include",
+      "confidence": 0.95,
+      "source": "deterministic",
+      "original_text": "cafe"
+    },
+    {
+      "id": "req_exp_1",
+      "type": "experience",
+      "canonical_id": "quiet_work",
+      "priority": "should",
+      "polarity": "include",
+      "confidence": 0.90,
+      "source": "ai",
+      "original_text": "quiet work"
+    }
+  ],
+  "search_mode": "standard",
+  "ambiguities": [],
+  "parse_source": "ai",
+  "confidence": 0.88,
+  "versions": {
+    "contract": "contract_v2.0",
+    "taxonomy": "taxo_v16_canonical",
+    "parser": "parse_v1.2",
+    "normalizer": "norm_v1.0"
+  }
+}

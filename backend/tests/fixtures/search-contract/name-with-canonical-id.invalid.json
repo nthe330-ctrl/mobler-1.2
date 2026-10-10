@@ -1,0 +1,29 @@
+{
+  "normalized_query": "the workshop",
+  "language": "en",
+  "intent": "search_by_name",
+  "entities": [],
+  "location": null,
+  "requirements": [
+    {
+      "id": "req_invalid_name",
+      "type": "name",
+      "value": "The Workshop",
+      "canonical_id": "the_workshop_canonical_forbidden",
+      "priority": "must",
+      "polarity": "include",
+      "confidence": 0.95,
+      "source": "deterministic"
+    }
+  ],
+  "search_mode": "standard",
+  "ambiguities": [],
+  "parse_source": "fast_path",
+  "confidence": 0.95,
+  "versions": {
+    "contract": "contract_v2.0",
+    "taxonomy": "taxo_v16_canonical",
+    "parser": "parse_v1.2",
+    "normalizer": "norm_v1.0"
+  }
+}

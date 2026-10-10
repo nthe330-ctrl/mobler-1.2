@@ -1,0 +1,10 @@
+{
+  "name": "Mobler Coffee Explorer & Ecosystem",
+  "description": "Discover coffee shops, book tables, order drinks, and manage merchant operations with full-stack authentication and database.",
+  "requestFramePermissions": [
+    "geolocation"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

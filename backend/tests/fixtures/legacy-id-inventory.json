@@ -1,0 +1,919 @@
+[
+  {
+    "identifier": "Anime Café",
+    "where_found": [
+      "src/types.ts",
+      "src/data.ts",
+      "src/services/taxonomy/TaxonomyService.ts",
+      "server/aiSearchPipeline.ts",
+      "server/search/taxonomy/registryData.ts"
+    ],
+    "count": 6
+  },
+  {
+    "identifier": "anime_cafe",
+    "where_found": [
+      "src/services/taxonomy/TaxonomyService.ts",
+      "server/search/taxonomy/registryData.ts"
+    ],
+    "count": 3
+  },
+  {
+    "identifier": "anime_theme_cafe",
+    "where_found": [
+      "server/search/QueryUnderstandingService.ts",
+      "server/aiSearchPipeline.ts"
+    ],
+    "count": 5
+  },
+  {
+    "identifier": "Art Toy Café",
+    "where_found": [
+      "src/types.ts",
+      "src/data.ts",
+      "src/services/taxonomy/TaxonomyService.ts",
+      "server/aiSearchPipeline.ts",
+      "server/search/taxonomy/registryData.ts"
+    ],
+    "count": 6
+  },
+  {
+    "identifier": "art_toy_cafe",
+    "where_found": [
+      "src/services/taxonomy/TaxonomyService.ts",
+      "server/search/taxonomy/registryData.ts"
+    ],
+    "count": 4
+  },
+  {
+    "identifier": "artistic",
+    "where_found": [
+      "src/services/taxonomy/TaxonomyService.ts",
+      "src/services/taxonomy/TaxonomyMapper.ts",
+      "server/search/taxonomy/registryData.ts"
+    ],
+    "count": 11
+  },
+  {
+    "identifier": "Artistic",
+    "where_found": [
+      "src/types.ts",
+      "src/data.ts",
+      "src/services/taxonomy/TaxonomyService.ts",
+      "server/search/taxonomy/registryData.ts"
+    ],
+    "count": 9
+  },
+  {
+    "identifier": "blind_box_cafe",
+    "where_found": [
+      "server/search/QueryUnderstandingService.ts",
+      "server/aiSearchPipeline.ts"
+    ],
+    "count": 5
+  },
+  {
+    "identifier": "Board Game Café",
+    "where_found": [
+      "src/types.ts",
+      "src/data.ts",
+      "src/services/taxonomy/TaxonomyService.ts",
+      "server/aiSearchPipeline.ts",
+      "server/search/taxonomy/registryData.ts"
+    ],
+    "count": 10
+  },
+  {
+    "identifier": "board_game_cafe",
+    "where_found": [
+      "src/services/taxonomy/TaxonomyService.ts",
+      "server/search/QueryUnderstandingService.ts",
+      "server/search/PlaceVerificationService.ts",
+      "server/aiSearchPipeline.ts",
+      "server/search/taxonomy/registryData.ts"
+    ],
+    "count": 21
+  },
+  {
+    "identifier": "board_gaming",
+    "where_found": [
+      "server/search/QueryUnderstandingService.ts",
+      "server/aiSearchPipeline.ts"
+    ],
+    "count": 2
+  },
+  {
+    "identifier": "Book Café",
+    "where_found": [
+      "src/types.ts",
+      "src/data.ts",
+      "src/services/taxonomy/TaxonomyService.ts",
+      "server/aiSearchPipeline.ts",
+      "server/search/taxonomy/registryData.ts"
+    ],
+    "count": 9
+  },
+  {
+    "identifier": "book_cafe",
+    "where_found": [
+      "src/services/taxonomy/TaxonomyService.ts",
+      "server/search/taxonomy/registryData.ts"
+    ],
+    "count": 7
+  },
+  {
+    "identifier": "budget_friendly",
+    "where_found": [
+      "server/search/QueryUnderstandingService.ts"
+    ],
+    "count": 1
+  },
+  {
+    "identifier": "Car Workshop Café",
+    "where_found": [
+      "src/types.ts",
+      "src/data.ts",
+      "src/services/taxonomy/TaxonomyService.ts",
+      "server/aiSearchPipeline.ts",
+      "server/search/taxonomy/registryData.ts"
+    ],
+    "count": 6
+  },
+  {
+    "identifier": "car_workshop_cafe",
+    "where_found": [
+      "src/services/taxonomy/TaxonomyService.ts",
+      "server/search/taxonomy/registryData.ts"
+    ],
+    "count": 3
+  },
+  {
+    "identifier": "Cat Café",
+    "where_found": [
+      "src/types.ts",
+      "src/data.ts",
+      "src/services/taxonomy/TaxonomyService.ts",
+      "server/aiSearchPipeline.ts",
+      "server/search/taxonomy/registryData.ts"
+    ],
+    "count": 14
+  },
+  {
+    "identifier": "cat_cafe",
+    "where_found": [
+      "src/services/taxonomy/TaxonomyService.ts",
+      "src/services/taxonomy/TaxonomyMapper.ts",
+      "server/search/QueryUnderstandingService.ts",
+      "server/search/PlaceVerificationService.ts",
+      "server/aiSearchPipeline.ts",
+      "server/search/taxonomy/registryData.ts"
+    ],
+    "count": 27
+  },
+  {
+    "identifier": "Ceramic Café",
+    "where_found": [
+      "src/types.ts",
+      "src/data.ts",
+      "src/services/taxonomy/TaxonomyService.ts",
+      "server/aiSearchPipeline.ts",
+      "server/search/taxonomy/registryData.ts"
+    ],
+    "count": 6
+  },
+  {
+    "identifier": "ceramic_cafe",
+    "where_found": [
+      "src/services/taxonomy/TaxonomyService.ts",
+      "server/search/taxonomy/registryData.ts"
+    ],
+    "count": 4
+  },
+  {
+    "identifier": "charging_station",
+    "where_found": [
+      "src/services/taxonomy/TaxonomyService.ts",
+      "src/services/taxonomy/TaxonomyMapper.ts"
+    ],
+    "count": 6
+  },
+  {
+    "identifier": "Chỗ sạc",
+    "where_found": [
+      "src/types.ts",
+      "src/data.ts",
+      "src/services/taxonomy/TaxonomyService.ts",
+      "server/aiSearchPipeline.ts"
+    ],
+    "count": 22
+  },
+  {
+    "identifier": "Chụp ảnh / Check-in",
+    "where_found": [
+      "src/types.ts",
+      "src/data.ts",
+      "src/services/taxonomy/TaxonomyService.ts"
+    ],
+    "count": 11
+  },
+  {
+    "identifier": "classic_car_garage_cafe",
+    "where_found": [
+      "server/search/QueryUnderstandingService.ts",
+      "server/aiSearchPipeline.ts"
+    ],
+    "count": 5
+  },
+  {
+    "identifier": "Console Gaming Café",
+    "where_found": [
+      "src/types.ts",
+      "src/data.ts",
+      "src/services/taxonomy/TaxonomyService.ts",
+      "server/aiSearchPipeline.ts",
+      "server/consoleGaming.ts",
+      "server/search/taxonomy/registryData.ts"
+    ],
+    "count": 8
+  },
+  {
+    "identifier": "console_gaming_cafe",
+    "where_found": [
+      "src/services/taxonomy/TaxonomyService.ts",
+      "server/search/QueryUnderstandingService.ts",
+      "server/aiSearchPipeline.ts",
+      "server/search/taxonomy/registryData.ts"
+    ],
+    "count": 13
+  },
+  {
+    "identifier": "Cozy Modern",
+    "where_found": [
+      "src/types.ts",
+      "src/data.ts",
+      "src/services/taxonomy/TaxonomyService.ts",
+      "server/aiSearchPipeline.ts",
+      "server/search/taxonomy/registryData.ts"
+    ],
+    "count": 20
+  },
+  {
+    "identifier": "cozy_modern",
+    "where_found": [
+      "src/services/taxonomy/TaxonomyService.ts",
+      "src/services/taxonomy/TaxonomyMapper.ts",
+      "server/search/taxonomy/registryData.ts"
+    ],
+    "count": 5
+  },
+  {
+    "identifier": "craft_workshop_cafe",
+    "where_found": [
+      "server/search/QueryUnderstandingService.ts",
+      "server/aiSearchPipeline.ts"
+    ],
+    "count": 7
+  },
+  {
+    "identifier": "cute",
+    "where_found": [
+      "src/services/taxonomy/TaxonomyService.ts",
+      "src/services/taxonomy/TaxonomyMapper.ts",
+      "server/aiSearchPipeline.ts",
+      "server/consoleGaming.ts",
+      "server/search/taxonomy/registryData.ts"
+    ],
+    "count": 12
+  },
+  {
+    "identifier": "Cute",
+    "where_found": [
+      "src/types.ts",
+      "src/data.ts",
+      "src/services/taxonomy/TaxonomyService.ts",
+      "server/search/taxonomy/registryData.ts"
+    ],
+    "count": 10
+  },
+  {
+    "identifier": "deprecated_outlet_v1",
+    "where_found": [
+      "server/search/taxonomy/registryData.ts"
+    ],
+    "count": 2
+  },
+  {
+    "identifier": "Dog Café",
+    "where_found": [
+      "src/types.ts",
+      "src/data.ts",
+      "src/services/taxonomy/TaxonomyService.ts",
+      "server/aiSearchPipeline.ts",
+      "server/search/taxonomy/registryData.ts"
+    ],
+    "count": 6
+  },
+  {
+    "identifier": "dog_cafe",
+    "where_found": [
+      "src/services/taxonomy/TaxonomyService.ts",
+      "server/search/QueryUnderstandingService.ts",
+      "server/search/PlaceVerificationService.ts",
+      "server/aiSearchPipeline.ts",
+      "server/search/taxonomy/registryData.ts"
+    ],
+    "count": 22
+  },
+  {
+    "identifier": "Fashion Café",
+    "where_found": [
+      "src/types.ts",
+      "src/data.ts",
+      "src/services/taxonomy/TaxonomyService.ts",
+      "server/search/taxonomy/registryData.ts"
+    ],
+    "count": 5
+  },
+  {
+    "identifier": "fashion_cafe",
+    "where_found": [
+      "src/services/taxonomy/TaxonomyService.ts",
+      "server/search/taxonomy/registryData.ts"
+    ],
+    "count": 4
+  },
+  {
+    "identifier": "fashion_select_shop_cafe",
+    "where_found": [
+      "server/search/QueryUnderstandingService.ts",
+      "server/aiSearchPipeline.ts"
+    ],
+    "count": 4
+  },
+  {
+    "identifier": "futuristic",
+    "where_found": [
+      "src/services/taxonomy/TaxonomyService.ts",
+      "src/services/taxonomy/TaxonomyMapper.ts",
+      "server/search/taxonomy/registryData.ts"
+    ],
+    "count": 8
+  },
+  {
+    "identifier": "Futuristic",
+    "where_found": [
+      "src/types.ts",
+      "src/data.ts",
+      "src/services/taxonomy/TaxonomyService.ts",
+      "server/search/taxonomy/registryData.ts"
+    ],
+    "count": 5
+  },
+  {
+    "identifier": "Game Cafe",
+    "where_found": [
+      "server/search/PlaceVerificationService.ts",
+      "server/consoleGaming.ts"
+    ],
+    "count": 4
+  },
+  {
+    "identifier": "Hẹn hò",
+    "where_found": [
+      "src/types.ts",
+      "src/data.ts",
+      "server/aiSearchPipeline.ts",
+      "server/search/taxonomy/registryData.ts"
+    ],
+    "count": 12
+  },
+  {
+    "identifier": "Immersive Café",
+    "where_found": [
+      "src/types.ts",
+      "src/data.ts",
+      "src/services/taxonomy/TaxonomyService.ts",
+      "server/aiSearchPipeline.ts",
+      "server/search/taxonomy/registryData.ts"
+    ],
+    "count": 6
+  },
+  {
+    "identifier": "immersive_cafe",
+    "where_found": [
+      "src/services/taxonomy/TaxonomyService.ts",
+      "server/search/taxonomy/registryData.ts"
+    ],
+    "count": 4
+  },
+  {
+    "identifier": "immersive_light_cafe",
+    "where_found": [
+      "server/search/QueryUnderstandingService.ts",
+      "server/aiSearchPipeline.ts"
+    ],
+    "count": 5
+  },
+  {
+    "identifier": "indoor",
+    "where_found": [
+      "src/services/taxonomy/TaxonomyService.ts"
+    ],
+    "count": 6
+  },
+  {
+    "identifier": "Indoor",
+    "where_found": [
+      "src/types.ts",
+      "src/data.ts",
+      "src/services/taxonomy/TaxonomyService.ts",
+      "server/aiSearchPipeline.ts",
+      "server/search/taxonomy/registryData.ts"
+    ],
+    "count": 20
+  },
+  {
+    "identifier": "industrial",
+    "where_found": [
+      "src/services/taxonomy/TaxonomyService.ts",
+      "src/services/taxonomy/TaxonomyMapper.ts",
+      "server/search/taxonomy/registryData.ts"
+    ],
+    "count": 10
+  },
+  {
+    "identifier": "Industrial",
+    "where_found": [
+      "src/types.ts",
+      "src/data.ts",
+      "src/services/taxonomy/TaxonomyService.ts",
+      "server/search/taxonomy/registryData.ts"
+    ],
+    "count": 17
+  },
+  {
+    "identifier": "Làm việc / Học bài",
+    "where_found": [
+      "src/types.ts",
+      "src/data.ts",
+      "src/services/taxonomy/TaxonomyService.ts",
+      "server/aiSearchPipeline.ts"
+    ],
+    "count": 11
+  },
+  {
+    "identifier": "laptop_work",
+    "where_found": [
+      "server/search/QueryUnderstandingService.ts",
+      "server/search/PlaceVerificationService.ts",
+      "server/aiSearchPipeline.ts"
+    ],
+    "count": 6
+  },
+  {
+    "identifier": "legacy_pet_cafe",
+    "where_found": [
+      "server/search/taxonomy/registryData.ts"
+    ],
+    "count": 2
+  },
+  {
+    "identifier": "lush_green",
+    "where_found": [
+      "server/search/QueryUnderstandingService.ts"
+    ],
+    "count": 1
+  },
+  {
+    "identifier": "minimalist",
+    "where_found": [
+      "src/services/taxonomy/TaxonomyService.ts",
+      "src/services/taxonomy/TaxonomyMapper.ts",
+      "server/search/taxonomy/registryData.ts"
+    ],
+    "count": 7
+  },
+  {
+    "identifier": "Minimalist",
+    "where_found": [
+      "src/types.ts",
+      "src/data.ts",
+      "src/services/taxonomy/TaxonomyService.ts",
+      "server/search/taxonomy/registryData.ts"
+    ],
+    "count": 17
+  },
+  {
+    "identifier": "Moto Workshop Café",
+    "where_found": [
+      "src/types.ts",
+      "src/data.ts",
+      "src/services/taxonomy/TaxonomyService.ts",
+      "server/aiSearchPipeline.ts",
+      "server/search/taxonomy/registryData.ts"
+    ],
+    "count": 6
+  },
+  {
+    "identifier": "moto_workshop_cafe",
+    "where_found": [
+      "src/services/taxonomy/TaxonomyService.ts",
+      "server/search/taxonomy/registryData.ts"
+    ],
+    "count": 4
+  },
+  {
+    "identifier": "motorcycle_cafe",
+    "where_found": [
+      "server/search/QueryUnderstandingService.ts",
+      "server/aiSearchPipeline.ts"
+    ],
+    "count": 5
+  },
+  {
+    "identifier": "nature",
+    "where_found": [
+      "src/types.ts",
+      "src/data.ts",
+      "src/services/taxonomy/TaxonomyService.ts",
+      "src/services/taxonomy/TaxonomyMapper.ts",
+      "server/search/taxonomy/registryData.ts"
+    ],
+    "count": 29
+  },
+  {
+    "identifier": "Nature",
+    "where_found": [
+      "src/types.ts",
+      "src/data.ts",
+      "src/services/taxonomy/TaxonomyService.ts",
+      "server/search/taxonomy/registryData.ts"
+    ],
+    "count": 8
+  },
+  {
+    "identifier": "no_smoking",
+    "where_found": [
+      "server/search/QueryUnderstandingService.ts",
+      "server/search/PlaceVerificationService.ts"
+    ],
+    "count": 2
+  },
+  {
+    "identifier": "old_reading_space",
+    "where_found": [
+      "server/search/taxonomy/registryData.ts"
+    ],
+    "count": 2
+  },
+  {
+    "identifier": "outdoor",
+    "where_found": [
+      "src/services/taxonomy/TaxonomyService.ts",
+      "src/services/taxonomy/TaxonomyMapper.ts",
+      "server/search/taxonomy/registryData.ts"
+    ],
+    "count": 14
+  },
+  {
+    "identifier": "Outdoor",
+    "where_found": [
+      "src/types.ts",
+      "src/data.ts",
+      "src/services/taxonomy/TaxonomyService.ts",
+      "server/search/taxonomy/registryData.ts"
+    ],
+    "count": 9
+  },
+  {
+    "identifier": "Parking",
+    "where_found": [
+      "src/types.ts",
+      "src/data.ts",
+      "src/services/taxonomy/TaxonomyService.ts",
+      "server/search/taxonomy/registryData.ts"
+    ],
+    "count": 17
+  },
+  {
+    "identifier": "Plant Café",
+    "where_found": [
+      "src/types.ts",
+      "src/data.ts",
+      "src/services/taxonomy/TaxonomyService.ts",
+      "server/aiSearchPipeline.ts",
+      "server/search/taxonomy/registryData.ts"
+    ],
+    "count": 12
+  },
+  {
+    "identifier": "plant_cafe",
+    "where_found": [
+      "src/services/taxonomy/TaxonomyService.ts",
+      "server/search/QueryUnderstandingService.ts",
+      "server/aiSearchPipeline.ts",
+      "server/search/taxonomy/registryData.ts"
+    ],
+    "count": 10
+  },
+  {
+    "identifier": "pottery_cafe",
+    "where_found": [
+      "server/search/QueryUnderstandingService.ts",
+      "server/aiSearchPipeline.ts"
+    ],
+    "count": 7
+  },
+  {
+    "identifier": "power_outlets",
+    "where_found": [
+      "server/search/QueryUnderstandingService.ts",
+      "server/search/PlaceVerificationService.ts",
+      "server/aiSearchPipeline.ts",
+      "server/search/taxonomy/registryData.ts"
+    ],
+    "count": 4
+  },
+  {
+    "identifier": "Private",
+    "where_found": [
+      "src/types.ts",
+      "src/data.ts",
+      "src/services/taxonomy/TaxonomyService.ts"
+    ],
+    "count": 6
+  },
+  {
+    "identifier": "private_parking",
+    "where_found": [
+      "src/services/taxonomy/TaxonomyService.ts"
+    ],
+    "count": 3
+  },
+  {
+    "identifier": "private_space",
+    "where_found": [
+      "src/services/taxonomy/TaxonomyService.ts"
+    ],
+    "count": 3
+  },
+  {
+    "identifier": "quiet",
+    "where_found": [
+      "src/types.ts",
+      "src/services/taxonomy/TaxonomyService.ts",
+      "src/services/taxonomy/TaxonomyMapper.ts",
+      "server/search/QueryUnderstandingService.ts",
+      "server/search/PlaceVerificationService.ts",
+      "server/aiSearchPipeline.ts",
+      "server/search/taxonomy/registryData.ts"
+    ],
+    "count": 69
+  },
+  {
+    "identifier": "quiet_atmosphere",
+    "where_found": [
+      "server/search/QueryUnderstandingService.ts",
+      "server/search/PlaceVerificationService.ts"
+    ],
+    "count": 2
+  },
+  {
+    "identifier": "quiet_reading_cafe",
+    "where_found": [
+      "server/search/QueryUnderstandingService.ts",
+      "server/search/PlaceVerificationService.ts",
+      "server/aiSearchPipeline.ts"
+    ],
+    "count": 13
+  },
+  {
+    "identifier": "reading",
+    "where_found": [
+      "src/services/taxonomy/TaxonomyService.ts",
+      "server/search/QueryUnderstandingService.ts",
+      "server/search/PlaceVerificationService.ts",
+      "server/aiSearchPipeline.ts",
+      "server/search/taxonomy/registryData.ts"
+    ],
+    "count": 30
+  },
+  {
+    "identifier": "restroom",
+    "where_found": [
+      "src/services/taxonomy/TaxonomyService.ts"
+    ],
+    "count": 4
+  },
+  {
+    "identifier": "Retro",
+    "where_found": [
+      "src/types.ts",
+      "src/data.ts",
+      "src/services/taxonomy/TaxonomyService.ts",
+      "server/consoleGaming.ts",
+      "server/search/taxonomy/registryData.ts"
+    ],
+    "count": 17
+  },
+  {
+    "identifier": "retro_vintage",
+    "where_found": [
+      "src/services/taxonomy/TaxonomyService.ts",
+      "src/services/taxonomy/TaxonomyMapper.ts",
+      "server/search/taxonomy/registryData.ts"
+    ],
+    "count": 5
+  },
+  {
+    "identifier": "scenic_view",
+    "where_found": [
+      "server/search/QueryUnderstandingService.ts"
+    ],
+    "count": 2
+  },
+  {
+    "identifier": "Self Service",
+    "where_found": [
+      "src/types.ts",
+      "src/data.ts",
+      "src/services/taxonomy/TaxonomyService.ts"
+    ],
+    "count": 6
+  },
+  {
+    "identifier": "self_service",
+    "where_found": [
+      "src/services/taxonomy/TaxonomyService.ts"
+    ],
+    "count": 3
+  },
+  {
+    "identifier": "Shared",
+    "where_found": [
+      "src/types.ts",
+      "src/data.ts",
+      "src/services/taxonomy/TaxonomyService.ts"
+    ],
+    "count": 8
+  },
+  {
+    "identifier": "shared_space",
+    "where_found": [
+      "src/services/taxonomy/TaxonomyService.ts"
+    ],
+    "count": 3
+  },
+  {
+    "identifier": "Table Service",
+    "where_found": [
+      "src/types.ts",
+      "src/data.ts",
+      "src/services/taxonomy/TaxonomyService.ts"
+    ],
+    "count": 15
+  },
+  {
+    "identifier": "table_service",
+    "where_found": [
+      "src/services/taxonomy/TaxonomyService.ts"
+    ],
+    "count": 3
+  },
+  {
+    "identifier": "Thư giãn / Chill",
+    "where_found": [
+      "src/types.ts",
+      "src/data.ts",
+      "src/services/taxonomy/TaxonomyService.ts",
+      "server/aiSearchPipeline.ts"
+    ],
+    "count": 18
+  },
+  {
+    "identifier": "Tụ tập nhóm",
+    "where_found": [
+      "src/types.ts",
+      "src/data.ts"
+    ],
+    "count": 6
+  },
+  {
+    "identifier": "Vintage",
+    "where_found": [
+      "src/types.ts",
+      "src/data.ts",
+      "server/search/taxonomy/registryData.ts"
+    ],
+    "count": 8
+  },
+  {
+    "identifier": "Vinyl Café",
+    "where_found": [
+      "src/types.ts",
+      "src/data.ts",
+      "src/services/taxonomy/TaxonomyService.ts",
+      "server/aiSearchPipeline.ts",
+      "server/search/taxonomy/registryData.ts"
+    ],
+    "count": 8
+  },
+  {
+    "identifier": "vinyl_cafe",
+    "where_found": [
+      "src/services/taxonomy/TaxonomyService.ts",
+      "server/search/QueryUnderstandingService.ts",
+      "server/aiSearchPipeline.ts",
+      "server/search/taxonomy/registryData.ts"
+    ],
+    "count": 10
+  },
+  {
+    "identifier": "VR Café",
+    "where_found": [
+      "src/types.ts",
+      "src/data.ts",
+      "src/services/taxonomy/TaxonomyService.ts",
+      "server/aiSearchPipeline.ts",
+      "server/search/taxonomy/registryData.ts"
+    ],
+    "count": 6
+  },
+  {
+    "identifier": "vr_cafe",
+    "where_found": [
+      "src/services/taxonomy/TaxonomyService.ts",
+      "server/search/QueryUnderstandingService.ts",
+      "server/aiSearchPipeline.ts",
+      "server/search/taxonomy/registryData.ts"
+    ],
+    "count": 9
+  },
+  {
+    "identifier": "WC",
+    "where_found": [
+      "src/types.ts",
+      "src/data.ts",
+      "src/services/taxonomy/TaxonomyService.ts"
+    ],
+    "count": 18
+  },
+  {
+    "identifier": "Wi-Fi",
+    "where_found": [
+      "src/types.ts",
+      "src/data.ts",
+      "src/services/taxonomy/TaxonomyService.ts",
+      "server/search/QueryUnderstandingService.ts",
+      "server/search/PlaceVerificationService.ts",
+      "server/aiSearchPipeline.ts",
+      "server/search/taxonomy/registryData.ts"
+    ],
+    "count": 34
+  },
+  {
+    "identifier": "wifi",
+    "where_found": [
+      "src/types.ts",
+      "src/data.ts",
+      "src/services/taxonomy/TaxonomyService.ts",
+      "src/services/taxonomy/TaxonomyMapper.ts",
+      "server/search/QueryUnderstandingService.ts",
+      "server/search/PlaceVerificationService.ts",
+      "server/aiSearchPipeline.ts",
+      "server/consoleGaming.ts",
+      "server/search/taxonomy/registryData.ts"
+    ],
+    "count": 51
+  },
+  {
+    "identifier": "work_friendly",
+    "where_found": [
+      "server/search/PlaceVerificationService.ts",
+      "server/aiSearchPipeline.ts",
+      "server/search/taxonomy/registryData.ts"
+    ],
+    "count": 19
+  },
+  {
+    "identifier": "Workshop Café",
+    "where_found": [
+      "src/types.ts",
+      "src/data.ts",
+      "src/services/taxonomy/TaxonomyService.ts",
+      "server/aiSearchPipeline.ts",
+      "server/search/taxonomy/registryData.ts"
+    ],
+    "count": 26
+  },
+  {
+    "identifier": "workshop_cafe",
+    "where_found": [
+      "src/services/taxonomy/TaxonomyService.ts",
+      "server/search/QueryUnderstandingService.ts",
+      "server/aiSearchPipeline.ts",
+      "server/search/taxonomy/registryData.ts"
+    ],
+    "count": 18
+  }
+]

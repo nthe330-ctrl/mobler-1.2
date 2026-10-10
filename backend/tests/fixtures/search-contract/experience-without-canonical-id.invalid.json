@@ -1,0 +1,28 @@
+{
+  "normalized_query": "quan ca phe yen tinh",
+  "language": "vi",
+  "intent": "search_by_experience",
+  "entities": [],
+  "location": null,
+  "requirements": [
+    {
+      "id": "req_invalid_exp",
+      "type": "experience",
+      "value": "quiet_work",
+      "priority": "must",
+      "polarity": "include",
+      "confidence": 0.90,
+      "source": "ai"
+    }
+  ],
+  "search_mode": "standard",
+  "ambiguities": [],
+  "parse_source": "ai",
+  "confidence": 0.90,
+  "versions": {
+    "contract": "contract_v2.0",
+    "taxonomy": "taxo_v16_canonical",
+    "parser": "parse_v1.2",
+    "normalizer": "norm_v1.0"
+  }
+}

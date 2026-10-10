@@ -1,0 +1,10 @@
+{
+  "feature_id": "wifi_high_speed",
+  "status": "verified",
+  "positive_count": 10,
+  "negative_count": 0,
+  "confidence": 0.95,
+  "source_type": "google_provider",
+  "data_owner": "google_provider",
+  "persistable": true
+}

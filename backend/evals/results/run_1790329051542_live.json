@@ -1,0 +1,1209 @@
+{
+  "summary": {
+    "run_id": "run_1790329051542_live",
+    "timestamp": "2026-09-25T09:37:31.551Z",
+    "dataset_version": "dataset_v1.0",
+    "dataset_hash": "dff323959f62fb7f18e339d45f50f6eaa91b5928043ec8692e6cfdb4e3bc8b31",
+    "versions": {
+      "contract": "2.0.0",
+      "taxonomy": "2.0.0",
+      "parser": "0.9.0",
+      "normalizer": "1.0.0"
+    },
+    "adapters": {
+      "intent": "Phase4QueryUnderstanding[live_ai]"
+    },
+    "mode": "live",
+    "total_cases": 2,
+    "cases_passed": 2,
+    "cases_failed": 0,
+    "cases_crashed": 0,
+    "cases_lacking_human_verification": 0,
+    "cases_lacking_place_labels": 1,
+    "overall": {
+      "intent_accuracy": {
+        "k": 2,
+        "n": 2,
+        "rate": 1,
+        "wilson_ci": {
+          "lower": 0.3424,
+          "upper": 1,
+          "center": 0.6712
+        },
+        "status": "insufficient_data"
+      },
+      "language_accuracy": {
+        "k": 2,
+        "n": 2,
+        "rate": 1,
+        "wilson_ci": {
+          "lower": 0.3424,
+          "upper": 1,
+          "center": 0.6712
+        },
+        "status": "insufficient_data"
+      },
+      "must_precision": {
+        "k": 2,
+        "n": 2,
+        "rate": 1,
+        "wilson_ci": {
+          "lower": 0.3424,
+          "upper": 1,
+          "center": 0.6712
+        },
+        "status": "insufficient_data"
+      },
+      "must_recall": {
+        "k": 2,
+        "n": 2,
+        "rate": 1,
+        "wilson_ci": {
+          "lower": 0.3424,
+          "upper": 1,
+          "center": 0.6712
+        },
+        "status": "insufficient_data"
+      },
+      "should_recall": {
+        "k": 0,
+        "n": 0,
+        "rate": 0,
+        "wilson_ci": {
+          "lower": 0,
+          "upper": 0,
+          "center": 0
+        },
+        "status": "insufficient_data"
+      },
+      "exclusion_correctness": {
+        "k": 0,
+        "n": 0,
+        "rate": 0,
+        "wilson_ci": {
+          "lower": 0,
+          "upper": 0,
+          "center": 0
+        },
+        "status": "insufficient_data"
+      },
+      "location_accuracy": {
+        "k": 2,
+        "n": 2,
+        "rate": 1,
+        "wilson_ci": {
+          "lower": 0.3424,
+          "upper": 1,
+          "center": 0.6712
+        },
+        "status": "insufficient_data"
+      },
+      "ambiguity_handled": {
+        "k": 0,
+        "n": 0,
+        "rate": 0,
+        "wilson_ci": {
+          "lower": 0,
+          "upper": 0,
+          "center": 0
+        },
+        "status": "insufficient_data"
+      },
+      "contract_validity_rate": {
+        "k": 2,
+        "n": 2,
+        "rate": 1,
+        "wilson_ci": {
+          "lower": 0.3424,
+          "upper": 1,
+          "center": 0.6712
+        },
+        "status": "insufficient_data"
+      },
+      "zero_result_rate": {
+        "k": 0,
+        "n": 0,
+        "rate": 0,
+        "wilson_ci": {
+          "lower": 0,
+          "upper": 0,
+          "center": 0
+        },
+        "status": "insufficient_data"
+      },
+      "duplicate_rate": {
+        "k": 0,
+        "n": 0,
+        "rate": 0,
+        "wilson_ci": {
+          "lower": 0,
+          "upper": 0,
+          "center": 0
+        },
+        "status": "insufficient_data"
+      },
+      "cache_hit_rate": {
+        "k": 0,
+        "n": 2,
+        "rate": 0,
+        "wilson_ci": {
+          "lower": 0,
+          "upper": 0.6576,
+          "center": 0.3288
+        },
+        "status": "insufficient_data"
+      },
+      "adversarial_pass_rate": {
+        "k": 0,
+        "n": 0,
+        "rate": 0,
+        "wilson_ci": {
+          "lower": 0,
+          "upper": 0,
+          "center": 0
+        },
+        "status": "insufficient_data"
+      },
+      "provider_calls_per_search": {
+        "sample_size": 2,
+        "mean": 0,
+        "p50": 0,
+        "p95": 0,
+        "max": 0,
+        "status": "insufficient_data"
+      },
+      "cost_units_per_search": {
+        "sample_size": 2,
+        "mean": 0,
+        "p50": 0,
+        "p95": 0,
+        "max": 0,
+        "status": "insufficient_data"
+      },
+      "ai_calls_per_search": {
+        "sample_size": 2,
+        "mean": 0,
+        "p50": 0,
+        "p95": 0,
+        "max": 0,
+        "status": "insufficient_data"
+      },
+      "ai_tokens_per_search": {
+        "sample_size": 2,
+        "mean": 0,
+        "p50": 0,
+        "p95": 0,
+        "max": 0,
+        "status": "insufficient_data"
+      },
+      "latency_ms": {
+        "sample_size": 2,
+        "mean": 3,
+        "p50": 4,
+        "p95": 4,
+        "max": 4,
+        "status": "insufficient_data"
+      }
+    },
+    "by_label_status": {
+      "draft": {
+        "total_cases": 0,
+        "metrics": {
+          "intent_accuracy": {
+            "k": 0,
+            "n": 0,
+            "rate": 0,
+            "wilson_ci": {
+              "lower": 0,
+              "upper": 0,
+              "center": 0
+            },
+            "status": "insufficient_data"
+          },
+          "language_accuracy": {
+            "k": 0,
+            "n": 0,
+            "rate": 0,
+            "wilson_ci": {
+              "lower": 0,
+              "upper": 0,
+              "center": 0
+            },
+            "status": "insufficient_data"
+          },
+          "must_precision": {
+            "k": 0,
+            "n": 0,
+            "rate": 0,
+            "wilson_ci": {
+              "lower": 0,
+              "upper": 0,
+              "center": 0
+            },
+            "status": "insufficient_data"
+          },
+          "must_recall": {
+            "k": 0,
+            "n": 0,
+            "rate": 0,
+            "wilson_ci": {
+              "lower": 0,
+              "upper": 0,
+              "center": 0
+            },
+            "status": "insufficient_data"
+          },
+          "should_recall": {
+            "k": 0,
+            "n": 0,
+            "rate": 0,
+            "wilson_ci": {
+              "lower": 0,
+              "upper": 0,
+              "center": 0
+            },
+            "status": "insufficient_data"
+          },
+          "exclusion_correctness": {
+            "k": 0,
+            "n": 0,
+            "rate": 0,
+            "wilson_ci": {
+              "lower": 0,
+              "upper": 0,
+              "center": 0
+            },
+            "status": "insufficient_data"
+          },
+          "location_accuracy": {
+            "k": 0,
+            "n": 0,
+            "rate": 0,
+            "wilson_ci": {
+              "lower": 0,
+              "upper": 0,
+              "center": 0
+            },
+            "status": "insufficient_data"
+          },
+          "ambiguity_handled": {
+            "k": 0,
+            "n": 0,
+            "rate": 0,
+            "wilson_ci": {
+              "lower": 0,
+              "upper": 0,
+              "center": 0
+            },
+            "status": "insufficient_data"
+          },
+          "contract_validity_rate": {
+            "k": 0,
+            "n": 0,
+            "rate": 0,
+            "wilson_ci": {
+              "lower": 0,
+              "upper": 0,
+              "center": 0
+            },
+            "status": "insufficient_data"
+          },
+          "zero_result_rate": {
+            "k": 0,
+            "n": 0,
+            "rate": 0,
+            "wilson_ci": {
+              "lower": 0,
+              "upper": 0,
+              "center": 0
+            },
+            "status": "insufficient_data"
+          },
+          "duplicate_rate": {
+            "k": 0,
+            "n": 0,
+            "rate": 0,
+            "wilson_ci": {
+              "lower": 0,
+              "upper": 0,
+              "center": 0
+            },
+            "status": "insufficient_data"
+          },
+          "cache_hit_rate": {
+            "k": 0,
+            "n": 0,
+            "rate": 0,
+            "wilson_ci": {
+              "lower": 0,
+              "upper": 0,
+              "center": 0
+            },
+            "status": "insufficient_data"
+          },
+          "adversarial_pass_rate": {
+            "k": 0,
+            "n": 0,
+            "rate": 0,
+            "wilson_ci": {
+              "lower": 0,
+              "upper": 0,
+              "center": 0
+            },
+            "status": "insufficient_data"
+          },
+          "provider_calls_per_search": {
+            "sample_size": 0,
+            "mean": 0,
+            "p50": 0,
+            "p95": 0,
+            "max": 0,
+            "status": "insufficient_data"
+          },
+          "cost_units_per_search": {
+            "sample_size": 0,
+            "mean": 0,
+            "p50": 0,
+            "p95": 0,
+            "max": 0,
+            "status": "insufficient_data"
+          },
+          "ai_calls_per_search": {
+            "sample_size": 0,
+            "mean": 0,
+            "p50": 0,
+            "p95": 0,
+            "max": 0,
+            "status": "insufficient_data"
+          },
+          "ai_tokens_per_search": {
+            "sample_size": 0,
+            "mean": 0,
+            "p50": 0,
+            "p95": 0,
+            "max": 0,
+            "status": "insufficient_data"
+          },
+          "latency_ms": {
+            "sample_size": 0,
+            "mean": 0,
+            "p50": 0,
+            "p95": 0,
+            "max": 0,
+            "status": "insufficient_data"
+          }
+        }
+      },
+      "human_verified": {
+        "total_cases": 2,
+        "metrics": {
+          "intent_accuracy": {
+            "k": 2,
+            "n": 2,
+            "rate": 1,
+            "wilson_ci": {
+              "lower": 0.3424,
+              "upper": 1,
+              "center": 0.6712
+            },
+            "status": "insufficient_data"
+          },
+          "language_accuracy": {
+            "k": 2,
+            "n": 2,
+            "rate": 1,
+            "wilson_ci": {
+              "lower": 0.3424,
+              "upper": 1,
+              "center": 0.6712
+            },
+            "status": "insufficient_data"
+          },
+          "must_precision": {
+            "k": 2,
+            "n": 2,
+            "rate": 1,
+            "wilson_ci": {
+              "lower": 0.3424,
+              "upper": 1,
+              "center": 0.6712
+            },
+            "status": "insufficient_data"
+          },
+          "must_recall": {
+            "k": 2,
+            "n": 2,
+            "rate": 1,
+            "wilson_ci": {
+              "lower": 0.3424,
+              "upper": 1,
+              "center": 0.6712
+            },
+            "status": "insufficient_data"
+          },
+          "should_recall": {
+            "k": 0,
+            "n": 0,
+            "rate": 0,
+            "wilson_ci": {
+              "lower": 0,
+              "upper": 0,
+              "center": 0
+            },
+            "status": "insufficient_data"
+          },
+          "exclusion_correctness": {
+            "k": 0,
+            "n": 0,
+            "rate": 0,
+            "wilson_ci": {
+              "lower": 0,
+              "upper": 0,
+              "center": 0
+            },
+            "status": "insufficient_data"
+          },
+          "location_accuracy": {
+            "k": 2,
+            "n": 2,
+            "rate": 1,
+            "wilson_ci": {
+              "lower": 0.3424,
+              "upper": 1,
+              "center": 0.6712
+            },
+            "status": "insufficient_data"
+          },
+          "ambiguity_handled": {
+            "k": 0,
+            "n": 0,
+            "rate": 0,
+            "wilson_ci": {
+              "lower": 0,
+              "upper": 0,
+              "center": 0
+            },
+            "status": "insufficient_data"
+          },
+          "contract_validity_rate": {
+            "k": 2,
+            "n": 2,
+            "rate": 1,
+            "wilson_ci": {
+              "lower": 0.3424,
+              "upper": 1,
+              "center": 0.6712
+            },
+            "status": "insufficient_data"
+          },
+          "zero_result_rate": {
+            "k": 0,
+            "n": 0,
+            "rate": 0,
+            "wilson_ci": {
+              "lower": 0,
+              "upper": 0,
+              "center": 0
+            },
+            "status": "insufficient_data"
+          },
+          "duplicate_rate": {
+            "k": 0,
+            "n": 0,
+            "rate": 0,
+            "wilson_ci": {
+              "lower": 0,
+              "upper": 0,
+              "center": 0
+            },
+            "status": "insufficient_data"
+          },
+          "cache_hit_rate": {
+            "k": 0,
+            "n": 2,
+            "rate": 0,
+            "wilson_ci": {
+              "lower": 0,
+              "upper": 0.6576,
+              "center": 0.3288
+            },
+            "status": "insufficient_data"
+          },
+          "adversarial_pass_rate": {
+            "k": 0,
+            "n": 0,
+            "rate": 0,
+            "wilson_ci": {
+              "lower": 0,
+              "upper": 0,
+              "center": 0
+            },
+            "status": "insufficient_data"
+          },
+          "provider_calls_per_search": {
+            "sample_size": 2,
+            "mean": 0,
+            "p50": 0,
+            "p95": 0,
+            "max": 0,
+            "status": "insufficient_data"
+          },
+          "cost_units_per_search": {
+            "sample_size": 2,
+            "mean": 0,
+            "p50": 0,
+            "p95": 0,
+            "max": 0,
+            "status": "insufficient_data"
+          },
+          "ai_calls_per_search": {
+            "sample_size": 2,
+            "mean": 0,
+            "p50": 0,
+            "p95": 0,
+            "max": 0,
+            "status": "insufficient_data"
+          },
+          "ai_tokens_per_search": {
+            "sample_size": 2,
+            "mean": 0,
+            "p50": 0,
+            "p95": 0,
+            "max": 0,
+            "status": "insufficient_data"
+          },
+          "latency_ms": {
+            "sample_size": 2,
+            "mean": 3,
+            "p50": 4,
+            "p95": 4,
+            "max": 4,
+            "status": "insufficient_data"
+          }
+        }
+      }
+    },
+    "by_language": {
+      "vi": {
+        "total_cases": 1,
+        "metrics": {
+          "intent_accuracy": {
+            "k": 1,
+            "n": 1,
+            "rate": 1,
+            "wilson_ci": {
+              "lower": 0.2065,
+              "upper": 1,
+              "center": 0.6033
+            },
+            "status": "insufficient_data"
+          },
+          "language_accuracy": {
+            "k": 1,
+            "n": 1,
+            "rate": 1,
+            "wilson_ci": {
+              "lower": 0.2065,
+              "upper": 1,
+              "center": 0.6033
+            },
+            "status": "insufficient_data"
+          },
+          "must_precision": {
+            "k": 1,
+            "n": 1,
+            "rate": 1,
+            "wilson_ci": {
+              "lower": 0.2065,
+              "upper": 1,
+              "center": 0.6033
+            },
+            "status": "insufficient_data"
+          },
+          "must_recall": {
+            "k": 1,
+            "n": 1,
+            "rate": 1,
+            "wilson_ci": {
+              "lower": 0.2065,
+              "upper": 1,
+              "center": 0.6033
+            },
+            "status": "insufficient_data"
+          },
+          "should_recall": {
+            "k": 0,
+            "n": 0,
+            "rate": 0,
+            "wilson_ci": {
+              "lower": 0,
+              "upper": 0,
+              "center": 0
+            },
+            "status": "insufficient_data"
+          },
+          "exclusion_correctness": {
+            "k": 0,
+            "n": 0,
+            "rate": 0,
+            "wilson_ci": {
+              "lower": 0,
+              "upper": 0,
+              "center": 0
+            },
+            "status": "insufficient_data"
+          },
+          "location_accuracy": {
+            "k": 1,
+            "n": 1,
+            "rate": 1,
+            "wilson_ci": {
+              "lower": 0.2065,
+              "upper": 1,
+              "center": 0.6033
+            },
+            "status": "insufficient_data"
+          },
+          "ambiguity_handled": {
+            "k": 0,
+            "n": 0,
+            "rate": 0,
+            "wilson_ci": {
+              "lower": 0,
+              "upper": 0,
+              "center": 0
+            },
+            "status": "insufficient_data"
+          },
+          "contract_validity_rate": {
+            "k": 1,
+            "n": 1,
+            "rate": 1,
+            "wilson_ci": {
+              "lower": 0.2065,
+              "upper": 1,
+              "center": 0.6033
+            },
+            "status": "insufficient_data"
+          },
+          "zero_result_rate": {
+            "k": 0,
+            "n": 0,
+            "rate": 0,
+            "wilson_ci": {
+              "lower": 0,
+              "upper": 0,
+              "center": 0
+            },
+            "status": "insufficient_data"
+          },
+          "duplicate_rate": {
+            "k": 0,
+            "n": 0,
+            "rate": 0,
+            "wilson_ci": {
+              "lower": 0,
+              "upper": 0,
+              "center": 0
+            },
+            "status": "insufficient_data"
+          },
+          "cache_hit_rate": {
+            "k": 0,
+            "n": 1,
+            "rate": 0,
+            "wilson_ci": {
+              "lower": 0,
+              "upper": 0.7935,
+              "center": 0.3967
+            },
+            "status": "insufficient_data"
+          },
+          "adversarial_pass_rate": {
+            "k": 0,
+            "n": 0,
+            "rate": 0,
+            "wilson_ci": {
+              "lower": 0,
+              "upper": 0,
+              "center": 0
+            },
+            "status": "insufficient_data"
+          },
+          "provider_calls_per_search": {
+            "sample_size": 1,
+            "mean": 0,
+            "p50": 0,
+            "p95": 0,
+            "max": 0,
+            "status": "insufficient_data"
+          },
+          "cost_units_per_search": {
+            "sample_size": 1,
+            "mean": 0,
+            "p50": 0,
+            "p95": 0,
+            "max": 0,
+            "status": "insufficient_data"
+          },
+          "ai_calls_per_search": {
+            "sample_size": 1,
+            "mean": 0,
+            "p50": 0,
+            "p95": 0,
+            "max": 0,
+            "status": "insufficient_data"
+          },
+          "ai_tokens_per_search": {
+            "sample_size": 1,
+            "mean": 0,
+            "p50": 0,
+            "p95": 0,
+            "max": 0,
+            "status": "insufficient_data"
+          },
+          "latency_ms": {
+            "sample_size": 1,
+            "mean": 4,
+            "p50": 4,
+            "p95": 4,
+            "max": 4,
+            "status": "insufficient_data"
+          }
+        }
+      },
+      "en": {
+        "total_cases": 1,
+        "metrics": {
+          "intent_accuracy": {
+            "k": 1,
+            "n": 1,
+            "rate": 1,
+            "wilson_ci": {
+              "lower": 0.2065,
+              "upper": 1,
+              "center": 0.6033
+            },
+            "status": "insufficient_data"
+          },
+          "language_accuracy": {
+            "k": 1,
+            "n": 1,
+            "rate": 1,
+            "wilson_ci": {
+              "lower": 0.2065,
+              "upper": 1,
+              "center": 0.6033
+            },
+            "status": "insufficient_data"
+          },
+          "must_precision": {
+            "k": 1,
+            "n": 1,
+            "rate": 1,
+            "wilson_ci": {
+              "lower": 0.2065,
+              "upper": 1,
+              "center": 0.6033
+            },
+            "status": "insufficient_data"
+          },
+          "must_recall": {
+            "k": 1,
+            "n": 1,
+            "rate": 1,
+            "wilson_ci": {
+              "lower": 0.2065,
+              "upper": 1,
+              "center": 0.6033
+            },
+            "status": "insufficient_data"
+          },
+          "should_recall": {
+            "k": 0,
+            "n": 0,
+            "rate": 0,
+            "wilson_ci": {
+              "lower": 0,
+              "upper": 0,
+              "center": 0
+            },
+            "status": "insufficient_data"
+          },
+          "exclusion_correctness": {
+            "k": 0,
+            "n": 0,
+            "rate": 0,
+            "wilson_ci": {
+              "lower": 0,
+              "upper": 0,
+              "center": 0
+            },
+            "status": "insufficient_data"
+          },
+          "location_accuracy": {
+            "k": 1,
+            "n": 1,
+            "rate": 1,
+            "wilson_ci": {
+              "lower": 0.2065,
+              "upper": 1,
+              "center": 0.6033
+            },
+            "status": "insufficient_data"
+          },
+          "ambiguity_handled": {
+            "k": 0,
+            "n": 0,
+            "rate": 0,
+            "wilson_ci": {
+              "lower": 0,
+              "upper": 0,
+              "center": 0
+            },
+            "status": "insufficient_data"
+          },
+          "contract_validity_rate": {
+            "k": 1,
+            "n": 1,
+            "rate": 1,
+            "wilson_ci": {
+              "lower": 0.2065,
+              "upper": 1,
+              "center": 0.6033
+            },
+            "status": "insufficient_data"
+          },
+          "zero_result_rate": {
+            "k": 0,
+            "n": 0,
+            "rate": 0,
+            "wilson_ci": {
+              "lower": 0,
+              "upper": 0,
+              "center": 0
+            },
+            "status": "insufficient_data"
+          },
+          "duplicate_rate": {
+            "k": 0,
+            "n": 0,
+            "rate": 0,
+            "wilson_ci": {
+              "lower": 0,
+              "upper": 0,
+              "center": 0
+            },
+            "status": "insufficient_data"
+          },
+          "cache_hit_rate": {
+            "k": 0,
+            "n": 1,
+            "rate": 0,
+            "wilson_ci": {
+              "lower": 0,
+              "upper": 0.7935,
+              "center": 0.3967
+            },
+            "status": "insufficient_data"
+          },
+          "adversarial_pass_rate": {
+            "k": 0,
+            "n": 0,
+            "rate": 0,
+            "wilson_ci": {
+              "lower": 0,
+              "upper": 0,
+              "center": 0
+            },
+            "status": "insufficient_data"
+          },
+          "provider_calls_per_search": {
+            "sample_size": 1,
+            "mean": 0,
+            "p50": 0,
+            "p95": 0,
+            "max": 0,
+            "status": "insufficient_data"
+          },
+          "cost_units_per_search": {
+            "sample_size": 1,
+            "mean": 0,
+            "p50": 0,
+            "p95": 0,
+            "max": 0,
+            "status": "insufficient_data"
+          },
+          "ai_calls_per_search": {
+            "sample_size": 1,
+            "mean": 0,
+            "p50": 0,
+            "p95": 0,
+            "max": 0,
+            "status": "insufficient_data"
+          },
+          "ai_tokens_per_search": {
+            "sample_size": 1,
+            "mean": 0,
+            "p50": 0,
+            "p95": 0,
+            "max": 0,
+            "status": "insufficient_data"
+          },
+          "latency_ms": {
+            "sample_size": 1,
+            "mean": 2,
+            "p50": 2,
+            "p95": 2,
+            "max": 2,
+            "status": "insufficient_data"
+          }
+        }
+      }
+    },
+    "by_category": {
+      "experience_discovery": {
+        "total_cases": 2,
+        "metrics": {
+          "intent_accuracy": {
+            "k": 2,
+            "n": 2,
+            "rate": 1,
+            "wilson_ci": {
+              "lower": 0.3424,
+              "upper": 1,
+              "center": 0.6712
+            },
+            "status": "insufficient_data"
+          },
+          "language_accuracy": {
+            "k": 2,
+            "n": 2,
+            "rate": 1,
+            "wilson_ci": {
+              "lower": 0.3424,
+              "upper": 1,
+              "center": 0.6712
+            },
+            "status": "insufficient_data"
+          },
+          "must_precision": {
+            "k": 2,
+            "n": 2,
+            "rate": 1,
+            "wilson_ci": {
+              "lower": 0.3424,
+              "upper": 1,
+              "center": 0.6712
+            },
+            "status": "insufficient_data"
+          },
+          "must_recall": {
+            "k": 2,
+            "n": 2,
+            "rate": 1,
+            "wilson_ci": {
+              "lower": 0.3424,
+              "upper": 1,
+              "center": 0.6712
+            },
+            "status": "insufficient_data"
+          },
+          "should_recall": {
+            "k": 0,
+            "n": 0,
+            "rate": 0,
+            "wilson_ci": {
+              "lower": 0,
+              "upper": 0,
+              "center": 0
+            },
+            "status": "insufficient_data"
+          },
+          "exclusion_correctness": {
+            "k": 0,
+            "n": 0,
+            "rate": 0,
+            "wilson_ci": {
+              "lower": 0,
+              "upper": 0,
+              "center": 0
+            },
+            "status": "insufficient_data"
+          },
+          "location_accuracy": {
+            "k": 2,
+            "n": 2,
+            "rate": 1,
+            "wilson_ci": {
+              "lower": 0.3424,
+              "upper": 1,
+              "center": 0.6712
+            },
+            "status": "insufficient_data"
+          },
+          "ambiguity_handled": {
+            "k": 0,
+            "n": 0,
+            "rate": 0,
+            "wilson_ci": {
+              "lower": 0,
+              "upper": 0,
+              "center": 0
+            },
+            "status": "insufficient_data"
+          },
+          "contract_validity_rate": {
+            "k": 2,
+            "n": 2,
+            "rate": 1,
+            "wilson_ci": {
+              "lower": 0.3424,
+              "upper": 1,
+              "center": 0.6712
+            },
+            "status": "insufficient_data"
+          },
+          "zero_result_rate": {
+            "k": 0,
+            "n": 0,
+            "rate": 0,
+            "wilson_ci": {
+              "lower": 0,
+              "upper": 0,
+              "center": 0
+            },
+            "status": "insufficient_data"
+          },
+          "duplicate_rate": {
+            "k": 0,
+            "n": 0,
+            "rate": 0,
+            "wilson_ci": {
+              "lower": 0,
+              "upper": 0,
+              "center": 0
+            },
+            "status": "insufficient_data"
+          },
+          "cache_hit_rate": {
+            "k": 0,
+            "n": 2,
+            "rate": 0,
+            "wilson_ci": {
+              "lower": 0,
+              "upper": 0.6576,
+              "center": 0.3288
+            },
+            "status": "insufficient_data"
+          },
+          "adversarial_pass_rate": {
+            "k": 0,
+            "n": 0,
+            "rate": 0,
+            "wilson_ci": {
+              "lower": 0,
+              "upper": 0,
+              "center": 0
+            },
+            "status": "insufficient_data"
+          },
+          "provider_calls_per_search": {
+            "sample_size": 2,
+            "mean": 0,
+            "p50": 0,
+            "p95": 0,
+            "max": 0,
+            "status": "insufficient_data"
+          },
+          "cost_units_per_search": {
+            "sample_size": 2,
+            "mean": 0,
+            "p50": 0,
+            "p95": 0,
+            "max": 0,
+            "status": "insufficient_data"
+          },
+          "ai_calls_per_search": {
+            "sample_size": 2,
+            "mean": 0,
+            "p50": 0,
+            "p95": 0,
+            "max": 0,
+            "status": "insufficient_data"
+          },
+          "ai_tokens_per_search": {
+            "sample_size": 2,
+            "mean": 0,
+            "p50": 0,
+            "p95": 0,
+            "max": 0,
+            "status": "insufficient_data"
+          },
+          "latency_ms": {
+            "sample_size": 2,
+            "mean": 3,
+            "p50": 4,
+            "p95": 4,
+            "max": 4,
+            "status": "insufficient_data"
+          }
+        }
+      }
+    }
+  },
+  "case_results": [
+    {
+      "case_id": "eval_001",
+      "query": "quán cà phê mèo quận 1",
+      "language": "vi",
+      "category": "experience_discovery",
+      "label_status": "human_verified",
+      "passed": true,
+      "crashed": false,
+      "intent_match": true,
+      "language_match": true,
+      "must_precision": 1,
+      "must_recall": 1,
+      "should_recall": 1,
+      "exclusion_correct": true,
+      "location_match": true,
+      "ambiguity_handled": true,
+      "contract_valid": true,
+      "latency_ms": 4,
+      "cost_units": 0,
+      "priced_calls": 0,
+      "unpriced_calls": 0,
+      "ai_calls": 0,
+      "ai_tokens": 0,
+      "cache_hit": false,
+      "failure_reasons": []
+    },
+    {
+      "case_id": "eval_002",
+      "query": "cat cafe in Da'an district",
+      "language": "en",
+      "category": "experience_discovery",
+      "label_status": "human_verified",
+      "passed": true,
+      "crashed": false,
+      "intent_match": true,
+      "language_match": true,
+      "must_precision": 1,
+      "must_recall": 1,
+      "should_recall": 1,
+      "exclusion_correct": true,
+      "location_match": true,
+      "ambiguity_handled": true,
+      "contract_valid": true,
+      "latency_ms": 2,
+      "cost_units": 0,
+      "priced_calls": 0,
+      "unpriced_calls": 0,
+      "ai_calls": 0,
+      "ai_tokens": 0,
+      "cache_hit": false,
+      "failure_reasons": []
+    }
+  ]
+}

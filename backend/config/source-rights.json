@@ -1,0 +1,67 @@
+{
+  "_comment": "Quyền sử dụng dữ liệu theo từng nguồn. Chỉ người có thẩm quyền (pháp chế/chủ sản phẩm) được đổi 'granted'. Mọi thay đổi phải điền verified_by, verified_at và basis. Worker không nhập dữ liệu từ nguồn có business_data khác 'granted'; ảnh/đánh giá chỉ được tính vào ngưỡng khi photos/reviews = 'granted'.",
+  "sources": {
+    "mock_dev": {
+      "label": "Dữ liệu mẫu (chỉ môi trường phát triển)",
+      "dev_only": true,
+      "business_data": "granted",
+      "photos": "granted",
+      "reviews": "granted",
+      "redistribute": "granted",
+      "attribution": "Dữ liệu mẫu Mobler (dev)",
+      "retention_days": 30,
+      "basis": "Dữ liệu tự sinh để kiểm thử luồng; không bao giờ chạy ở production.",
+      "verified_by": "system",
+      "verified_at": "2026-10-09"
+    },
+    "osm": {
+      "label": "OpenStreetMap (Overpass API)",
+      "business_data": "granted",
+      "photos": "denied",
+      "reviews": "denied",
+      "redistribute": "granted",
+      "attribution": "© OpenStreetMap contributors, ODbL 1.0",
+      "retention_days": null,
+      "basis": "Open Database License 1.0 (https://opendatacommons.org/licenses/odbl/1-0/): cho phép lưu, hiển thị, phân phối lại với điều kiện ghi nguồn và share-alike cho cơ sở dữ liệu dẫn xuất. OSM không cung cấp ảnh/đánh giá.",
+      "verified_by": "PENDING_LEGAL_CONFIRMATION",
+      "verified_at": null,
+      "notes": "Cần pháp chế xác nhận nghĩa vụ share-alike khi gộp dữ liệu OSM với dữ liệu khác. Hãy cũng tuân thủ chính sách sử dụng Overpass (giới hạn tải)."
+    },
+    "file_import": {
+      "label": "Tệp nhập (export từ GPM Automate hoặc nguồn khác)",
+      "business_data": "unverified",
+      "photos": "unverified",
+      "reviews": "unverified",
+      "redistribute": "unverified",
+      "attribution": "",
+      "retention_days": 30,
+      "basis": "Mỗi tệp phải khai báo origin; quyền được xét theo mục 'origins' bên dưới.",
+      "verified_by": null,
+      "verified_at": null
+    },
+    "gpm": {
+      "label": "GPM Login + GPM Automate (connector chạy trực tiếp)",
+      "business_data": "unverified",
+      "photos": "unverified",
+      "reviews": "unverified",
+      "redistribute": "unverified",
+      "attribution": "",
+      "retention_days": 30,
+      "basis": "Chưa có tài liệu API GPM và chưa xác định website nguồn mà GPM sẽ thu thập. Connector bị khóa.",
+      "verified_by": null,
+      "verified_at": null
+    }
+  },
+  "origins": {
+    "google_maps": {
+      "label": "Google Maps (thu thập qua trình duyệt tự động)",
+      "business_data": "denied",
+      "photos": "denied",
+      "reviews": "denied",
+      "redistribute": "denied",
+      "basis": "Google Maps Platform Terms of Service §3.2.3(a) No Scraping: không được export/extract/scrape, không 'copy and save business names, addresses, or user reviews'. Không thể cấp quyền.",
+      "verified_by": "policy",
+      "verified_at": "2026-10-09"
+    }
+  }
+}

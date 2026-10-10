@@ -1,0 +1,14 @@
+{
+  "feature_id": "quiet_work",
+  "status": "verified",
+  "positive_count": 8,
+  "negative_count": 1,
+  "confidence": 0.89,
+  "source_type": "ai_inference",
+  "data_owner": "internal_derived",
+  "derived_from": [
+    "google_provider",
+    "mobler_review"
+  ],
+  "persistable": true
+}

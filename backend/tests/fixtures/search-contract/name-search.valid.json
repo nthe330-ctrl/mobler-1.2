@@ -1,0 +1,37 @@
+{
+  "normalized_query": "the workshop coffee",
+  "language": "en",
+  "intent": "search_by_name",
+  "entities": [
+    {
+      "entity_type": "business",
+      "canonical_value": "the_workshop_coffee",
+      "original_text": "The Workshop Coffee",
+      "confidence": 0.98,
+      "source": "deterministic"
+    }
+  ],
+  "location": null,
+  "requirements": [
+    {
+      "id": "req_name_1",
+      "type": "name",
+      "value": "The Workshop Coffee",
+      "priority": "must",
+      "polarity": "include",
+      "confidence": 0.98,
+      "source": "deterministic",
+      "original_text": "The Workshop Coffee"
+    }
+  ],
+  "search_mode": "standard",
+  "ambiguities": [],
+  "parse_source": "fast_path",
+  "confidence": 0.95,
+  "versions": {
+    "contract": "contract_v2.0",
+    "taxonomy": "taxo_v16_canonical",
+    "parser": "parse_v1.2",
+    "normalizer": "norm_v1.0"
+  }
+}
