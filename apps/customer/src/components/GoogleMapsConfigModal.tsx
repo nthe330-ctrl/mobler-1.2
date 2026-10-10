@@ -62,7 +62,7 @@ export default function GoogleMapsConfigModal({
         valid: true,
         billingEnabled: false,
         message: language === 'vi' 
-          ? 'Đã xóa key. Ứng dụng sẽ sử dụng Bản đồ Vector tương tác.' 
+          ? t('gmaps.keyCleared', 'Đã xóa key. Ứng dụng sẽ sử dụng Bản đồ Vector tương tác.') 
           : 'Key removed. App will use interactive vector fallback map.'
       });
       return;
@@ -92,7 +92,7 @@ export default function GoogleMapsConfigModal({
         valid: false,
         billingEnabled: false,
         reason: 'network_error',
-        message: err.message || 'Lỗi kiểm tra kết nối API'
+        message: err.message || t('gmaps.testError', 'Lỗi kiểm tra kết nối API')
       });
     }
   };
@@ -224,7 +224,7 @@ export default function GoogleMapsConfigModal({
                 </div>
                 <p className="text-[11px] mt-1 opacity-75 leading-relaxed">
                   {language === 'vi'
-                    ? 'Nếu bạn đã có Google Cloud Project, hãy truy cập Console để bật Billing và kích hoạt Maps JavaScript API.'
+                    ? t('gmaps.consoleDesc', 'Nếu bạn đã có Google Cloud Project, hãy truy cập Console để bật Billing và kích hoạt Maps JavaScript API.')
                     : 'If using an existing Google Cloud project, visit Cloud Console to attach a billing account and enable Maps JavaScript API.'}
                 </p>
                 <div className="mt-2">
@@ -253,7 +253,7 @@ export default function GoogleMapsConfigModal({
                   </div>
                   <p className="text-[10px] opacity-75 mt-0.5">
                     {language === 'vi'
-                      ? 'Hiển thị tọa độ quán cà phê Quận 1, phố đi bộ & sông Sài Gòn mà không cần API key.'
+                      ? t('gmaps.vectorDesc', 'Hiển thị tọa độ quán cà phê Quận 1, phố đi bộ & sông Sài Gòn mà không cần API key.')
                       : 'Displays all coffee shops, river and street landmarks offline without requiring any key.'}
                   </p>
                 </div>
@@ -331,7 +331,7 @@ export default function GoogleMapsConfigModal({
                     {validationResult.reason === 'billing_not_enabled' && (
                       <p className="text-[11px] mt-1 opacity-85">
                         {language === 'vi'
-                          ? 'Gợi ý: Dùng nút Tạo Google Maps Demo Key ở trên để lấy key có sẵn quyền truy cập miễn phí.'
+                          ? t('gmaps.hint', 'Gợi ý: Dùng nút Tạo Google Maps Demo Key ở trên để lấy key có sẵn quyền truy cập miễn phí.')
                           : 'Tip: Use the free Maps Demo Key link above to get a key with active quota.'}
                       </p>
                     )}

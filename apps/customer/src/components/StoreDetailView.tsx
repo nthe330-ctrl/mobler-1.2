@@ -348,10 +348,10 @@ export default function StoreDetailView({ id, shops, appliedVoucher, hasValidKey
             <div className="flex flex-wrap items-center gap-3 sm:gap-5 font-mono text-[11px] opacity-90 border-t border-white/15 pt-2">
               <span className="flex items-center gap-1 font-bold">
                 <Star size={12} className="text-amber-400 fill-amber-400" />
-                {shop.rating > 0 ? `${shop.rating} (${shop.reviewCount || shop.reviews.length})` : 'Chưa có đánh giá'}
+                {shop.rating > 0 ? `${shop.rating} (${shop.reviewCount || shop.reviews.length})` : t('store.noReviewsYet', 'Chưa có đánh giá')}
               </span>
               <span className="font-['Times_New_Roman',Times,serif] text-[11px]">
-                {t('store.open', 'Mở cửa')}: {shop.openingHours?.[0]?.time || 'Chưa cập nhật'}
+                {t('store.open', 'Mở cửa')}: {shop.openingHours?.[0]?.time || t('store.notUpdated', 'Chưa cập nhật')}
               </span>
               <span className="text-emerald-400 font-bold">
                 {t('store.distanceFromYou', 'Cách bạn')} {shop.distance}

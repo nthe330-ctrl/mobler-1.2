@@ -325,6 +325,12 @@ export class GeoError extends Error {
   }
 }
 
+/** Translation keys for each failure, so the UI can show them in the active language. */
+export const GEO_ERROR_KEYS: Record<GeoErrorCode, string> = {
+  denied: 'geo.denied', unavailable: 'geo.unavailable', timeout: 'geo.timeout',
+  unsupported: 'geo.unsupported', insecure: 'geo.insecure'
+};
+
 function geoErrorFromBrowser(err: GeolocationPositionError | { code: number }): GeoError {
   if (err.code === 1) {
     return new GeoError('denied', 'Trình duyệt đang chặn quyền vị trí của trang này. Bấm biểu tượng ổ khóa cạnh thanh địa chỉ → Vị trí → Cho phép, rồi tải lại trang.');

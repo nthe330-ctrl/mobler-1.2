@@ -160,14 +160,14 @@ export default function AuthModal() {
           {tab === 'login' ? (
             <form onSubmit={handleLogin} className="space-y-4">
               {Field({
-                label: 'Số điện thoại hoặc email',
+                label: t('auth.identifierPlaceholder', 'Số điện thoại hoặc email'),
                 icon: <Phone size={16} />,
                 children: (
                   <input type="text" autoComplete="username" value={identifier} onChange={e => setIdentifier(e.target.value)} placeholder="0908 123 789" className={inputCls} />
                 )
               })}
               {Field({
-                label: 'Mật khẩu',
+                label: t('auth.passwordPlaceholder', 'Mật khẩu'),
                 icon: <Lock size={16} />,
                 children: (
                   <>
@@ -183,29 +183,29 @@ export default function AuthModal() {
               <p className={`text-center text-xs ${isLight ? 'text-slate-500' : 'text-[#7A6450]'}`}>
                 Chưa có tài khoản?{' '}
                 <button type="button" onClick={() => { setTab('register'); setError(null); }} className={`font-bold underline ${isLight ? 'text-[#800020]' : 'text-[#D4AF37]'}`}>
-                  Tạo tài khoản khách hàng
+                  {t('auth.createCustomerAccount', t('auth.createCustomerAccount', 'Tạo tài khoản khách hàng'))}
                 </button>
               </p>
             </form>
           ) : (
             <form onSubmit={handleRegister} className="space-y-4">
               {Field({
-                label: 'Họ và tên *',
+                label: t('auth.fullNamePlaceholder', 'Họ và tên *'),
                 icon: <User size={16} />,
                 children: <input type="text" autoComplete="name" value={fullName} onChange={e => setFullName(e.target.value)} placeholder={t('auth.namePlaceholder', 'Nguyễn Văn A')} className={inputCls} />
               })}
               {Field({
-                label: 'Số điện thoại *',
+                label: t('auth.phonePlaceholder', 'Số điện thoại *'),
                 icon: <Phone size={16} />,
                 children: <input type="tel" autoComplete="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="0901 234 567" className={inputCls} />
               })}
               {Field({
-                label: 'Email (không bắt buộc)',
+                label: t('auth.emailPlaceholder', 'Email (không bắt buộc)'),
                 icon: <Mail size={16} />,
                 children: <input type="email" autoComplete="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="ban@email.com" className={inputCls} />
               })}
               {Field({
-                label: 'Mật khẩu * (ít nhất 6 ký tự)',
+                label: t('auth.passwordRulePlaceholder', 'Mật khẩu * (ít nhất 6 ký tự)'),
                 icon: <Lock size={16} />,
                 children: (
                   <>
@@ -215,7 +215,7 @@ export default function AuthModal() {
                 )
               })}
               {Field({
-                label: 'Nhập lại mật khẩu *',
+                label: t('auth.confirmPasswordPlaceholder', 'Nhập lại mật khẩu *'),
                 icon: <Lock size={16} />,
                 children: <input type={showPassword ? 'text' : 'password'} autoComplete="new-password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} className={inputCls} />
               })}
@@ -224,7 +224,7 @@ export default function AuthModal() {
                 <span>{t('auth.createAccount', 'Tạo tài khoản')}</span>
               </button>
               <p className={`text-center text-[11px] ${isLight ? 'text-slate-500' : 'text-[#7A6450]'}`}>
-                Bạn là chủ quán? Hãy đăng ký trên ứng dụng <strong>Mobler Shop</strong> dành riêng cho cửa hàng.
+                {t('auth.shopOwnerHint', t('auth.shopOwnerHint', 'Bạn là chủ quán? Hãy đăng ký trên ứng dụng'))} <strong>Mobler Shop</strong> {t('auth.shopOwnerHint2', t('auth.shopOwnerHint2', 'dành riêng cho cửa hàng.'))}
               </p>
             </form>
           )}

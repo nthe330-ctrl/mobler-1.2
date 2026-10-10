@@ -7,3 +7,5 @@ coverage/
 .env*
 !.env.example
 backend/data/
+# Runtime telemetry written by the server on every run
+backend/mobler_telemetry.json

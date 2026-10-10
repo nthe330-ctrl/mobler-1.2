@@ -9,10 +9,11 @@ import 'maplibre-gl/dist/maplibre-gl.css';
  * https://openfreemap.org
  */
 /** Accessible labels for the map pins; the host app sets them in its own language. */
-const fallbackLabels = { cafe: 'Quán', you: 'Vị trí của bạn' };
-export function setMapLabels(cafe: string, you: string) {
+const fallbackLabels = { cafe: 'Quán', you: 'Vị trí của bạn', noWebgl: 'Thiết bị không hỗ trợ hiển thị bản đồ (WebGL).' };
+export function setMapLabels(cafe: string, you: string, noWebgl?: string) {
   fallbackLabels.cafe = cafe;
   fallbackLabels.you = you;
+  if (noWebgl) fallbackLabels.noWebgl = noWebgl;
 }
 
 const STYLE_LIGHT = 'https://tiles.openfreemap.org/styles/liberty';
@@ -145,7 +146,7 @@ export default function FreeMap({
   if (failed) {
     return (
       <div className={`flex items-center justify-center text-xs text-slate-500 bg-slate-100 ${className || ''}`}>
-        Thiết bị không hỗ trợ hiển thị bản đồ (WebGL).
+        {fallbackLabels.noWebgl}
       </div>
     );
   }

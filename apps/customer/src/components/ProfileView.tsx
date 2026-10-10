@@ -485,7 +485,7 @@ function SettingsModal({
                   {t('settings.dragDropAvatar', 'Kéo thả ảnh vào đây hoặc nhấp để chọn')}
                 </p>
                 <span className="text-[9px] font-mono text-slate-400 dark:text-[#7A6450]">
-                  JPG, PNG, WebP (Tối đa 5MB)
+                  {t('profile.uploadHint', t('profile.uploadHint', 'JPG, PNG, WebP (Tối đa 5MB)'))}
                 </span>
               </div>
             </div>
@@ -830,7 +830,7 @@ function SettingsModal({
               </button>
             </div>
             <p className={`text-[11px] leading-relaxed ${isLight ? 'text-slate-600' : 'text-[#A48F7A]'}`}>
-              Cài đặt Google Maps API Key hoặc Maps Demo Key miễn phí để hiển thị bản đồ vệ tinh và tải danh sách quán cà phê thực tế.
+              {t('profile.mapsKeyHint', t('profile.mapsKeyHint', 'Cài đặt Google Maps API Key hoặc Maps Demo Key miễn phí để hiển thị bản đồ vệ tinh và tải danh sách quán cà phê thực tế.'))}
             </p>
           </div>
         </div>
@@ -1191,10 +1191,10 @@ function PassportTab({ isLight }: { isLight: boolean }) {
               progress: 80, 
               reviews: 3,
               achievements: [
-                { titleKey: 'storeAch.newTitle', title: 'Khách Mới', descKey: 'storeAch.newDesc', desc: 'Ghé quán lần đầu tiên', achieved: true, date: '02/01/2026' },
-                { titleKey: 'storeAch.regularTitle', title: 'Khách Quen', descKey: 'storeAch.regularDesc', desc: 'Ghé quán 5 lần', achieved: true, date: '15/03/2026' },
-                { titleKey: 'storeAch.vipTitle', title: 'Khách Ruột (VIP)', descKey: 'storeAch.vipDesc', desc: 'Ghé quán 10 lần & viết 2 review', achieved: true, date: '10/05/2026' },
-                { titleKey: 'storeAch.soulmateTitle', title: 'Tri Kỷ Cà Phê', descKey: 'storeAch.soulmateDesc', desc: 'Ghé quán 20 lần', achieved: false, progress: '15/20' }
+                { titleKey: 'storeAch.newTitle', title: t('tier.newLabel', 'Khách Mới'), descKey: 'storeAch.newDesc', desc: t('tier.firstVisit', 'Ghé quán lần đầu tiên'), achieved: true, date: '02/01/2026' },
+                { titleKey: 'storeAch.regularTitle', title: t('tier.regularLabel', 'Khách Quen'), descKey: 'storeAch.regularDesc', desc: t('tier.fiveVisits', 'Ghé quán 5 lần'), achieved: true, date: '15/03/2026' },
+                { titleKey: 'storeAch.vipTitle', title: t('tier.vipLabel', 'Khách Ruột (VIP)'), descKey: 'storeAch.vipDesc', desc: t('tier.tenVisits', 'Ghé quán 10 lần & viết 2 review'), achieved: true, date: '10/05/2026' },
+                { titleKey: 'storeAch.soulmateTitle', title: t('tier.soulmate', 'Tri Kỷ Cà Phê'), descKey: 'storeAch.soulmateDesc', desc: t('tier.twentyVisits', 'Ghé quán 20 lần'), achieved: false, progress: '15/20' }
               ]
             })}
           />
@@ -1217,10 +1217,10 @@ function PassportTab({ isLight }: { isLight: boolean }) {
               progress: 40, 
               reviews: 1,
               achievements: [
-                { titleKey: 'storeAch.newTitle', title: 'Khách Mới', descKey: 'storeAch.newDesc', desc: 'Ghé quán lần đầu tiên', achieved: true, date: '10/04/2026' },
-                { titleKey: 'storeAch.regularTitle', title: 'Khách Quen', descKey: 'storeAch.regularDesc', desc: 'Ghé quán 5 lần', achieved: true, date: '20/06/2026' },
-                { titleKey: 'storeAch.vipTitle', title: 'Khách Ruột (VIP)', descKey: 'storeAch.vipDesc', desc: 'Ghé quán 10 lần & viết 2 review', achieved: false, progress: '5/10' },
-                { titleKey: 'storeAch.soulmateTitle', title: 'Tri Kỷ Cà Phê', descKey: 'storeAch.soulmateDesc', desc: 'Ghé quán 20 lần', achieved: false, progress: '5/20' }
+                { titleKey: 'storeAch.newTitle', title: t('tier.newLabel', 'Khách Mới'), descKey: 'storeAch.newDesc', desc: t('tier.firstVisit', 'Ghé quán lần đầu tiên'), achieved: true, date: '10/04/2026' },
+                { titleKey: 'storeAch.regularTitle', title: t('tier.regularLabel', 'Khách Quen'), descKey: 'storeAch.regularDesc', desc: t('tier.fiveVisits', 'Ghé quán 5 lần'), achieved: true, date: '20/06/2026' },
+                { titleKey: 'storeAch.vipTitle', title: t('tier.vipLabel', 'Khách Ruột (VIP)'), descKey: 'storeAch.vipDesc', desc: t('tier.tenVisits', 'Ghé quán 10 lần & viết 2 review'), achieved: false, progress: '5/10' },
+                { titleKey: 'storeAch.soulmateTitle', title: t('tier.soulmate', 'Tri Kỷ Cà Phê'), descKey: 'storeAch.soulmateDesc', desc: t('tier.twentyVisits', 'Ghé quán 20 lần'), achieved: false, progress: '5/20' }
               ]
             })}
           />
@@ -1243,10 +1243,10 @@ function PassportTab({ isLight }: { isLight: boolean }) {
               progress: 10, 
               reviews: 0,
               achievements: [
-                { titleKey: 'storeAch.newTitle', title: 'Khách Mới', descKey: 'storeAch.newDesc', desc: 'Ghé quán lần đầu tiên', achieved: true, date: '18/07/2026' },
-                { titleKey: 'storeAch.regularTitle', title: 'Khách Quen', descKey: 'storeAch.regularDesc', desc: 'Ghé quán 5 lần', achieved: false, progress: '1/5' },
-                { titleKey: 'storeAch.vipTitle', title: 'Khách Ruột (VIP)', descKey: 'storeAch.vipDesc', desc: 'Ghé quán 10 lần & viết 2 review', achieved: false, progress: '1/10' },
-                { titleKey: 'storeAch.soulmateTitle', title: 'Tri Kỷ Cà Phê', descKey: 'storeAch.soulmateDesc', desc: 'Ghé quán 20 lần', achieved: false, progress: '1/20' }
+                { titleKey: 'storeAch.newTitle', title: t('tier.newLabel', 'Khách Mới'), descKey: 'storeAch.newDesc', desc: t('tier.firstVisit', 'Ghé quán lần đầu tiên'), achieved: true, date: '18/07/2026' },
+                { titleKey: 'storeAch.regularTitle', title: t('tier.regularLabel', 'Khách Quen'), descKey: 'storeAch.regularDesc', desc: t('tier.fiveVisits', 'Ghé quán 5 lần'), achieved: false, progress: '1/5' },
+                { titleKey: 'storeAch.vipTitle', title: t('tier.vipLabel', 'Khách Ruột (VIP)'), descKey: 'storeAch.vipDesc', desc: t('tier.tenVisits', 'Ghé quán 10 lần & viết 2 review'), achieved: false, progress: '1/10' },
+                { titleKey: 'storeAch.soulmateTitle', title: t('tier.soulmate', 'Tri Kỷ Cà Phê'), descKey: 'storeAch.soulmateDesc', desc: t('tier.twentyVisits', 'Ghé quán 20 lần'), achieved: false, progress: '1/20' }
               ]
             })}
           />
@@ -1861,7 +1861,7 @@ function WalletTab({ isLight }: { isLight: boolean }) {
           <p className={`text-sm ${muted}`}>{t('common.loading', 'Đang tải…')}</p>
         ) : rewards.vouchers.length === 0 ? (
           <div className={`p-5 rounded-2xl border text-sm ${card} ${muted}`}>
-            Chưa có voucher thưởng. Hoàn thành các thành tựu như “Chuyên Gia Review”, “Thợ Săn Bình Minh” hay “Cú Đêm Cà Phê” để nhận voucher.
+            {t('profile.noVouchers', t('profile.noVouchers', 'Chưa có voucher thưởng. Hoàn thành các thành tựu như “Chuyên Gia Review”, “Thợ Săn Bình Minh” hay “Cú Đêm Cà Phê” để nhận voucher.'))}
           </div>
         ) : (
           <div className="space-y-3">
@@ -1879,7 +1879,7 @@ function WalletTab({ isLight }: { isLight: boolean }) {
                 </div>
                 {v.status === 'active' && (
                   <button onClick={() => copy(v.code)} className={`mt-3 w-full py-2 rounded-xl border border-dashed font-mono font-bold text-sm ${isLight ? 'border-red-300 text-[#800020]' : 'border-[#D4AF37] text-[#D4AF37]'}`}>
-                    {copied === v.code ? 'Đã sao chép!' : v.code}
+                    {copied === v.code ? t('profile.copied', 'Đã sao chép!') : v.code}
                   </button>
                 )}
               </div>
@@ -2547,7 +2547,7 @@ function PostDetailModal({
           {/* Toast Notification */}
           {copiedToast && (
             <div className="p-2 rounded-lg bg-emerald-600 text-white text-xs font-bold text-center animate-in fade-in flex items-center justify-center gap-1.5">
-              <Check size={14} /> Đã sao chép liên kết bài viết vào clipboard!
+              <Check size={14} /> {t('profile.linkCopied', t('profile.linkCopied', 'Đã sao chép liên kết bài viết vào clipboard!'))}
             </div>
           )}
 

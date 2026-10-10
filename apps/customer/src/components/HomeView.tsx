@@ -16,7 +16,8 @@ import {
   recalculateShopDistances,
   watchDeviceLocation,
   resolveLocationLabel,
-  GeoError
+  GeoError,
+  GEO_ERROR_KEYS
 } from '@shared/services/googlePlacesService';
 import { SearchController, SearchPipelineResponse } from '@shared/services/search/SearchController';
 import { LocalLanguageResolver } from '@shared/services/search/LocalLanguageResolver';
@@ -32,7 +33,7 @@ import { CoverageStatus, LocalityPlaceDTO, LocalitySearchResponse, cellForCoords
 import { RefreshCw, Database } from 'lucide-react';
 
 /** Map an approved locality place into the shop shape the list/detail views already render. */
-function localityToShop(p: LocalityPlaceDTO): CoffeeShop {
+function localityToShop(p: LocalityPlaceDTO, t: (k: string, f: string) => string): CoffeeShop {
   const images = p.photos.map(ph => ph.url);
   return {
     id: `loc_${p.id}`,
@@ -43,7 +44,7 @@ function localityToShop(p: LocalityPlaceDTO): CoffeeShop {
     reviewCount: p.review_count,
     coverImage: images[0] || '',
     images,
-    openingHours: p.opening_hours ? [{ day: 'Giờ mở cửa', time: p.opening_hours }] : undefined,
+    openingHours: p.opening_hours ? [{ day: t('home.openingHours', 'Giờ mở cửa'), time: p.opening_hours }] : undefined,
     moods: [],
     tags: p.categories,
     amenities: [],
@@ -52,7 +53,7 @@ function localityToShop(p: LocalityPlaceDTO): CoffeeShop {
     reviews: p.reviews.map(r => ({
       id: r.id,
       userId: r.source,
-      userName: r.author || 'Ẩn danh',
+      userName: r.author || t('home.anonymous', 'Ẩn danh'),
       userAvatar: '',
       userSystemBadge: r.source,
       date: r.date || '',
@@ -322,7 +323,7 @@ export default function HomeView({
 
   // Map pin labels follow the UI language (the map is plain DOM, so it is told explicitly).
   useEffect(() => {
-    setMapLabels(t('map.cafePin', 'Quán'), t('map.yourLocation', 'Vị trí của bạn'));
+    setMapLabels(t('map.cafePin', 'Quán'), t('map.yourLocation', 'Vị trí của bạn'), t('map.noWebgl', 'Thiết bị không hỗ trợ hiển thị bản đồ (WebGL).'));
   }, [language]);
 
   // ---------------- Locality data (shared internal store) ----------------
@@ -333,7 +334,7 @@ export default function HomeView({
     try {
       const res = await api.localitySearch(cell, '', 1, enqueue);
       setLocality(res);
-      const shopsFromStore = res.places.filter(p => p.kind === 'locality').map(localityToShop);
+      const shopsFromStore = res.places.filter(p => p.kind === 'locality').map(pl => localityToShop(pl, t));
       if (shopsFromStore.length && onAddGoogleShops) onAddGoogleShops(shopsFromStore);
       return res;
     } catch (err) {
@@ -409,7 +410,7 @@ export default function HomeView({
 
       if (realPlaces && realPlaces.some((p: any) => p.isSynthetic)) {
         // Never present generated demo shops as real places.
-        const synthetic = realPlaces.map((p: any) => ({ ...p, tags: ['Dữ liệu minh họa', ...(p.tags || [])] }));
+        const synthetic = realPlaces.map((p: any) => ({ ...p, tags: [t('home.demoData', 'Dữ liệu minh họa'), ...(p.tags || [])] }));
         if (onAddGoogleShops) onAddGoogleShops(synthetic);
         setPlacesNotice(t('home.syntheticNotice', 'Không lấy được dữ liệu từ Google — đang hiển thị quán minh họa, không phải quán thật.'));
         setTimeout(() => setPlacesNotice(null), 6000);
@@ -435,7 +436,7 @@ export default function HomeView({
           ? 'ไม่พบร้านกาแฟเพิ่มเติมในรัศมี 6 กม.'
           : activeLang === 'en'
           ? 'No additional shops found within 6km radius'
-          : 'Không tìm thấy thêm quán mới trong bán kính 6km';
+          : t('home.noMoreShops', 'Không tìm thấy thêm quán mới trong bán kính 6km');
         setPlacesNotice(notFoundMsg);
         setTimeout(() => setPlacesNotice(null), 3000);
       }
@@ -481,7 +482,9 @@ export default function HomeView({
 
   // Explain exactly why GPS isn't working instead of silently using a wrong position.
   const showLocationProblem = (err: unknown, usingIp: boolean) => {
-    const msg = err instanceof GeoError ? err.message : 'Không lấy được vị trí GPS.';
+    const msg = err instanceof GeoError
+      ? t(GEO_ERROR_KEYS[err.code] || 'geo.failed', err.message)
+      : t('geo.failed', 'Không lấy được vị trí GPS.');
     setLocationProblem(usingIp ? `${msg} ${t('location.ipNotice', 'Tạm thời dùng vị trí ước tính theo IP (sai số vài km).')}` : msg);
   };
 
@@ -821,23 +824,23 @@ export default function HomeView({
   const notifications = [
     {
       id: 1,
-      title: 'Đặt bàn thành công',
+      title: t('notif.bookingOk', 'Đặt bàn thành công'),
       message: 'Đơn đặt bàn của bạn tại The Workshop Coffee lúc 19:00 ngày mai đã được xác nhận.',
-      time: '10 phút trước',
+      time: t('time.minutesAgo', '{n} phút trước').replace('{n}', '10'),
       read: false,
     },
     {
       id: 2,
-      title: 'Bình luận mới',
+      title: t('notif.newComment', 'Bình luận mới'),
       message: 'Thám Hiểm Gia đã bình luận vào bài review của bạn tại SOK - Space of K.',
-      time: '2 giờ trước',
+      time: t('time.hoursAgo', '{n} giờ trước').replace('{n}', '2'),
       read: false,
     },
     {
       id: 3,
-      title: 'Quán quen có khuyến mãi',
+      title: t('notif.promoTitle', 'Quán quen có khuyến mãi'),
       message: 'Blanc. Cafe vừa tung ưu đãi giảm giá 20% cho thành viên mới. Xem ngay!',
-      time: '1 ngày trước',
+      time: t('time.daysAgo', '{n} ngày trước').replace('{n}', '1'),
       read: true,
     }
   ];
@@ -853,7 +856,7 @@ export default function HomeView({
         <div className="max-w-7xl mx-auto w-full flex items-center justify-between">
           <div>
             <p className={`text-[11px] font-bold uppercase tracking-widest mb-0.5 ${isLight ? 'text-red-200' : 'text-[#A48F7A]'}`}>
-              {t('home.greeting', 'Chào bạn')}, {profile.name} 👋
+              {t('home.greeting', 'Chào bạn')}, {profile.name === 'Khách' ? t('profile.guestName', 'Khách') : profile.name} 👋
             </p>
             <h1 className="text-xl font-bold tracking-tight">
               {t('home.title', 'Khám phá không gian quán')}
@@ -1403,7 +1406,7 @@ export default function HomeView({
                       <h4 className="font-bold text-xs text-slate-900 dark:text-[#EBE3DB] truncate">{selectedMapShop.name}</h4>
                       <p className="text-[10px] text-slate-500 dark:text-[#A48F7A] truncate">{selectedMapShop.address}</p>
                       <div className="flex items-center gap-2 mt-0.5 text-[10px] font-semibold text-[#800020] dark:text-[#D4AF37]">
-                        <span>{selectedMapShop.rating > 0 ? `⭐ ${selectedMapShop.rating}` : t('shop.noRating', 'Chưa có đánh giá')}</span>
+                        <span>{selectedMapShop.rating > 0 ? `⭐ ${selectedMapShop.rating}` : t('shop.noRating', t('store.noReviewsYet', 'Chưa có đánh giá'))}</span>
                         <span>• {selectedMapShop.distance}</span>
                       </div>
                     </div>

@@ -24,17 +24,17 @@ export default function PromotionsView({ onNavigate }: Props) {
     {
       id: '1',
       store: MOCK_SHOPS[0],
-      title: 'Mua 1 Tặng 1 Cafe Sáng',
+      title: t('promo.bogoMorning', 'Mua 1 Tặng 1 Cafe Sáng'),
       titleKey: 'promotions.promo1Title',
-      description: 'Áp dụng cho tất cả các loại cafe Việt Nam. Tự động giảm 45.000đ khi thanh toán.',
+      description: t('promo.bogoMorningDesc', 'Áp dụng cho tất cả các loại cafe Việt Nam. Tự động giảm 45.000đ khi thanh toán.'),
       descKey: 'promotions.promo1Desc',
       code: 'MORNINGCOFFEE',
       discount: 45000,
-      discountText: 'Giảm 45.000đ',
+      discountText: t('promo.save45', 'Giảm 45.000đ'),
       discountKey: 'promotions.promo1Discount',
       validUntil: '31/08/2026',
       type: 'BOGO',
-      from: 'Quán quen',
+      from: t('promo.tagRegular', 'Quán quen'),
       fromKey: 'promotions.fromFavorite',
       category: 'favorite',
       image: MOCK_SHOPS[0].images[0]
@@ -42,17 +42,17 @@ export default function PromotionsView({ onNavigate }: Props) {
     {
       id: '2',
       store: MOCK_SHOPS[1],
-      title: 'Giảm 20.000đ Combo Bánh & Nước',
+      title: t('promo.comboTitle', 'Giảm 20.000đ Combo Bánh & Nước'),
       titleKey: 'promotions.promo2Title',
-      description: 'Thưởng thức bánh ngọt Pháp thơm ngon cùng thức uống yêu thích.',
+      description: t('promo.comboDesc', 'Thưởng thức bánh ngọt Pháp thơm ngon cùng thức uống yêu thích.'),
       descKey: 'promotions.promo2Desc',
       code: 'SWEET20',
       discount: 20000,
-      discountText: 'Giảm 20.000đ',
+      discountText: t('promo.save20', 'Giảm 20.000đ'),
       discountKey: 'promotions.promo2Discount',
       validUntil: '15/09/2026',
       type: 'DISCOUNT',
-      from: 'Đã từng ghé',
+      from: t('promo.tagVisited', 'Đã từng ghé'),
       fromKey: 'promotions.fromVisited',
       category: 'visited',
       image: MOCK_SHOPS[1].images[0]
@@ -60,17 +60,17 @@ export default function PromotionsView({ onNavigate }: Props) {
     {
       id: '3',
       store: MOCK_SHOPS[2],
-      title: 'Miễn Phí Nâng Size (Upsize)',
+      title: t('promo.upsizeTitle', 'Miễn Phí Nâng Size (Upsize)'),
       titleKey: 'promotions.promo3Title',
-      description: 'Giảm ngay 15.000đ cho đơn đặt bàn trước và chọn món trực tuyến.',
+      description: t('promo.upsizeDesc', 'Giảm ngay 15.000đ cho đơn đặt bàn trước và chọn món trực tuyến.'),
       descKey: 'promotions.promo3Desc',
       code: 'UPSIZEFREE',
       discount: 15000,
-      discountText: 'Giảm 15.000đ',
+      discountText: t('promo.save15', 'Giảm 15.000đ'),
       discountKey: 'promotions.promo3Discount',
       validUntil: '30/09/2026',
       type: 'FREEBIE',
-      from: 'Gợi ý cho bạn',
+      from: t('promo.tagSuggested', 'Gợi ý cho bạn'),
       fromKey: 'promotions.fromSuggested',
       category: 'suggested',
       image: MOCK_SHOPS[2].images[0]
@@ -90,33 +90,33 @@ export default function PromotionsView({ onNavigate }: Props) {
   const appPromotions = [
     {
       id: 'app-1',
-      title: 'Giảm 30.000đ Thành Viên VIP',
+      title: t('promo.vipTitle', 'Giảm 30.000đ Thành Viên VIP'),
       titleKey: 'promotions.appPromo1Title',
-      description: 'Đặc quyền thành viên: Giảm trực tiếp 30.000đ khi đặt bàn tại bất kỳ quán nào trên hệ thống.',
+      description: t('promo.vipDesc', 'Đặc quyền thành viên: Giảm trực tiếp 30.000đ khi đặt bàn tại bất kỳ quán nào trên hệ thống.'),
       descKey: 'promotions.appPromo1Desc',
       code: 'VIP50',
       discount: 30000,
-      discountText: 'Giảm 30.000đ',
+      discountText: t('promo.save30', 'Giảm 30.000đ'),
       discountKey: 'promotions.appPromo1Discount',
       validUntil: '31/08/2026',
       type: 'DISCOUNT',
-      from: 'Hệ thống',
+      from: t('promo.tagSystem', 'Hệ thống'),
       fromKey: 'promotions.fromSystem',
       image: 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?auto=format&fit=crop&q=80&w=1000'
     },
     {
       id: 'app-2',
-      title: 'Thưởng 20.000đ Bạn Mới Check-in',
+      title: t('promo.newCheckinTitle', 'Thưởng 20.000đ Bạn Mới Check-in'),
       titleKey: 'promotions.appPromo2Title',
-      description: 'Giảm 20.000đ cho hóa đơn đặt bàn hoặc gọi đồ uống đầu tiên trên app.',
+      description: t('promo.newCheckinDesc', 'Giảm 20.000đ cho hóa đơn đặt bàn hoặc gọi đồ uống đầu tiên trên app.'),
       descKey: 'promotions.appPromo2Desc',
       code: 'SHARE100',
       discount: 20000,
-      discountText: 'Giảm 20.000đ',
+      discountText: t('promo.save20', 'Giảm 20.000đ'),
       discountKey: 'promotions.appPromo2Discount',
       validUntil: '31/12/2026',
       type: 'REWARD',
-      from: 'Sự kiện',
+      from: t('promo.tagEvent', 'Sự kiện'),
       fromKey: 'promotions.fromEvent',
       image: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&q=80&w=1000'
     }
@@ -250,7 +250,7 @@ export default function PromotionsView({ onNavigate }: Props) {
                     : isLight ? 'border border-red-300 text-slate-700 bg-white' : 'border border-[#4A3B2C] text-[#7A6450] bg-[#120E0C]'
                 }`}
               >
-                {t('promotions.filterFavorite', 'Quán quen')}
+                {t('promotions.filterFavorite', t('promo.tagRegular', 'Quán quen'))}
               </button>
               <button 
                 onClick={() => setStoreFilter('visited')}

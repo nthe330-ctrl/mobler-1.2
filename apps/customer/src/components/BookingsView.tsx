@@ -32,7 +32,16 @@ interface Props {
 }
 
 /** Shape used by the existing booking cards & ticket modal. */
-function toDisplay(b: BookingData, shops?: CoffeeShop[]) {
+/** Server-stored table names look like "Bàn 2 (Bàn tròn)"; show them in the active language. */
+export function localizeTableName(name: string, t: (k: string, f: string) => string): string {
+  const m = /^Bàn\s+(\d+)\s*\((.+)\)$/.exec(name.trim());
+  if (!m) return name;
+  const typeKey = { 'Bàn tròn': 'table.round', 'Bàn chữ nhật': 'table.rect', 'Ghế sofa': 'table.sofa' }[m[2].trim()];
+  const label = t('table.nPrefix', 'Bàn {n}').replace('{n}', m[1]);
+  return typeKey ? `${label} (${t(typeKey, m[2])})` : label;
+}
+
+function toDisplay(b: BookingData, shops: CoffeeShop[] | undefined, t: (k: string, f: string) => string) {
   const shop = shops?.find(s => s.id === b.shop_id);
   return {
     id: b.id,
@@ -48,7 +57,7 @@ function toDisplay(b: BookingData, shops?: CoffeeShop[]) {
     guests: b.guests,
     status: isActiveBooking(b.status) ? 'upcoming' : b.status === 'completed' ? 'completed' : 'cancelled',
     liveStatus: b.status as BookingStatus,
-    table: b.table_name ? `${b.table_name}` : 'Bàn do quán sắp xếp',
+    table: b.table_name ? localizeTableName(b.table_name, t) : t('bookings.tableByShop', 'Bàn do quán sắp xếp'),
     paymentMethod: b.payment_method,
     paymentStatus: b.payment_status,
     depositFee: b.deposit_fee,
@@ -84,7 +93,7 @@ export default function BookingsView({ shops, onNavigate, highlightBookingId }: 
   const [isLoadingList, setIsLoadingList] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
-  const allBookings = rawBookings.map(b => toDisplay(b, shops));
+  const allBookings = rawBookings.map(b => toDisplay(b, shops, t));
 
   const load = async () => {
     setIsLoadingList(true);
@@ -93,7 +102,7 @@ export default function BookingsView({ shops, onNavigate, highlightBookingId }: 
       setRawBookings(res.bookings);
       setLoadError(null);
     } catch (err: any) {
-      setLoadError(err?.message || 'Không tải được lịch đặt bàn');
+      setLoadError(err?.message || t('bookings.loadFailed', 'Không tải được lịch đặt bàn'));
     } finally {
       setIsLoadingList(false);
     }
@@ -125,7 +134,7 @@ export default function BookingsView({ shops, onNavigate, highlightBookingId }: 
           const exists = prev.some(b => b.id === incoming.id);
           return exists ? prev.map(b => (b.id === incoming.id ? incoming : b)) : [incoming, ...prev];
         });
-        setSelectedBooking((cur: any) => (cur && cur.id === incoming.id ? toDisplay(incoming, shops) : cur));
+        setSelectedBooking((cur: any) => (cur && cur.id === incoming.id ? toDisplay(incoming, shops, t) : cur));
         if (data.action === 'updated') {
           setToast(`${incoming.shop_name}: ${BOOKING_STATUS_LABEL_VI[incoming.status]} (${incoming.id})`);
           setTimeout(() => setToast(null), 5000);
@@ -153,20 +162,20 @@ export default function BookingsView({ shops, onNavigate, highlightBookingId }: 
     if (!highlightBookingId) return;
     const found = rawBookings.find(b => b.id === highlightBookingId);
     if (found) {
-      setSelectedBooking(toDisplay(found, shops));
+      setSelectedBooking(toDisplay(found, shops, t));
       setActiveTab(isActiveBooking(found.status) ? 'upcoming' : 'history');
     }
   }, [highlightBookingId, rawBookings.length]);
 
   const handleCancel = async (id: string) => {
-    if (!window.confirm('Bạn chắc chắn muốn hủy lịch đặt bàn này?')) return;
+    if (!window.confirm(t('bookings.confirmCancel', 'Bạn chắc chắn muốn hủy lịch đặt bàn này?'))) return;
     setCancelling(true);
     try {
       const res = await api.cancelBooking(id);
       setRawBookings(prev => prev.map(b => (b.id === id ? res.booking : b)));
-      setSelectedBooking(toDisplay(res.booking, shops));
+      setSelectedBooking(toDisplay(res.booking, shops, t));
     } catch (err: any) {
-      setToast(err?.message || 'Không hủy được lịch đặt');
+      setToast(err?.message || t('bookings.cancelFailed', 'Không hủy được lịch đặt'));
       setTimeout(() => setToast(null), 5000);
     } finally {
       setCancelling(false);
@@ -373,7 +382,7 @@ export default function BookingsView({ shops, onNavigate, highlightBookingId }: 
                       <span>{t('bookings.tapForDetails', 'Xem vé QR & Chi tiết đầy đủ')}</span>
                     </span>
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-black/5 dark:bg-white/10 uppercase">
-                      Chi tiết
+                      {t('bookings.details', t('bookings.details', 'Chi tiết'))}
                     </span>
                   </div>
                 </motion.div>
@@ -464,7 +473,7 @@ export default function BookingsView({ shops, onNavigate, highlightBookingId }: 
                 isLight ? 'bg-red-50/50 border-red-200' : 'bg-[#1C1612] border-[#3E3023]'
               }`}>
                 <p className="text-[10px] uppercase tracking-wider font-bold text-slate-500 mb-2">
-                  Quét mã QR tại quầy để nhận bàn & nhận nước
+                  {t('booking.qrAtCounter', t('booking.qrAtCounter', 'Quét mã QR tại quầy để nhận bàn & nhận nước'))}
                 </p>
                 
                 <div className="bg-white p-3 rounded-2xl shadow-md border border-slate-200 inline-block mb-3">
@@ -573,9 +582,9 @@ export default function BookingsView({ shops, onNavigate, highlightBookingId }: 
                     <span className="text-slate-500">{t('bookings.paymentMethod', 'Hình thức thanh toán:')}</span>
                     <span className="font-semibold">
                       {selectedBooking.paymentMethod === 'vietqr' && 'VietQR (Napas 24/7)'}
-                      {selectedBooking.paymentMethod === 'momo' && 'Ví điện tử MoMo'}
+                      {selectedBooking.paymentMethod === 'momo' && t('payment.momo', 'Ví điện tử MoMo')}
                       {selectedBooking.paymentMethod === 'zalopay' && 'ZaloPay'}
-                      {selectedBooking.paymentMethod === 'card' && 'Thẻ tín dụng / Ghi nợ'}
+                      {selectedBooking.paymentMethod === 'card' && t('payment.card', 'Thẻ tín dụng / Ghi nợ')}
                       {selectedBooking.paymentMethod === 'at_store' && 'Thanh toán tại quán'}
                     </span>
                   </div>

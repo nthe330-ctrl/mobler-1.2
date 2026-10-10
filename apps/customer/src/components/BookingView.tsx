@@ -89,6 +89,27 @@ export const DRINK_SIZES: DrinkSizeOption[] = [
   }
 ];
 
+/**
+ * Drink options are stored on the order in Vietnamese, so the value must stay stable.
+ * This maps each stored value to its translation key for display only.
+ */
+export const OPTION_LABEL_KEYS: Record<string, string> = {
+  'Size S (Nhỏ)': 'booking.sizeS', 'Ly vừa vặn tiêu chuẩn': 'booking.sizeSDesc',
+  'Size M (Vừa)': 'booking.sizeM', 'Phổ biến nhất (+6.000đ)': 'booking.sizeMDesc',
+  'Size L (Lớn)': 'booking.sizeL', 'Thỏa thích giải khát (+12.000đ)': 'booking.sizeLDesc',
+  'Không đá': 'booking.iceNone', '0% đá': 'booking.iceNoneDesc',
+  'Ít đá': 'booking.iceLight', '30% đá': 'booking.iceLightDesc',
+  'Vừa phải': 'booking.iceHalf', '50% đá': 'booking.iceHalfDesc',
+  'Chuẩn vị quán': 'booking.iceFull', '100% đá': 'booking.iceFullDesc',
+  'Không đường': 'booking.sugarNone', '0% đường': 'booking.sugarNoneDesc',
+  'Ít đường': 'booking.sugarLow', '30% ngọt nhẹ': 'booking.sugarLowDesc',
+  'Nửa đường': 'booking.sugarHalf', '50% thanh mát': 'booking.sugarHalfDesc',
+  'Bình thường': 'booking.sugarNormal', '100% chuẩn vị': 'booking.sugarNormalDesc',
+  'Nhiều đường': 'booking.sugarHigh', '120% đậm ngọt': 'booking.sugarHighDesc',
+  'Tất cả': 'booking.allMenu', 'Cà phê': 'booking.coffeeCategory',
+  'Trà & Trái cây': 'booking.teaCategory', 'Bánh & Tráng miệng': 'booking.bakeryCategory'
+};
+
 export interface CustomCartItem {
   cartId: string;
   menuId: string;
@@ -128,6 +149,8 @@ export default function BookingView({ id, shops, initialVoucher, onNavigate }: P
   const { theme } = useTheme();
   const isLight = theme === 'light';
   const { language, t, translateShop, translateMenuItem } = useLanguage();
+  /** Translate a stored drink-option value for display (the stored value stays Vietnamese). */
+  const tOpt = (v?: string) => (v && OPTION_LABEL_KEYS[v] ? t(OPTION_LABEL_KEYS[v], v) : (v || ''));
 
   // Combine shops from props and MOCK_SHOPS to guarantee finding the requested shop
   const combinedShops = useMemo(() => {
@@ -186,8 +209,8 @@ export default function BookingView({ id, shops, initialVoucher, onNavigate }: P
   const [customizingItem, setCustomizingItem] = useState<MenuItem | null>(null);
   const [editingCartId, setEditingCartId] = useState<string | null>(null);
   const [customSize, setCustomSize] = useState<DrinkSize>('M');
-  const [customIce, setCustomIce] = useState<string>('100% đá');
-  const [customSugar, setCustomSugar] = useState<string>('Bình thường');
+  const [customIce, setCustomIce] = useState<string>('100% đá');   // stored value, shown via tOpt()
+  const [customSugar, setCustomSugar] = useState<string>('Bình thường');   // stored value, shown via tOpt()
   const [customQuantity, setCustomQuantity] = useState<number>(1);
   const [customItemNote, setCustomItemNote] = useState<string>('');
 
@@ -228,12 +251,12 @@ export default function BookingView({ id, shops, initialVoucher, onNavigate }: P
       setAvailability(res);
       setAvailabilityError(
         res.accepting_bookings === false
-          ? { code: 'SHOP_PAUSED', message: 'Quán đang tạm ngưng nhận đặt bàn trực tuyến.' }
+          ? { code: 'SHOP_PAUSED', message: t('booking.pausedOnline', 'Quán đang tạm ngưng nhận đặt bàn trực tuyến.') }
           : null
       );
     } catch (err: any) {
       setAvailability(null);
-      setAvailabilityError({ code: err?.code, message: err?.message || 'Không tải được tình trạng bàn' });
+      setAvailabilityError({ code: err?.code, message: err?.message || t('booking.tablesLoadFailed', 'Không tải được tình trạng bàn') });
     }
   }, [shopId, isoDate]);
 
@@ -277,7 +300,7 @@ export default function BookingView({ id, shops, initialVoucher, onNavigate }: P
     setSubmitError(null);
     if (!isAuthenticated) {
       openAuthModal('login', {
-        reason: 'Đăng nhập hoặc tạo tài khoản khách hàng để quán nhận được yêu cầu đặt bàn của bạn.',
+        reason: t('booking.signInPrompt', 'Đăng nhập hoặc tạo tài khoản khách hàng để quán nhận được yêu cầu đặt bàn của bạn.'),
         onSuccess: () => submitRef.current()
       });
       return;
@@ -302,7 +325,7 @@ export default function BookingView({ id, shops, initialVoucher, onNavigate }: P
             name: c.name,
             quantity: c.quantity,
             price: c.price,
-            options: `${c.size ? `Size ${c.size} • ` : ''}${c.ice} • ${c.sugar}${c.note ? ` • Ghi chú: ${c.note}` : ''}`,
+            options: `${c.size ? `Size ${tOpt(c.size)} • ` : ''}${tOpt(c.ice)} • ${tOpt(c.sugar)}${c.note ? ` • ${t('booking.noteTag', 'Ghi chú')}: ${c.note}` : ''}`,
             image: c.image
           })),
           subtotal: menuSubtotal,
@@ -332,7 +355,7 @@ export default function BookingView({ id, shops, initialVoucher, onNavigate }: P
       clearTimeout(stage2);
       setIsSubmitting(false);
       if (err?.status === 401) {
-        openAuthModal('login', { reason: 'Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại.', onSuccess: () => submitRef.current() });
+        openAuthModal('login', { reason: t('booking.sessionExpired', 'Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại.'), onSuccess: () => submitRef.current() });
         return;
       }
       if (err?.code === 'SLOT_TAKEN' || err?.code === 'FULLY_BOOKED') {
@@ -340,7 +363,7 @@ export default function BookingView({ id, shops, initialVoucher, onNavigate }: P
         setSelectedTable(null);
         setStep('booking');
       }
-      setSubmitError(err?.message || 'Đặt bàn thất bại, vui lòng thử lại');
+      setSubmitError(err?.message || t('booking.failed', 'Đặt bàn thất bại, vui lòng thử lại'));
     }
   };
   const submitRef = useRef(handleCompleteBookingAndVerify);
@@ -368,7 +391,7 @@ export default function BookingView({ id, shops, initialVoucher, onNavigate }: P
           onClick={() => onNavigate({ name: 'home' })}
           className="px-4 py-2 rounded-xl bg-[#800020] text-white font-bold text-sm"
         >
-          Về trang chủ
+          {t('booking.backHome', t('booking.backHome', 'Về trang chủ'))}
         </button>
       </div>
     );
@@ -437,7 +460,7 @@ export default function BookingView({ id, shops, initialVoucher, onNavigate }: P
       setShowVoucherInput(false);
       setVoucherCodeInput('');
     } catch (err: any) {
-      setVoucherError(err?.message || 'Mã không hợp lệ');
+      setVoucherError(err?.message || t('booking.invalidCode', 'Mã không hợp lệ'));
     }
   };
 
@@ -454,12 +477,12 @@ export default function BookingView({ id, shops, initialVoucher, onNavigate }: P
     } else {
       setEditingCartId(null);
       setCustomSize('M'); // Default size M for drinks
-      setCustomIce('100% đá');
-      setCustomSugar('Bình thường');
+      setCustomIce(t('booking.iceFullDesc', '100% đá'));
+      setCustomSugar(t('booking.sugarNormal', 'Bình thường'));
       // If BOGO promo is active and item is eligible, default 1 converts to 2 (Buy 1 Get 1)
       const isEligibleForBogo = isBogoActive && (item.isBogoEligible || item.category === 'Cà phê');
       setCustomQuantity(isEligibleForBogo ? 2 : 1);
-      setCustomItemNote(isEligibleForBogo ? 'Áp dụng Mua 1 Tặng 1 (Nhận 2 ly)' : '');
+      setCustomItemNote(isEligibleForBogo ? t('booking.bogoApplyBtn', 'Áp dụng Mua 1 Tặng 1 (Nhận 2 ly)') : '');
     }
   };
 
@@ -473,8 +496,8 @@ export default function BookingView({ id, shops, initialVoucher, onNavigate }: P
     const sizeSurcharge = isBakery ? 0 : sizeConfig.surcharge;
     const finalUnitPrice = customizingItem.price + sizeSurcharge;
     const finalSizeLabel = isBakery ? undefined : sizeConfig.name;
-    const finalIce = isBakery ? 'Không đá' : customIce;
-    const finalSugar = isBakery ? 'Bình thường' : customSugar;
+    const finalIce = isBakery ? t('booking.iceNone', 'Không đá') : customIce;
+    const finalSugar = isBakery ? t('booking.sugarNormal', 'Bình thường') : customSugar;
 
     if (editingCartId) {
       // Update existing item
@@ -608,12 +631,12 @@ export default function BookingView({ id, shops, initialVoucher, onNavigate }: P
                   Đang kích hoạt ưu đãi: {appliedVoucher.code} (-{appliedVoucher.discount.toLocaleString('vi-VN')}đ)
                 </span>
                 <p className="text-[10px] text-emerald-600 dark:text-emerald-400">
-                  Khuyến mãi tự động khấu trừ trực tiếp khi thanh toán
+                  {t('booking.autoDiscount', t('booking.autoDiscount', 'Khuyến mãi tự động khấu trừ trực tiếp khi thanh toán'))}
                 </p>
               </div>
             </div>
             <span className="text-[9px] font-bold px-2 py-0.5 rounded bg-emerald-600 text-white uppercase tracking-wider shrink-0">
-              Đã áp dụng
+              {t('booking.applied', t('booking.applied', 'Đã áp dụng'))}
             </span>
           </div>
         )}
@@ -625,7 +648,7 @@ export default function BookingView({ id, shops, initialVoucher, onNavigate }: P
               <AlertCircle size={15} className="mt-0.5 shrink-0" />
               <span>
                 {availabilityError.code === 'SHOP_NOT_PARTNER'
-                  ? 'Quán này chưa dùng Mobler Shop nên chưa nhận đặt bàn trực tuyến. Bạn vẫn có thể xem thông tin và gọi điện cho quán.'
+                  ? t('booking.notPartner', 'Quán này chưa dùng Mobler Shop nên chưa nhận đặt bàn trực tuyến. Bạn vẫn có thể xem thông tin và gọi điện cho quán.')
                   : availabilityError.message}
               </span>
             </div>
@@ -811,7 +834,7 @@ export default function BookingView({ id, shops, initialVoucher, onNavigate }: P
                   {!isAvailable && (
                     <div className="mt-3 p-2.5 rounded-xl bg-white/80 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800/60 flex items-center gap-2 text-rose-700 dark:text-rose-300 text-xs">
                       <AlertCircle size={14} className="shrink-0 text-rose-500" />
-                      <span>{t('booking.slotUnavailable', 'Bàn bạn đang chọn đã kín vào lúc ' + selectedTime + '. Vui lòng đổi giờ hoặc chọn bàn khác.')}</span>
+                      <span>{t('booking.slotTaken', 'Bàn bạn đang chọn đã kín vào lúc {time}. Vui lòng đổi giờ hoặc chọn bàn khác.').replace('{time}', selectedTime)}</span>
                     </div>
                   )}
                 </div>
@@ -849,7 +872,7 @@ export default function BookingView({ id, shops, initialVoucher, onNavigate }: P
                   : cat;
                 return (
                   <button
-                    key={cat}
+                    key={tOpt(cat)}
                     onClick={() => setMenuFilter(cat)}
                     className={`px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all border ${
                       menuFilter === cat 
@@ -875,7 +898,7 @@ export default function BookingView({ id, shops, initialVoucher, onNavigate }: P
                     Đang kích hoạt Mua 1 Tặng 1: {appliedVoucher?.code}
                   </h4>
                   <p className="text-[11px] text-amber-800/80 dark:text-amber-400/90 mt-0.5 leading-relaxed">
-                    Chọn các món gắn nhãn <strong className="text-red-700 dark:text-amber-300 font-bold bg-amber-200/60 dark:bg-black/40 px-1 rounded">{t('booking.bogoTag', 'Mua 1 Tặng 1')}</strong> {t('booking.bogoAuto', 'sẽ tự động nhận')} <strong>2 ly</strong> và được tặng 100% giá trị ly thứ 2 khi thanh toán!
+                    {t('booking.bogoPick', t('booking.bogoPick', 'Chọn các món gắn nhãn'))} <strong className="text-red-700 dark:text-amber-300 font-bold bg-amber-200/60 dark:bg-black/40 px-1 rounded">{t('booking.bogoTag', 'Mua 1 Tặng 1')}</strong> {t('booking.bogoAuto', 'sẽ tự động nhận')} <strong>2 ly</strong> {t('booking.bogoPick2', t('booking.bogoPick2', 'và được tặng 100% giá trị ly thứ 2 khi thanh toán!'))}
                   </p>
                 </div>
               </div>
@@ -896,7 +919,7 @@ export default function BookingView({ id, shops, initialVoucher, onNavigate }: P
                     onClick={() => setCartItems([])}
                     className="text-[11px] text-slate-400 hover:text-red-500 font-semibold"
                   >
-                    Xóa tất cả
+                    {t('booking.clearAll', t('booking.clearAll', 'Xóa tất cả'))}
                   </button>
                 </div>
                 <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
@@ -933,7 +956,7 @@ export default function BookingView({ id, shops, initialVoucher, onNavigate }: P
             <div className="space-y-3">
               {shopMenu.length === 0 && (
                 <p className={`col-span-full text-center text-sm py-8 ${isLight ? 'text-slate-500' : 'text-[#A48F7A]'}`}>
-                  Quán chưa cập nhật thực đơn. Bạn có thể bỏ qua bước gọi món trước và chọn món tại quán.
+                  {t('booking.menuEmptyNotice', t('booking.menuEmptyNotice', 'Quán chưa cập nhật thực đơn. Bạn có thể bỏ qua bước gọi món trước và chọn món tại quán.'))}
                 </p>
               )}
               {filteredMenuItems.map(item => {
@@ -957,7 +980,7 @@ export default function BookingView({ id, shops, initialVoucher, onNavigate }: P
                   >
                     {isBogoItem && (
                       <div className="absolute top-0 right-0 bg-gradient-to-l from-amber-500 to-red-600 text-white text-[9px] font-extrabold px-2.5 py-0.5 rounded-bl-xl shadow-xs flex items-center gap-1 z-10 uppercase tracking-wider">
-                        <Sparkles size={10} /> Mua 1 Tặng 1 (Nhận 2)
+                        <Sparkles size={10} /> {t('booking.bogoBadge', 'Mua 1 Tặng 1 (Nhận 2)')}
                       </div>
                     )}
 
@@ -991,17 +1014,17 @@ export default function BookingView({ id, shops, initialVoucher, onNavigate }: P
                         <div className="flex items-center flex-wrap gap-1.5 text-[9px] text-slate-400 mt-1">
                           {isBogoItem && (
                             <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 font-bold border border-amber-300">
-                              🎁 Mua 1 = Nhận 2
+                              🎁 {t('booking.bogoShort', 'Mua 1 = Nhận 2')}
                             </span>
                           )}
                           <span className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-[#251E18] text-slate-700 dark:text-slate-300 font-semibold border border-slate-200 dark:border-[#3E3023]">
                             🥤 Size S / M / L
                           </span>
                           <span className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-[#251E18] border border-slate-200 dark:border-[#3E3023]">
-                            🧊 Tùy chọn đá
+                            🧊 {t('booking.iceTag', 'Tùy chọn đá')}
                           </span>
                           <span className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-[#251E18] border border-slate-200 dark:border-[#3E3023]">
-                            🍯 Mức đường
+                            🍯 {t('booking.sugarTag', 'Mức đường')}
                           </span>
                         </div>
                       )}
@@ -1128,7 +1151,7 @@ export default function BookingView({ id, shops, initialVoucher, onNavigate }: P
                             )}
                             {item.note && (
                               <p className="text-[10px] text-slate-500 italic mt-1">
-                                ✎ Ghi chú: {item.note}
+                                ✎ {t('booking.noteTag', 'Ghi chú')}: {item.note}
                               </p>
                             )}
                           </div>
@@ -1146,13 +1169,13 @@ export default function BookingView({ id, shops, initialVoucher, onNavigate }: P
                               }}
                               className="text-[10px] text-slate-400 hover:text-slate-700 underline"
                             >
-                              Sửa
+                              {t('booking.edit', t('booking.edit', 'Sửa'))}
                             </button>
                             <button 
                               onClick={() => handleRemoveCartItem(item.cartId)}
                               className="text-[10px] text-red-400 hover:text-red-600"
                             >
-                              Xóa
+                              {t('booking.remove', t('booking.remove', 'Xóa'))}
                             </button>
                           </div>
                         </div>
@@ -1162,7 +1185,7 @@ export default function BookingView({ id, shops, initialVoucher, onNavigate }: P
                 </div>
               ) : (
                 <p className="text-xs text-slate-400 italic py-1">
-                  Chưa chọn món trước (Bạn có thể gọi trực tiếp tại quầy khi đến quán).
+                  {t('booking.noPreOrder', t('booking.noPreOrder', 'Chưa chọn món trước (Bạn có thể gọi trực tiếp tại quầy khi đến quán).'))}
                 </p>
               )}
             </div>
@@ -1180,7 +1203,7 @@ export default function BookingView({ id, shops, initialVoucher, onNavigate }: P
                   onClick={() => setShowVoucherInput(!showVoucherInput)} 
                   className={`text-xs font-bold ${isLight ? 'text-[#800020]' : 'text-[#D4AF37]'}`}
                 >
-                  {showVoucherInput ? t('common.close', 'Đóng') : 'Nhập mã'}
+                  {showVoucherInput ? t('common.close', 'Đóng') : t('booking.applyCode', 'Nhập mã')}
                 </button>
               </div>
 
@@ -1215,7 +1238,7 @@ export default function BookingView({ id, shops, initialVoucher, onNavigate }: P
                     onClick={handleApplyVoucher}
                     className="px-3.5 py-2 rounded-xl bg-[#800020] text-white text-xs font-bold"
                   >
-                    Áp dụng
+                    {t('booking.apply', t('booking.apply', 'Áp dụng'))}
                   </button>
                 </div>
               ) : (
@@ -1227,7 +1250,7 @@ export default function BookingView({ id, shops, initialVoucher, onNavigate }: P
             {/* Note input for shop */}
             <div>
               <h3 className={`font-bold text-xs mb-1.5 ${isLight ? 'text-slate-800' : 'text-[#EBE3DB]'}`}>
-                Ghi chú cho quán khi đến nhận bàn (Tùy chọn)
+                {t('booking.noteLabel', t('booking.noteLabel', 'Ghi chú cho quán khi đến nhận bàn (Tùy chọn)'))}
               </h3>
               <textarea 
                 value={bookingNote}
@@ -1458,7 +1481,7 @@ export default function BookingView({ id, shops, initialVoucher, onNavigate }: P
                 isLight ? 'bg-white border-red-300 shadow-sm' : 'bg-gradient-to-b from-[#201A16] to-[#14100D] border-[#4A3B2C]'
               }`}>
                 <div className="flex items-center justify-center gap-1 text-xs font-bold text-blue-700">
-                  <ShieldCheck size={16} /> Quét mã VietQR để thanh toán tự động
+                  <ShieldCheck size={16} /> {t('booking.vietQr', t('booking.vietQr', 'Quét mã VietQR để thanh toán tự động'))}
                 </div>
 
                 <div className="bg-white p-3 rounded-2xl border border-slate-300 inline-block shadow-md">
@@ -1512,7 +1535,7 @@ export default function BookingView({ id, shops, initialVoucher, onNavigate }: P
                 <Smartphone className="mx-auto text-[#800020] dark:text-[#D4AF37]" size={36} />
                 <h4 className="font-bold text-sm">Chuyển hướng đến {paymentMethod === 'momo' ? 'MoMo' : 'ZaloPay'}</h4>
                 <p className="text-xs text-slate-500">
-                  Hệ thống sẽ liên kết trực tiếp tới ứng dụng ví của bạn để xác nhận giao dịch an toàn.
+                  {t('booking.walletRedirect', t('booking.walletRedirect', 'Hệ thống sẽ liên kết trực tiếp tới ứng dụng ví của bạn để xác nhận giao dịch an toàn.'))}
                 </p>
               </div>
             )}
@@ -1524,7 +1547,7 @@ export default function BookingView({ id, shops, initialVoucher, onNavigate }: P
                 <CreditCard className="mx-auto text-[#800020] dark:text-[#D4AF37]" size={36} />
                 <h4 className="font-bold text-sm">{t('booking.otpGateway', 'Cổng thanh toán thẻ bảo mật OTP')}</h4>
                 <p className="text-xs text-slate-500">
-                  Hỗ trợ thanh toán qua thẻ tín dụng, ghi nợ quốc tế Visa/Mastercard hoặc thẻ ATM nội địa có đăng ký Internet Banking.
+                  {t('booking.cardSupport', t('booking.cardSupport', 'Hỗ trợ thanh toán qua thẻ tín dụng, ghi nợ quốc tế Visa/Mastercard hoặc thẻ ATM nội địa có đăng ký Internet Banking.'))}
                 </p>
               </div>
             )}
@@ -1536,7 +1559,7 @@ export default function BookingView({ id, shops, initialVoucher, onNavigate }: P
                 <Building2 className="mx-auto text-purple-600" size={36} />
                 <h4 className="font-bold text-sm">{t('booking.payAtCounter', 'Thanh toán trực tiếp tại quầy')}</h4>
                 <p className="text-xs text-slate-500">
-                  Bạn có thể thanh toán bằng tiền mặt hoặc thẻ khi đến quán và check-in nhận bàn.
+                  {t('booking.payAtShopDesc', t('booking.payAtShopDesc', 'Bạn có thể thanh toán bằng tiền mặt hoặc thẻ khi đến quán và check-in nhận bàn.'))}
                 </p>
               </div>
             )}
@@ -1554,10 +1577,10 @@ export default function BookingView({ id, shops, initialVoucher, onNavigate }: P
             
             <div className="text-center space-y-1">
               <h2 className={`text-xl font-bold ${isLight ? 'text-[#800020]' : 'text-[#D4AF37]'}`}>
-                Đặt bàn thành công!
+                {t('booking.successTitle', t('booking.successTitle', 'Đặt bàn thành công!'))}
               </h2>
               <p className="text-slate-500 text-xs max-w-[280px] mx-auto leading-relaxed">
-                Quán đã nhận được yêu cầu đặt chỗ và chuẩn bị thực đơn theo đúng tùy chọn của bạn.
+                {t('booking.successDesc', t('booking.successDesc', 'Quán đã nhận được yêu cầu đặt chỗ và chuẩn bị thực đơn theo đúng tùy chọn của bạn.'))}
               </p>
             </div>
 
@@ -1606,7 +1629,7 @@ export default function BookingView({ id, shops, initialVoucher, onNavigate }: P
                           <div>
                             <span className="font-bold">{c.quantity}x {c.name}</span>
                             <span className="text-[10px] text-slate-500 block">
-                              ({c.size ? `Size ${c.size}, ` : ''}{c.ice}, {c.sugar})
+                              ({c.size ? `Size ${tOpt(c.size)}, ` : ''}{tOpt(c.ice)}, {tOpt(c.sugar)})
                             </span>
                           </div>
                           <span className="font-bold">{formatCurrency(c.price * c.quantity)}</span>
@@ -1646,7 +1669,7 @@ export default function BookingView({ id, shops, initialVoucher, onNavigate }: P
                   isLight ? 'bg-gradient-to-r from-[#800020] to-[#6B0D1B]' : 'bg-gradient-to-r from-[#B88645] to-[#8B6E4E]'
                 }`}
               >
-                {t('booking.returnHome', 'Về trang chủ')}
+                {t('booking.returnHome', t('booking.backHome', 'Về trang chủ'))}
               </button>
             </div>
           </div>
@@ -1727,7 +1750,7 @@ export default function BookingView({ id, shops, initialVoucher, onNavigate }: P
                       </div>
                     </div>
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-red-100 text-[#800020] dark:bg-[#3E2510] dark:text-[#D4AF37]">
-                      Bắt buộc
+                      {t('booking.required', t('booking.required', 'Bắt buộc'))}
                     </span>
                   </div>
 
@@ -1799,7 +1822,7 @@ export default function BookingView({ id, shops, initialVoucher, onNavigate }: P
                       </div>
                     </div>
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-100 text-blue-800">
-                      Bắt buộc
+                      {t('booking.required', t('booking.required', 'Bắt buộc'))}
                     </span>
                   </div>
 
@@ -1822,8 +1845,8 @@ export default function BookingView({ id, shops, initialVoucher, onNavigate }: P
                           }`}
                         >
                           <div>
-                            <p className="text-xs font-bold">{opt.label}</p>
-                            <p className="text-[10px] opacity-70">{opt.desc}</p>
+                            <p className="text-xs font-bold">{tOpt(opt.label)}</p>
+                            <p className="text-[10px] opacity-70">{tOpt(opt.desc)}</p>
                           </div>
                           <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${
                             isSelected 
@@ -1853,7 +1876,7 @@ export default function BookingView({ id, shops, initialVoucher, onNavigate }: P
                       </div>
                     </div>
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-900">
-                      Bắt buộc
+                      {t('booking.required', t('booking.required', 'Bắt buộc'))}
                     </span>
                   </div>
 
@@ -1883,9 +1906,9 @@ export default function BookingView({ id, shops, initialVoucher, onNavigate }: P
                             }`}>
                               {isSelected && <Check size={10} strokeWidth={3} />}
                             </div>
-                            <span className="text-xs font-bold">{opt.label}</span>
+                            <span className="text-xs font-bold">{tOpt(opt.label)}</span>
                           </div>
-                          <span className="text-[11px] opacity-75 font-medium">{opt.desc}</span>
+                          <span className="text-[11px] opacity-75 font-medium">{tOpt(opt.desc)}</span>
                         </button>
                       );
                     })}
@@ -1896,7 +1919,7 @@ export default function BookingView({ id, shops, initialVoucher, onNavigate }: P
               {/* Special Note per item */}
               <div>
                 <label className="block text-xs font-bold mb-1.5">
-                  Ghi chú cho món này (Tùy chọn)
+                  {t('booking.itemNoteLabel', t('booking.itemNoteLabel', 'Ghi chú cho món này (Tùy chọn)'))}
                 </label>
                 <input 
                   type="text" 
@@ -1918,15 +1941,15 @@ export default function BookingView({ id, shops, initialVoucher, onNavigate }: P
                     <Sparkles size={16} className="text-amber-600 shrink-0" />
                     <div>
                       <p className="text-xs font-bold text-amber-900 dark:text-amber-300">
-                        Ưu đãi Mua 1 Tặng 1 đã áp dụng!
+                        {t('booking.bogoApplied', t('booking.bogoApplied', 'Ưu đãi Mua 1 Tặng 1 đã áp dụng!'))}
                       </p>
                       <p className="text-[10px] text-amber-700 dark:text-amber-400">
-                        Số lượng đã tự động được đặt thành 2 ly (Miễn phí ly thứ 2).
+                        {t('booking.bogoQtyNote', t('booking.bogoQtyNote', 'Số lượng đã tự động được đặt thành 2 ly (Miễn phí ly thứ 2).'))}
                       </p>
                     </div>
                   </div>
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500 text-black uppercase">
-                    1 + 1 Tặng
+                    {t('booking.bogoTiny', '1 + 1 Tặng')}
                   </span>
                 </div>
               )}
@@ -1939,7 +1962,7 @@ export default function BookingView({ id, shops, initialVoucher, onNavigate }: P
                   <span className="text-xs font-bold block">{t('booking.quantityTitle', 'Số lượng món')}</span>
                   {isBogoActive && (customizingItem.isBogoEligible || customizingItem.category === 'Cà phê') && (
                     <span className="text-[10px] text-emerald-600 font-semibold">
-                      Tự động nhân đôi theo ưu đãi 1+1
+                      {t('booking.bogoDouble', t('booking.bogoDouble', 'Tự động nhân đôi theo ưu đãi 1+1'))}
                     </span>
                   )}
                 </div>
@@ -1984,7 +2007,7 @@ export default function BookingView({ id, shops, initialVoucher, onNavigate }: P
                 }`}
               >
                 <span>
-                  {editingCartId ? 'Cập nhật món' : 'Thêm vào đơn hàng'} • {formatCurrency((customizingItem.price + (!customizingItem.category.includes('Bánh') ? (DRINK_SIZES.find(s => s.id === customSize)?.surcharge || 0) : 0)) * customQuantity)}
+                  {editingCartId ? t('booking.updateItem', 'Cập nhật món') : t('booking.addToOrder', 'Thêm vào đơn hàng')} • {formatCurrency((customizingItem.price + (!customizingItem.category.includes('Bánh') ? (DRINK_SIZES.find(s => s.id === customSize)?.surcharge || 0) : 0)) * customQuantity)}
                 </span>
                 <CheckCircle2 size={16} />
               </button>
@@ -2014,7 +2037,7 @@ export default function BookingView({ id, shops, initialVoucher, onNavigate }: P
                     <span>T0{selectedTable.id.replace('t', '')} • {selectedTime}</span>
                     {!isCurrentTableAvailable && (
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 dark:bg-rose-950/70 dark:text-rose-300 border border-rose-300 dark:border-rose-800">
-                        Đã kín
+                        {t('booking.full', t('booking.full', 'Đã kín'))}
                       </span>
                     )}
                   </p>
@@ -2032,7 +2055,7 @@ export default function BookingView({ id, shops, initialVoucher, onNavigate }: P
                 <div className="mb-3 px-3 py-1.5 rounded-xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-900 flex items-center gap-2 text-rose-700 dark:text-rose-300 text-xs animate-in fade-in">
                   <AlertCircle size={14} className="shrink-0 text-rose-500" />
                   <span className="text-[11px] md:text-xs">
-                    Bàn bạn đang chọn đã kín vào lúc {selectedTime}. Vui lòng đổi giờ hoặc chọn bàn khác.
+                    {t('booking.slotTaken', 'Bàn bạn đang chọn đã kín vào lúc {time}. Vui lòng đổi giờ hoặc chọn bàn khác.').replace('{time}', selectedTime)}
                   </span>
                 </div>
               )}
@@ -2201,7 +2224,7 @@ export default function BookingView({ id, shops, initialVoucher, onNavigate }: P
             </h3>
 
             <p className="text-xs text-slate-500 mb-6 max-w-xs">
-              Đang đồng bộ trực tiếp với quầy pha chế của <span className="font-semibold text-slate-700 dark:text-stone-300">{shop.name}</span>
+              {t('booking.syncingWith', t('booking.syncingWith', 'Đang đồng bộ trực tiếp với quầy pha chế của'))} <span className="font-semibold text-slate-700 dark:text-stone-300">{shop.name}</span>
             </p>
 
             {/* 3 Step Progress Tracker */}
@@ -2272,7 +2295,7 @@ export default function BookingView({ id, shops, initialVoucher, onNavigate }: P
             <p className="text-[11px] text-slate-400 italic">
               {submissionStage === 3 
                 ? t('booking.autoRedirect', 'Đang chuyển đến danh sách đặt bàn của bạn...') 
-                : 'Vui lòng giữ màn hình trong giây lát...'}
+                : t('booking.pleaseWait', 'Vui lòng giữ màn hình trong giây lát...')}
             </p>
           </div>
         </div>
