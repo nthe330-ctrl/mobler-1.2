@@ -16,6 +16,7 @@ import BookingView from './components/BookingView';
 import ProfileView from './components/ProfileView';
 import PromotionsView from './components/PromotionsView';
 import BookingsView from './components/BookingsView';
+import NotificationBell from './components/NotificationBell';
 import AuthModal from './components/AuthModal';
 import LoadingScreen from './components/LoadingScreen';
 import GoogleMapsConfigModal from './components/GoogleMapsConfigModal';
@@ -371,6 +372,9 @@ export default function App() {
           ? 'bg-gradient-to-b from-[#FAFBFD] via-[#F1F5F9] to-[#E2E8F0]' 
           : 'bg-gradient-to-br from-[#161210] to-[#0A0807]'
       }`}>
+        {/* The inbox follows the person across every screen, so it lives in the shell. */}
+        {currentView.name !== 'store' && currentView.name !== 'booking' && <NotificationBell />}
+
         {/* Main Content Area */}
         <main className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden no-scrollbar relative">
           <AnimatePresence mode="wait">

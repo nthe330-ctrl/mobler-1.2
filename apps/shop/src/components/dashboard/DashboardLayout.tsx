@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import ShopNotificationBell from './NotificationBell';
 import { motion, AnimatePresence } from 'motion/react';
 import { LayoutGrid, Coffee, BarChart3, Star, Store, Menu as MenuIcon, X, Users, Ticket, LogOut, CalendarCheck } from 'lucide-react';
 import { CoffeeShop } from '@shared/types';
@@ -134,7 +135,7 @@ export default function DashboardLayout({ currentView, onNavigate, shop, shops, 
       </motion.aside>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <main className="relative flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Mobile Header */}
         <header className="lg:hidden bg-white border-b border-gray-200 p-4 flex items-center justify-between sticky top-0 z-30">
           <div className="flex items-center space-x-2">
@@ -147,10 +148,18 @@ export default function DashboardLayout({ currentView, onNavigate, shop, shops, 
               </button>
             )}
           </div>
-          <button onClick={() => setIsSidebarOpen(true)} className="p-2 -mr-2 text-gray-600 hover:bg-gray-100 rounded-lg">
-            <MenuIcon size={24} />
-          </button>
+          <div className="flex items-center gap-1">
+            <ShopNotificationBell />
+            <button onClick={() => setIsSidebarOpen(true)} className="p-2 -mr-2 text-gray-600 hover:bg-gray-100 rounded-lg">
+              <MenuIcon size={24} />
+            </button>
+          </div>
         </header>
+
+        {/* On a wide screen the sidebar replaces the mobile header, so the inbox floats. */}
+        <div className="hidden lg:block absolute top-4 right-6 z-40">
+          <ShopNotificationBell />
+        </div>
 
         <div className="flex-1 overflow-y-auto p-4 lg:p-8">
           <div className="max-w-7xl mx-auto h-full">
