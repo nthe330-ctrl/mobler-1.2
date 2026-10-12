@@ -67,8 +67,14 @@ function toDisplay(b: BookingData, shops: CoffeeShop[] | undefined, t: (k: strin
     contactPhone: b.user_phone,
     bookingNote: b.note,
     shopNote: b.shop_note,
+    lateExtensionMin: b.late_extension_min || 0,
     order: b.order
   };
+}
+
+/** The stored status stays a code; only what the reader sees is translated. */
+function statusLabel(status: BookingStatus, t: (k: string, f?: string) => string): string {
+  return t(`bookings.st.${status}`, BOOKING_STATUS_LABEL_VI[status] || status);
 }
 
 const STATUS_BADGE: Record<BookingStatus, string> = {
@@ -77,7 +83,8 @@ const STATUS_BADGE: Record<BookingStatus, string> = {
   arrived: 'bg-sky-50 text-sky-800 border-sky-300 dark:bg-sky-950/60 dark:text-sky-300 dark:border-sky-700',
   completed: 'bg-blue-50 text-blue-800 border-blue-200 dark:bg-blue-950/50 dark:text-blue-300',
   cancelled: 'bg-rose-50 text-rose-800 border-rose-200 dark:bg-rose-950/50 dark:text-rose-300',
-  rejected: 'bg-rose-50 text-rose-800 border-rose-200 dark:bg-rose-950/50 dark:text-rose-300'
+  rejected: 'bg-rose-50 text-rose-800 border-rose-200 dark:bg-rose-950/50 dark:text-rose-300',
+  no_show: 'bg-orange-50 text-orange-800 border-orange-300 dark:bg-orange-950/50 dark:text-orange-300'
 };
 
 export default function BookingsView({ shops, onNavigate, highlightBookingId }: Props) {
@@ -92,6 +99,7 @@ export default function BookingsView({ shops, onNavigate, highlightBookingId }: 
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isLoadingList, setIsLoadingList] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [notifyingLate, setNotifyingLate] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const allBookings = rawBookings.map(b => toDisplay(b, shops, t));
 
@@ -136,7 +144,7 @@ export default function BookingsView({ shops, onNavigate, highlightBookingId }: 
         });
         setSelectedBooking((cur: any) => (cur && cur.id === incoming.id ? toDisplay(incoming, shops, t) : cur));
         if (data.action === 'updated') {
-          setToast(`${incoming.shop_name}: ${BOOKING_STATUS_LABEL_VI[incoming.status]} (${incoming.id})`);
+          setToast(`${incoming.shop_name}: ${statusLabel(incoming.status, t)} (${incoming.id})`);
           setTimeout(() => setToast(null), 5000);
         }
       }
@@ -179,6 +187,21 @@ export default function BookingsView({ shops, onNavigate, highlightBookingId }: 
       setTimeout(() => setToast(null), 5000);
     } finally {
       setCancelling(false);
+    }
+  };
+
+  const handleRunningLate = async (id: string) => {
+    setNotifyingLate(true);
+    try {
+      const res = await api.runningLate(id);
+      setRawBookings(prev => prev.map(b => (b.id === id ? res.booking : b)));
+      setSelectedBooking(toDisplay(res.booking, shops, t));
+      setToast(res.message);
+    } catch (err: any) {
+      setToast(err?.message || t('bookings.lateFailed', 'Không báo trễ được'));
+    } finally {
+      setNotifyingLate(false);
+      setTimeout(() => setToast(null), 5000);
     }
   };
 
@@ -336,7 +359,7 @@ export default function BookingsView({ shops, onNavigate, highlightBookingId }: 
                     </div>
 
                     <div className={`px-2.5 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider border shrink-0 ${STATUS_BADGE[booking.liveStatus]}`}>
-                      {BOOKING_STATUS_LABEL_VI[booking.liveStatus]}
+                      {statusLabel(booking.liveStatus, t)}
                     </div>
                   </div>
 
@@ -463,7 +486,7 @@ export default function BookingsView({ shops, onNavigate, highlightBookingId }: 
                     selectedBooking.liveStatus === 'pending' ? 'text-amber-600' : ['cancelled', 'rejected'].includes(selectedBooking.liveStatus) ? 'text-rose-600' : 'text-emerald-600 dark:text-emerald-400'
                   }`}>
                     <CheckCircle2 size={11} />
-                    <span>{BOOKING_STATUS_LABEL_VI[selectedBooking.liveStatus as BookingStatus]}</span>
+                    <span>{statusLabel(selectedBooking.liveStatus as BookingStatus, t)}</span>
                   </p>
                 </div>
               </div>
@@ -633,6 +656,31 @@ export default function BookingsView({ shops, onNavigate, highlightBookingId }: 
                   <strong>{t('bookings.shopMessage', 'Lời nhắn từ quán:')}</strong> {selectedBooking.shopNote}
                 </div>
               )}
+
+              {selectedBooking.liveStatus === 'no_show' && (
+                <div className="rounded-xl border px-3 py-2 text-xs bg-orange-50 border-orange-300 text-orange-900 dark:bg-orange-950/50 dark:border-orange-800 dark:text-orange-200">
+                  {t('bookings.noShowExplain', 'Quá giờ hẹn mà bàn chưa được nhận nên hệ thống đã mở lại bàn cho khách khác. Nếu bạn thật ra có tới quán, hãy báo quán để gỡ ghi nhận này.')}
+                </div>
+              )}
+
+              {selectedBooking.liveStatus === 'confirmed' && !selectedBooking.lateExtensionMin && (
+                <button
+                  type="button"
+                  disabled={notifyingLate}
+                  onClick={() => handleRunningLate(selectedBooking.id)}
+                  className="w-full py-2.5 rounded-xl font-bold text-xs border border-amber-300 text-amber-800 bg-amber-50 hover:bg-amber-100 disabled:opacity-60"
+                >
+                  {notifyingLate
+                    ? t('bookings.lateSending', 'Đang báo quán…')
+                    : t('bookings.runningLate', 'Tôi đang tới, giữ bàn thêm 15 phút')}
+                </button>
+              )}
+
+              {selectedBooking.lateExtensionMin ? (
+                <div className="rounded-xl border px-3 py-2 text-xs bg-amber-50 border-amber-200 text-amber-900 dark:bg-amber-950/40 dark:border-amber-800 dark:text-amber-200">
+                  {t('bookings.lateNoted', 'Đã báo quán bạn tới trễ. Bàn được giữ thêm 15 phút.')}
+                </div>
+              ) : null}
 
               {(selectedBooking.liveStatus === 'pending' || selectedBooking.liveStatus === 'confirmed') && (
                 <button

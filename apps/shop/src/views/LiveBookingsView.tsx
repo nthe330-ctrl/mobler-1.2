@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Bell, BellRing, CalendarDays, Check, ChevronLeft, ChevronRight, Clock, Coffee, Lock, LockOpen,
-  Phone, RefreshCw, StickyNote, UserCheck, Users, X, CheckCheck, Armchair
+  Phone, RefreshCw, StickyNote, UserCheck, UserX, Undo2, Users, X, CheckCheck, Armchair
 } from 'lucide-react';
 import { CoffeeShop } from '@shared/types';
 import {
@@ -18,7 +18,8 @@ const STATUS_STYLE: Record<BookingStatus, string> = {
   arrived: 'bg-sky-100 text-sky-800 border-sky-200',
   completed: 'bg-gray-100 text-gray-600 border-gray-200',
   cancelled: 'bg-rose-50 text-rose-700 border-rose-200',
-  rejected: 'bg-rose-50 text-rose-700 border-rose-200'
+  rejected: 'bg-rose-50 text-rose-700 border-rose-200',
+  no_show: 'bg-orange-50 text-orange-800 border-orange-300'
 };
 
 const TABLE_STYLE: Record<string, string> = {
@@ -100,12 +101,17 @@ export default function LiveBookingsView({ shop, onPendingCountChange }: Props) 
     }
   }, [shop.id]);
 
+  const [reliability, setReliability] = useState<Record<string, { noShows: number; completed: number; windowDays: number }>>({});
+  const [graceMin, setGraceMin] = useState(20);
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const [b, t] = await Promise.all([shopApi.getBookings(shop.id, date), shopApi.getTables(shop.id, date)]);
       setBookings(b.bookings);
       setClock(b.clock);
+      setReliability(b.reliability || {});
+      setGraceMin(b.grace_min || 20);
       setTables(t);
       setError(null);
     } catch (err: any) {
@@ -192,6 +198,16 @@ export default function LiveBookingsView({ shop, onPendingCountChange }: Props) 
 
   const changeStatus = async (b: BookingDTO, status: BookingStatus) => {
     let note: string | undefined;
+    if (status === 'no_show') {
+      // A deliberate press is the only thing that counts against the customer, so it
+      // asks first — the sweeper releases tables silently without ever landing here.
+      const ok = window.confirm(
+        `Ghi nhận ${b.user_name} không đến lúc ${b.time}?\n\n`
+        + 'Bàn sẽ được mở lại ngay và lần này được tính vào lịch sử của khách. '
+        + 'Nếu khách thật ra có tới mà quán quên bấm nhận bàn, hãy chọn "Khách đã đến".'
+      );
+      if (!ok) return;
+    }
     if (status === 'rejected' || status === 'cancelled') {
       const input = window.prompt(status === 'rejected' ? 'Lý do từ chối (khách sẽ thấy):' : 'Lý do hủy (khách sẽ thấy):', 'Quán đã kín chỗ vào giờ này');
       if (input === null) return;
@@ -307,6 +323,15 @@ export default function LiveBookingsView({ shop, onPendingCountChange }: Props) 
                       </details>
                     ) : null}
                     {b.shop_note && <p className="mt-2 text-[11px] text-gray-500">Ghi chú của quán: {b.shop_note}</p>}
+                    {b.late_extension_min ? (
+                      <p className="mt-2 text-[11px] font-semibold text-amber-700">Khách báo đang trên đường — bàn giữ thêm {b.late_extension_min} phút.</p>
+                    ) : null}
+                    {b.status === 'confirmed' && (reliability[b.user_id]?.noShows || 0) > 0 ? (
+                      <p className="mt-1 text-[11px] text-orange-700">
+                        Khách này có {reliability[b.user_id].noShows} lần không đến trong {reliability[b.user_id].windowDays} ngày qua
+                        {reliability[b.user_id].completed > 0 ? ` (và ${reliability[b.user_id].completed} lượt hoàn tất)` : ''}.
+                      </p>
+                    ) : null}
                   </div>
                   <div className="flex sm:flex-col gap-2 sm:w-36 shrink-0">
                     {b.status === 'pending' && (
@@ -318,11 +343,15 @@ export default function LiveBookingsView({ shop, onPendingCountChange }: Props) 
                     {b.status === 'confirmed' && (
                       <>
                         <button disabled={busy} onClick={() => changeStatus(b, 'arrived')} className="flex-1 px-3 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold flex items-center justify-center gap-1.5 disabled:opacity-50"><UserCheck size={14} /> Khách đã đến</button>
+                        <button disabled={busy} onClick={() => changeStatus(b, 'no_show')} className="flex-1 px-3 py-2 rounded-xl border border-orange-300 text-orange-800 bg-orange-50 hover:bg-orange-100 text-xs font-bold flex items-center justify-center gap-1.5 disabled:opacity-50"><UserX size={14} /> Khách không đến</button>
                         <button disabled={busy} onClick={() => changeStatus(b, 'cancelled')} className="flex-1 px-3 py-2 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 text-xs font-bold disabled:opacity-50">Hủy lịch</button>
                       </>
                     )}
                     {b.status === 'arrived' && (
                       <button disabled={busy} onClick={() => changeStatus(b, 'completed')} className="flex-1 px-3 py-2 rounded-xl bg-gray-900 hover:bg-black text-white text-xs font-bold flex items-center justify-center gap-1.5 disabled:opacity-50"><CheckCheck size={14} /> Hoàn tất</button>
+                    )}
+                    {b.status === 'no_show' && (
+                      <button disabled={busy} onClick={() => changeStatus(b, 'arrived')} className="flex-1 px-3 py-2 rounded-xl border border-sky-300 text-sky-800 bg-sky-50 hover:bg-sky-100 text-xs font-bold flex items-center justify-center gap-1.5 disabled:opacity-50"><Undo2 size={14} /> Khách có đến, gỡ ghi nhận</button>
                     )}
                   </div>
                 </div>
@@ -340,6 +369,9 @@ export default function LiveBookingsView({ shop, onPendingCountChange }: Props) 
         <div>
           <div className="flex items-center gap-2">
             <h2 className="text-2xl font-black text-gray-900">Đặt bàn trực tiếp</h2>
+            <span className="text-[11px] text-gray-500" title="Đơn đã xác nhận mà quá giờ hẹn chừng này mà chưa nhận bàn sẽ được hệ thống tự nhả, không tính vào lịch sử của khách.">
+              bàn tự nhả sau {graceMin} phút quá giờ
+            </span>
             <span className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2 py-0.5 rounded-full border ${
               live === 'live' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'
             }`}>

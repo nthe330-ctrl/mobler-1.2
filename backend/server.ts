@@ -12,6 +12,7 @@ import path from 'path';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { registerCoreRoutes } from './server/coreRoutes';
+import { startNoShowSweeper } from './server/noShow';
 
 
 
@@ -1546,4 +1547,6 @@ app.use('/api', (_req: Request, res: Response) => {
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`[MOBLER API] Server running on http://0.0.0.0:${PORT}`);
+  // Confirmed bookings stop holding their table once their grace window closes.
+  startNoShowSweeper();
 });

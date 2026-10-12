@@ -9,6 +9,8 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 
+import { graceWindowMin, holdExpiresAtMin } from '../../shared/booking';
+
 const PORT = 3999;
 const BASE = `http://127.0.0.1:${PORT}/api`;
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mobler-e2e-'));
@@ -200,8 +202,14 @@ async function main() {
     check('customer A cancels', cancel.status === 200 && cancel.data.booking.status === 'cancelled');
     const shopCancel = await shopStream.waitFor(e => e.event === 'booking' && e.data.booking.id === bookingId && e.data.booking.status === 'cancelled');
     check('shop app sees the cancellation instantly', !!shopCancel);
-    const rebook = await call('POST', '/bookings', { shop_id: shopId, date, time: '19:00', table_id: 't3' }, tB);
+    // Customer A just cancelled, so A is the one free to take the slot again.
+    // Customer B still holds 19:00 and 21:00 from earlier, and one person may not
+    // hold two overlapping slots — that rule is checked on its own below.
+    const rebook = await call('POST', '/bookings', { shop_id: shopId, date, time: '19:00', table_id: 't3' }, tA);
     check('slot is free again after cancellation', rebook.status === 201);
+    const doubleHold = await call('POST', '/bookings', { shop_id: shopId, date, time: '19:30', table_id: 't2' }, tA);
+    check('one customer cannot hold two overlapping slots', doubleHold.status === 409 && doubleHold.data.code === 'OVERLAPPING_HOLD');
+    check('the clash names the booking it collides with', doubleHold.data.conflict?.booking_id === rebook.data.booking.id);
 
     const pause = await call('PUT', `/merchant/shops/${shopId}`, { bookingSettings: { acceptingBookings: false } }, shopToken);
     check('shop pauses online bookings', pause.status === 200 && pause.data.shop.bookingSettings.acceptingBookings === false);
@@ -245,6 +253,67 @@ async function main() {
     check('owner uploads a menu photo', up.status === 201 && /\/api\/media\/uploads\//.test(up.data.url));
     const badUp = await call('POST', `/merchant/shops/${nsId}/uploads`, { dataUrl: 'data:text/html;base64,PGgxPg==' }, nsT);
     check('non-image uploads rejected', badUp.status === 400);
+
+    console.log('\nThe grace window itself');
+    {
+      check('a quiet hour gets the full default window', graceWindowMin('14:00') === 20);
+      check('a peak hour gets the shorter window', graceWindowMin('09:00') === 15);
+      check('a shop can widen its own window', graceWindowMin('14:00', 40) === 40);
+      check('but never past the upper bound', graceWindowMin('14:00', 600) === 45);
+      check('nor below the lower bound', graceWindowMin('14:00', 1) === 10);
+      check('peak still caps a shop that asked for longer', graceWindowMin('19:00', 40) === 15);
+      check('the hold ends at the agreed time plus the window',
+        holdExpiresAtMin({ time: '14:00' }) === 14 * 60 + 20);
+      check('an extension pushes the hold out',
+        holdExpiresAtMin({ time: '14:00', late_extension_min: 15 }) === 14 * 60 + 35);
+    }
+
+    console.log('\nHolds expire, and the blame does not follow automatically');
+    {
+      // An earlier case paused this shop; take it off pause before booking again.
+      await call('PUT', `/merchant/shops/${shopId}`, { bookingSettings: { acceptingBookings: true } }, shopToken);
+      // Tomorrow, so the booking is valid whatever time of day the suite runs.
+      const tomorrow = isoInDays(1);
+      const nsBooking = await call('POST', '/bookings', { shop_id: shopId, date: tomorrow, time: '09:00', guests: 2, table_id: 't1' }, tA);
+      check('booking created for the sweeper to find', nsBooking.status === 201, nsBooking.data);
+      const holdId = nsBooking.data.booking.id;
+      await call('PUT', `/merchant/bookings/${holdId}/status`, { status: 'confirmed' }, shopToken);
+
+      const lateOk = await call('POST', `/me/bookings/${holdId}/running-late`, {}, tA);
+      check('customer can push the hold out once', lateOk.status === 200 && lateOk.data.extended_min === 15);
+      const lateTwice = await call('POST', `/me/bookings/${holdId}/running-late`, {}, tA);
+      check('the extension is granted only once', lateTwice.status === 409);
+      const lateOther = await call('POST', `/me/bookings/${holdId}/running-late`, {}, tB);
+      check('nobody can extend someone else’s hold', lateOther.status === 404);
+
+      const noShow = await call('PUT', `/merchant/bookings/${holdId}/status`, { status: 'no_show' }, shopToken);
+      check('shop can record a no-show on a confirmed booking', noShow.status === 200 && noShow.data.booking.status === 'no_show');
+      const custSaw = await custStream.waitFor(e => e.event === 'booking' && e.data.booking.id === holdId && e.data.booking.status === 'no_show');
+      check('customer app hears the hold was released', !!custSaw);
+
+      const freed = await call('GET', `/merchant/shops/${shopId}/tables?date=${tomorrow}`, undefined, shopToken);
+      check('the table goes back to available', freed.data.tables.find((x: any) => x.id === 't1')?.operational_status === 'available');
+
+      const listed = await call('GET', `/merchant/shops/${shopId}/bookings?date=${tomorrow}`, undefined, shopToken);
+      check('the shop sees the customer’s record', (listed.data.reliability?.[nsBooking.data.booking.user_id]?.noShows || 0) === 1);
+
+      const undo = await call('PUT', `/merchant/bookings/${holdId}/status`, { status: 'arrived' }, shopToken);
+      check('shop can take a wrongly recorded no-show back', undo.status === 200 && undo.data.booking.status === 'arrived');
+      const afterUndo = await call('GET', `/merchant/shops/${shopId}/bookings?date=${tomorrow}`, undefined, shopToken);
+      check('undoing clears the mark from the customer', (afterUndo.data.reliability?.[nsBooking.data.booking.user_id]?.noShows || 0) === 0);
+
+      const notes = await call('GET', '/me/notifications', undefined, tA);
+      check('the customer has a durable record of what happened', notes.status === 200 && notes.data.notifications.length > 0);
+      check('unread count is reported', notes.data.unread > 0);
+      const first = notes.data.notifications[0];
+      const read = await call('POST', `/me/notifications/${first.id}/read`, {}, tA);
+      check('a notification can be marked read', read.status === 200 && read.data.changed === true);
+      const readAll = await call('POST', '/me/notifications/read-all', {}, tA);
+      check('all notifications can be cleared at once', readAll.status === 200 && readAll.data.unread === 0);
+      const otherInbox = await call('GET', '/me/notifications', undefined, tB);
+      check('one person never sees another’s notifications',
+        otherInbox.data.notifications.every((n: any) => n.id !== first.id));
+    }
 
     shopStream.close();
     custStream.close();

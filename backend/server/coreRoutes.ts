@@ -26,30 +26,21 @@ import {
   PHONE_REGEX,
   SHOP_TRANSITIONS,
   TableOperationalStatus,
+  NO_SHOW_REVERT_WINDOW_MIN,
+  RUNNING_LATE_EXTENSION_MIN,
+  graceWindowMin,
   isActiveBooking,
   isTableFree,
-  normalizePhone
+  normalizePhone,
+  slotsOverlap as slotsOverlapFn
 } from '../../shared/booking';
+import { shopClock } from './clock';
+import { notify, notifyShopStaff, listNotifications, countUnread, markRead, markAllRead } from './notifications';
+import { recordNoShow, minutesPastHold, countNoShowAgainstCustomer, releaseNoShowMark, reliabilityOf } from './noShow';
 
-const SHOP_TIMEZONE = process.env.SHOP_TIMEZONE || 'Asia/Ho_Chi_Minh';
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 const TIME_REGEX = /^([01]\d|2[0-3]):[0-5]\d$/;
-
-/** Today's date and current time in the shops' timezone. */
-function shopClock(): { today: string; now: string } {
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: SHOP_TIMEZONE,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hourCycle: 'h23'
-  }).formatToParts(new Date());
-  const get = (t: string) => parts.find(p => p.type === t)?.value || '00';
-  return { today: `${get('year')}-${get('month')}-${get('day')}`, now: `${get('hour')}:${get('minute')}` };
-}
 
 function safeUser(u: UserRecord) {
   const { password_hash: _ignored, ...rest } = u;
@@ -490,6 +481,29 @@ export function registerCoreRoutes(app: Express) {
         return res.status(400).json({ error: 'Không thể đặt bàn cho ngày đã qua' });
       }
 
+      /**
+       * One person, one table at a time. Holding seats at several shops for the same
+       * slot "just in case" is the single most damaging pattern for shops, and the
+       * platform is the only party that can see it happening — each shop sees only
+       * its own book. So it is stopped at the door, with the clash named.
+       */
+      const slotMin = slotDuration(shop);
+      const clash = db.getRawDb().bookings.find(
+        b => b.user_id === req.user!.userId
+          && isActiveBooking(b.status)
+          && b.date === date
+          && slotsOverlapFn(b.time, time, slotMin)
+      );
+      if (clash) {
+        return res.status(409).json({
+          error: clash.shop_id === shop.id
+            ? `Bạn đã có một chỗ giữ ở quán này lúc ${clash.time}.`
+            : `Bạn đang giữ chỗ ở ${clash.shop_name} lúc ${clash.time} cùng khung giờ này. Hãy huỷ đơn đó trước khi đặt quán khác.`,
+          code: 'OVERLAPPING_HOLD',
+          conflict: { booking_id: clash.id, shop_id: clash.shop_id, shop_name: clash.shop_name, date: clash.date, time: clash.time }
+        });
+      }
+
       // Pick the requested table, or auto-assign the smallest free table that fits the party.
       let tableId: string | undefined = body.table_id ? String(body.table_id) : undefined;
       if (tableId) {
@@ -591,6 +605,13 @@ export function registerCoreRoutes(app: Express) {
       }
 
       broadcastBooking('created', booking);
+      const rel = reliabilityOf(booking.user_id);
+      notifyShopStaff(shop.id, {
+        type: 'booking',
+        title: autoConfirm ? 'Đơn mới đã tự xác nhận' : 'Có đơn đặt bàn mới',
+        message: `${booking.user_name} · ${booking.guests} khách · ${booking.time} ngày ${booking.date}`
+          + (rel.noShows > 0 ? ` · khách này có ${rel.noShows} lần không đến trong ${rel.windowDays} ngày qua` : '')
+      });
       // Missions only progress on a COMPLETED check-in, so creating a booking grants no points.
       // We still recompute in case a mission's reward was pending from earlier activity.
       const ach = syncUserAchievements(req.user!.userId);
@@ -616,6 +637,52 @@ export function registerCoreRoutes(app: Express) {
     const updated = db.setBookingStatus(booking.id, 'cancelled', 'customer', req.body?.reason);
     broadcastBooking('updated', updated!);
     res.json({ message: 'Đã hủy lịch đặt bàn', booking: updated });
+  });
+
+  /**
+   * "I'm on my way." One extension per booking, so a customer who is genuinely late
+   * does not lose the table — and so the shop can see they are still coming.
+   */
+  app.post('/api/me/bookings/:id/running-late', authenticateToken, requireAccount('customer'), (req: AuthRequest, res: Response) => {
+    const booking = db.getBookingById(req.params.id);
+    if (!booking || booking.user_id !== req.user!.userId) {
+      return res.status(404).json({ error: 'Không tìm thấy lịch đặt' });
+    }
+    if (booking.status !== 'confirmed') {
+      return res.status(409).json({ error: 'Chỉ báo trễ được với đơn đã được quán xác nhận' });
+    }
+    if (booking.late_extension_min) {
+      return res.status(409).json({ error: 'Bạn đã báo trễ cho đơn này rồi' });
+    }
+    const updated = db.updateBooking(booking.id, { late_extension_min: RUNNING_LATE_EXTENSION_MIN })!;
+    broadcastBooking('updated', updated);
+    notifyShopStaff(updated.shop_id, {
+      type: 'booking',
+      title: 'Khách báo đang trên đường',
+      message: `${updated.user_name} (hẹn ${updated.time}) báo tới trễ khoảng ${RUNNING_LATE_EXTENSION_MIN} phút.`
+    });
+    res.json({
+      message: `Đã báo quán, bàn được giữ thêm ${RUNNING_LATE_EXTENSION_MIN} phút`,
+      booking: updated,
+      extended_min: RUNNING_LATE_EXTENSION_MIN
+    });
+  });
+
+  // ==================== NOTIFICATIONS ====================
+
+  app.get('/api/me/notifications', authenticateToken, (req: AuthRequest, res: Response) => {
+    const limit = Number(req.query.limit) || 50;
+    res.json({ notifications: listNotifications(req.user!.userId, limit), unread: countUnread(req.user!.userId) });
+  });
+
+  app.post('/api/me/notifications/:id/read', authenticateToken, (req: AuthRequest, res: Response) => {
+    const changed = markRead(req.user!.userId, req.params.id);
+    res.json({ changed, unread: countUnread(req.user!.userId) });
+  });
+
+  app.post('/api/me/notifications/read-all', authenticateToken, (req: AuthRequest, res: Response) => {
+    const changed = markAllRead(req.user!.userId);
+    res.json({ changed, unread: 0 });
   });
 
   // ==================== CUSTOMER ORDERS ====================
@@ -737,7 +804,16 @@ export function registerCoreRoutes(app: Express) {
     const bookings = db
       .getBookingsByShopId(req.params.id, date)
       .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
-    res.json({ bookings, clock: shopClock() });
+    // The shop decides for itself what to do with a customer's record, so it is shown
+    // the history rather than having the platform act on it.
+    const reliability: Record<string, ReturnType<typeof reliabilityOf>> = {};
+    for (const b of bookings) reliability[b.user_id] ||= reliabilityOf(b.user_id);
+    res.json({
+      bookings,
+      clock: shopClock(),
+      reliability,
+      grace_min: graceWindowMin('12:00', db.getShopById(req.params.id)?.bookingSettings?.noShowGraceMin)
+    });
   });
 
   app.get('/api/merchant/shops/:id/tables', ...shopOnly, requireShopAccess(), (req: AuthRequest, res: Response) => {
@@ -755,7 +831,37 @@ export function registerCoreRoutes(app: Express) {
     if (!SHOP_TRANSITIONS[booking.status]?.includes(next)) {
       return res.status(409).json({ error: `Không thể chuyển từ "${booking.status}" sang "${next}"`, booking });
     }
-    const updated = db.setBookingStatus(booking.id, next, 'shop', req.body?.note ? String(req.body.note).slice(0, 300) : undefined)!;
+    const note = req.body?.note ? String(req.body.note).slice(0, 300) : undefined;
+
+    // Taking a no-show back. The shop is the only party that can see the customer was
+    // in fact sitting there, so this undo stays open for a day and clears the mark.
+    if (booking.status === 'no_show') {
+      const markedAt = booking.no_show_at ? Date.parse(booking.no_show_at) : 0;
+      const ageMin = markedAt ? (Date.now() - markedAt) / 60_000 : Infinity;
+      if (ageMin > NO_SHOW_REVERT_WINDOW_MIN) {
+        return res.status(409).json({ error: 'Đã quá hạn gỡ ghi nhận khách không đến', booking });
+      }
+      db.updateBooking(booking.id, { no_show_at: undefined });
+      releaseNoShowMark(booking.user_id, booking.id);
+    }
+
+    if (next === 'no_show') {
+      const marked = recordNoShow(booking, 'shop', note);
+      if (!marked) return res.status(404).json({ error: 'Không tìm thấy lịch đặt' });
+      // Only a deliberate press by someone at the shop counts against the customer.
+      // The sweeper never does this, because silence does not prove absence.
+      countNoShowAgainstCustomer(marked.user_id, marked.id, marked.shop_id);
+      notify({
+        user_id: marked.user_id,
+        shop_id: marked.shop_id,
+        type: 'booking',
+        title: 'Quán ghi nhận bạn không đến',
+        message: `${marked.shop_name} đã ghi nhận bạn không đến lúc ${marked.time}. Nếu bạn thật ra có tới, hãy báo lại với quán để gỡ.`
+      });
+      return res.json({ message: 'Đã ghi nhận khách không đến', booking: marked });
+    }
+
+    const updated = db.setBookingStatus(booking.id, next, 'shop', note)!;
 
     // Keep the physical table state in sync with check-in / check-out.
     if (updated.table_id && (next === 'arrived' || next === 'completed')) {
@@ -766,6 +872,17 @@ export function registerCoreRoutes(app: Express) {
       if (table) publish([topics.shop(updated.shop_id)], 'table', { action: 'updated', table });
     }
     broadcastBooking('updated', updated);
+
+    const CUSTOMER_FACING: Partial<Record<BookingStatus, { title: string; message: string }>> = {
+      confirmed: { title: 'Quán đã xác nhận', message: `${updated.shop_name} đã giữ bàn cho bạn lúc ${updated.time} ngày ${updated.date}.` },
+      rejected: { title: 'Quán không nhận được đơn', message: `${updated.shop_name} đã từ chối yêu cầu lúc ${updated.time}. Bạn thử khung giờ khác nhé.` },
+      cancelled: { title: 'Đơn đã bị huỷ', message: `Đơn ở ${updated.shop_name} lúc ${updated.time} đã bị huỷ.` },
+      arrived: { title: 'Đã nhận bàn', message: `Chúc bạn ngồi vui ở ${updated.shop_name}.` },
+      completed: { title: 'Hoàn tất lượt ghé', message: `Cảm ơn bạn đã ghé ${updated.shop_name}. Tiến độ nhiệm vụ của bạn vừa được cộng.` }
+    };
+    const announce = CUSTOMER_FACING[next];
+    if (announce) notify({ user_id: updated.user_id, shop_id: updated.shop_id, type: 'booking', ...announce });
+
     // Missions (and their points) only advance when a booking is COMPLETED (checked in).
     if (next === 'completed') {
       const ach = syncUserAchievements(updated.user_id);

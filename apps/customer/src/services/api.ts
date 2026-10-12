@@ -197,6 +197,25 @@ class ApiService {
     });
   }
 
+  public async runningLate(bookingId: string) {
+    return this.request<{ message: string; booking: BookingData; extended_min: number }>(
+      `/me/bookings/${bookingId}/running-late`,
+      { method: 'POST' }
+    );
+  }
+
+  public async getNotifications(limit = 50) {
+    return this.request<{ notifications: any[]; unread: number }>(`/me/notifications?limit=${limit}`);
+  }
+
+  public async markNotificationRead(id: string) {
+    return this.request<{ changed: boolean; unread: number }>(`/me/notifications/${id}/read`, { method: 'POST' });
+  }
+
+  public async markAllNotificationsRead() {
+    return this.request<{ changed: number; unread: number }>('/me/notifications/read-all', { method: 'POST' });
+  }
+
   public async getMyOrders() {
     return this.request<{ orders: any[] }>('/me/orders');
   }

@@ -41,6 +41,12 @@ export interface UserRecord {
   achievements?: { unlocked: Record<string, string>; updated_at: string };
   /** Reward vouchers granted by achievements, usable only by this customer. */
   wallet_vouchers?: any[];
+  /**
+   * Times a shop deliberately marked this customer as not having turned up. Kept as
+   * dated entries rather than a running total so reliability can later be read as a
+   * rate inside a window, and so a wrongly recorded one can be removed again.
+   */
+  no_show_history?: { booking_id: string; shop_id: string; at: string }[];
   notifyPromos: boolean;
   notifyBookings: boolean;
   created_at: string;
