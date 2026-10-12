@@ -17,7 +17,7 @@ import { BookingRecord, db } from './db';
 import { publish, topics } from './realtime';
 import { notify, notifyShopStaff } from './notifications';
 import { shopClock } from './clock';
-import { holdExpiresAtMin, timeToMinutes } from '../../shared/booking';
+import { REMINDER_LEAD_MIN, holdExpiresAtMin, timeToMinutes } from '../../shared/booking';
 
 const SWEEP_INTERVAL_MS = Number(process.env.NO_SHOW_SWEEP_INTERVAL_MS || 120_000);
 
@@ -153,12 +153,45 @@ export function reliabilityOf(userId: string): { noShows: number; completed: num
   return { noShows, completed, windowDays: RELIABILITY_WINDOW_DAYS };
 }
 
+/**
+ * One reminder per booking, shortly before the agreed time.
+ *
+ * This is the other half of releasing holds: a person who is simply about to forget
+ * is far better served by a nudge than by losing the table. Sent once, and only
+ * forwards in time — a booking already past its hour is handled by the sweeper, not
+ * reminded about.
+ */
+export function sendDueReminders(): BookingRecord[] {
+  const clock = shopClock();
+  const nowMin = timeToMinutes(clock.now);
+  const sent: BookingRecord[] = [];
+
+  for (const b of db.getRawDb().bookings) {
+    if (b.status !== 'confirmed' || b.reminded_at || b.date !== clock.today) continue;
+    const startsIn = timeToMinutes(b.time) - nowMin;
+    if (startsIn > REMINDER_LEAD_MIN || startsIn < 0) continue;
+
+    db.updateBooking(b.id, { reminded_at: new Date().toISOString() });
+    notify({
+      user_id: b.user_id,
+      shop_id: b.shop_id,
+      type: 'booking',
+      title: 'Sắp tới giờ hẹn',
+      message: `Bàn ở ${b.shop_name} giữ cho bạn lúc ${b.time}. Nếu tới trễ, bấm "Tôi đang tới" để giữ thêm.`
+    });
+    sent.push(b);
+  }
+  return sent;
+}
+
 let timer: NodeJS.Timeout | null = null;
 
 export function startNoShowSweeper(): void {
   if (timer) return;
   const run = () => {
     try {
+      const reminded = sendDueReminders();
+      if (reminded.length) console.log(`[noShow] đã nhắc ${reminded.length} khách sắp tới giờ hẹn`);
       const released = releaseExpiredHolds();
       if (released.length) console.log(`[noShow] đã nhả ${released.length} bàn quá giờ giữ`);
     } catch (err) {

@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="MOBLER">
+  <rect width="512" height="512" fill="#800020"/>
+  <path d="M176 192h160a14 14 0 0 1 14 14v82a94 94 0 0 1-94 94h0a94 94 0 0 1-94-94v-82a14 14 0 0 1 14-14z" fill="none" stroke="#F5E6C8" stroke-width="20" stroke-linejoin="round"/>
+  <path d="M350 216h24a38 38 0 0 1 0 76h-24" fill="none" stroke="#F5E6C8" stroke-width="20" stroke-linecap="round"/>
+</svg>

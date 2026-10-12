@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useMemo, ChangeEvent, DragEvent, FormEvent } from 'react';
+import PushToggle from './PushToggle';
 import { 
   CreditCard, Award, QrCode, ChevronRight, ChevronLeft, Zap, Coffee, ShieldCheck, 
   LayoutGrid, List, X, MessageSquare, ThumbsUp, Footprints, Compass, Star,
@@ -777,6 +778,8 @@ function SettingsModal({
             </h4>
 
             <div className="space-y-2 text-xs">
+              <PushToggle />
+
               <label className="flex items-center justify-between cursor-pointer py-1">
                 <span className="font-medium text-slate-700 dark:text-[#A48F7A]">
                   {t('settings.promoNotif', 'Thông báo Khuyến mãi & Voucher')}

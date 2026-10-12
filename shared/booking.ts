@@ -58,6 +58,9 @@ export const NO_SHOW_GRACE_MAX_BOUND = 45;
 /** Hours (shop local time) where tables are scarcest, so the grace window shortens. */
 export const PEAK_HOURS: number[] = [8, 9, 19, 20];
 
+/** How long before the agreed time the one reminder goes out. */
+export const REMINDER_LEAD_MIN = 30;
+
 /** A customer may push the deadline out once per booking by this many minutes. */
 export const RUNNING_LATE_EXTENSION_MIN = 15;
 
@@ -124,6 +127,8 @@ export interface BookingDTO {
   late_extension_min?: number;
   /** When the hold was released as a no-show, so the shop's undo window can be checked. */
   no_show_at?: string;
+  /** When the "your table is soon" reminder went out, so it is sent exactly once. */
+  reminded_at?: string;
   status_history?: { status: BookingStatus; at: string; by: AccountType | 'system'; note?: string }[];
   created_at: string;
   updated_at?: string;

@@ -40,6 +40,7 @@ import {
 import { shopClock } from './clock';
 import { notify, notifyShopStaff, listNotifications, countUnread, markRead, markAllRead } from './notifications';
 import { recordNoShow, minutesPastHold, countNoShowAgainstCustomer, releaseNoShowMark, reliabilityOf } from './noShow';
+import { vapidPublicKey, isPushEnabled, saveSubscription, removeSubscription } from './webPush';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
@@ -688,6 +689,25 @@ export function registerCoreRoutes(app: Express) {
     res.json({ changed, unread: 0 });
   });
 
+  // The public half of the VAPID pair is meant to be handed out; the private half
+  // never leaves the server.
+  app.get('/api/push/key', (_req: Request, res: Response) => {
+    res.json({ enabled: isPushEnabled(), publicKey: vapidPublicKey() });
+  });
+
+  app.post('/api/me/push/subscribe', authenticateToken, (req: AuthRequest, res: Response) => {
+    if (!isPushEnabled()) return res.status(503).json({ error: 'Máy chủ chưa bật thông báo đẩy' });
+    const ok = saveSubscription(req.user!.userId, req.body?.subscription || req.body);
+    if (!ok) return res.status(400).json({ error: 'Đăng ký thông báo không hợp lệ' });
+    res.status(201).json({ message: 'Đã bật thông báo đẩy' });
+  });
+
+  app.post('/api/me/push/unsubscribe', authenticateToken, (req: AuthRequest, res: Response) => {
+    const endpoint = String(req.body?.endpoint || '');
+    if (!endpoint) return res.status(400).json({ error: 'Thiếu endpoint' });
+    res.json({ removed: removeSubscription(req.user!.userId, endpoint) });
+  });
+
   // ==================== CUSTOMER ORDERS ====================
 
   app.get('/api/me/orders', authenticateToken, requireAccount('customer'), (req: AuthRequest, res: Response) => {
@@ -891,12 +911,14 @@ export function registerCoreRoutes(app: Express) {
     }
     broadcastBooking('updated', updated);
 
-    const CUSTOMER_FACING: Partial<Record<BookingStatus, { title: string; message: string }>> = {
+    // Only what the person would want their phone to buzz for gets pushed. The rest
+    // is still recorded, because the inbox is cheap and a buzz is not.
+    const CUSTOMER_FACING: Partial<Record<BookingStatus, { title: string; message: string; push?: boolean }>> = {
       confirmed: { title: 'Quán đã xác nhận', message: `${updated.shop_name} đã giữ bàn cho bạn lúc ${updated.time} ngày ${updated.date}.` },
       rejected: { title: 'Quán không nhận được đơn', message: `${updated.shop_name} đã từ chối yêu cầu lúc ${updated.time}. Bạn thử khung giờ khác nhé.` },
       cancelled: { title: 'Đơn đã bị huỷ', message: `Đơn ở ${updated.shop_name} lúc ${updated.time} đã bị huỷ.` },
-      arrived: { title: 'Đã nhận bàn', message: `Chúc bạn ngồi vui ở ${updated.shop_name}.` },
-      completed: { title: 'Hoàn tất lượt ghé', message: `Cảm ơn bạn đã ghé ${updated.shop_name}. Tiến độ nhiệm vụ của bạn vừa được cộng.` }
+      arrived: { title: 'Đã nhận bàn', message: `Chúc bạn ngồi vui ở ${updated.shop_name}.`, push: false },
+      completed: { title: 'Hoàn tất lượt ghé', message: `Cảm ơn bạn đã ghé ${updated.shop_name}. Tiến độ nhiệm vụ của bạn vừa được cộng.`, push: false }
     };
     const announce = CUSTOMER_FACING[next];
     if (announce) notify({ user_id: updated.user_id, shop_id: updated.shop_id, type: 'booking', ...announce });

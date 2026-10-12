@@ -216,6 +216,24 @@ class ApiService {
     return this.request<{ changed: number; unread: number }>('/me/notifications/read-all', { method: 'POST' });
   }
 
+  public async getPushKey() {
+    return this.request<{ enabled: boolean; publicKey: string }>('/push/key');
+  }
+
+  public async subscribePush(subscription: { endpoint: string; keys: { p256dh: string; auth: string } }) {
+    return this.request<{ message: string }>('/me/push/subscribe', {
+      method: 'POST',
+      body: JSON.stringify({ subscription })
+    });
+  }
+
+  public async unsubscribePush(endpoint: string) {
+    return this.request<{ removed: boolean }>('/me/push/unsubscribe', {
+      method: 'POST',
+      body: JSON.stringify({ endpoint })
+    });
+  }
+
   public async getMyOrders() {
     return this.request<{ orders: any[] }>('/me/orders');
   }

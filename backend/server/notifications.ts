@@ -11,6 +11,7 @@
 
 import { db } from './db';
 import { publish, topics } from './realtime';
+import { pushToUser } from './webPush';
 
 export type NotificationType = 'booking' | 'promo' | 'order' | 'system';
 
@@ -20,6 +21,8 @@ export interface NotifyInput {
   message: string;
   type: NotificationType;
   shop_id?: string;
+  /** Set false for things worth recording but not worth buzzing a phone over. */
+  push?: boolean;
 }
 
 export interface NotificationRecord extends NotifyInput {
@@ -58,6 +61,13 @@ export function notify(input: NotifyInput): NotificationRecord | null {
       notification: record,
       unread: countUnread(input.user_id)
     });
+
+    // Reaching a closed tab is best-effort and must never delay or fail the caller:
+    // what the notification describes has already happened either way.
+    if (input.push !== false) {
+      void pushToUser(input.user_id, { title: input.title, message: input.message, tag: record.id })
+        .catch(err => console.error('[notifications] push thất bại:', err));
+    }
     return record;
   } catch (err) {
     console.error('[notifications] could not record a notification:', err);

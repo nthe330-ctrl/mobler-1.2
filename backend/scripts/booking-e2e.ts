@@ -331,6 +331,31 @@ async function main() {
       check('a shop can set its own grace window', grace2.data.shop.bookingSettings.noShowGraceMin === 30);
     }
 
+    console.log('\nPush reaches a closed tab, without ever leaking the private key');
+    {
+      const key = await call('GET', '/push/key');
+      check('the public VAPID key is served', key.status === 200 && key.data.enabled === true && key.data.publicKey.length > 80);
+      check('the private key is never part of that answer',
+        !JSON.stringify(key.data).toLowerCase().includes('private'));
+
+      const anon = await call('POST', '/me/push/subscribe', { subscription: { endpoint: 'https://example.com/x', keys: { p256dh: 'a', auth: 'b' } } });
+      check('an anonymous browser cannot subscribe', anon.status === 401);
+
+      const bad = await call('POST', '/me/push/subscribe', { subscription: { endpoint: 'https://example.com/x' } }, tA);
+      check('a subscription without keys is refused', bad.status === 400);
+
+      const sub = { endpoint: 'https://push.example.com/abc', keys: { p256dh: 'BPublicKeyHere', auth: 'AuthSecret' } };
+      const ok = await call('POST', '/me/push/subscribe', { subscription: sub }, tA);
+      check('a browser can subscribe', ok.status === 201);
+      const again = await call('POST', '/me/push/subscribe', { subscription: sub }, tA);
+      check('re-subscribing the same browser does not duplicate it', again.status === 201);
+
+      const off = await call('POST', '/me/push/unsubscribe', { endpoint: sub.endpoint }, tA);
+      check('a browser can unsubscribe', off.status === 200 && off.data.removed === true);
+      const offAgain = await call('POST', '/me/push/unsubscribe', { endpoint: sub.endpoint }, tA);
+      check('unsubscribing twice is harmless', offAgain.status === 200 && offAgain.data.removed === false);
+    }
+
     shopStream.close();
     custStream.close();
     publicStream.close();

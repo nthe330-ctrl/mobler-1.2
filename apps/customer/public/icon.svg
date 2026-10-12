@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="MOBLER">
+  <rect width="512" height="512" rx="112" fill="#800020"/>
+  <path d="M152 168h176a16 16 0 0 1 16 16v96a104 104 0 0 1-104 104h0a104 104 0 0 1-104-104v-96a16 16 0 0 1 16-16z" fill="none" stroke="#F5E6C8" stroke-width="22" stroke-linejoin="round"/>
+  <path d="M344 196h28a44 44 0 0 1 0 88h-28" fill="none" stroke="#F5E6C8" stroke-width="22" stroke-linecap="round"/>
+  <path d="M176 112c0 18 16 18 16 36M240 112c0 18 16 18 16 36M304 112c0 18 16 18 16 36" fill="none" stroke="#D4AF37" stroke-width="18" stroke-linecap="round"/>
+</svg>
