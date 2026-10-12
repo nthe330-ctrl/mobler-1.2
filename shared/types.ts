@@ -8,7 +8,8 @@ export type Amenity =
   | 'Indoor'
   | 'Outdoor'
   | 'Điều hòa'
-  | 'Private' 
+  | 'Hóa đơn điện tử'
+  | 'Private'
   | 'Shared' 
   | 'Table Service' 
   | 'Self Service';
