@@ -173,6 +173,7 @@ function amenitiesFor(tags: Record<string, string>): Amenity[] {
   if (tags.internet_access && tags.internet_access !== 'no') a.push('Wi-Fi');
   if (tags.outdoor_seating === 'yes') a.push('Outdoor');
   if (tags.indoor_seating === 'yes' || tags.air_conditioning === 'yes') a.push('Indoor');
+  if (tags.air_conditioning === 'yes') a.push('Điều hòa');
   if (tags.toilets === 'yes') a.push('WC');
   if (tags.parking || tags['parking:motorcycle']) a.push('Parking');
   return a;
