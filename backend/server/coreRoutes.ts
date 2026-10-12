@@ -19,6 +19,7 @@ import { getUserAchievements, syncUserAchievements, expireAndListWalletVouchers,
 import { getUserRank } from './ranks';
 import { ACHIEVEMENTS } from '../../shared/achievements';
 import { CoffeeShop } from '../../shared/types';
+import { AMENITIES_CONFIG } from '../../shared/data';
 import {
   AccountType,
   AvailabilityResponse,
@@ -26,6 +27,8 @@ import {
   PHONE_REGEX,
   SHOP_TRANSITIONS,
   TableOperationalStatus,
+  NO_SHOW_GRACE_MAX_BOUND,
+  NO_SHOW_GRACE_MIN_BOUND,
   NO_SHOW_REVERT_WINDOW_MIN,
   RUNNING_LATE_EXTENSION_MIN,
   graceWindowMin,
@@ -779,6 +782,18 @@ export function registerCoreRoutes(app: Express) {
     const allowed = ['name', 'address', 'phoneNumber', 'website', 'description', 'coverImage', 'images', 'openingHours', 'tags', 'amenities'] as const;
     const updates: Partial<CoffeeShop> = {};
     for (const key of allowed) if (key in (req.body || {})) (updates as any)[key] = req.body[key];
+
+    // Amenities drive a customer-facing filter, so only known values may be written.
+    // Anything else would silently create a facet nobody can ever search for.
+    if ('amenities' in (req.body || {})) {
+      const known = new Set<string>(AMENITIES_CONFIG.map(a => a.id));
+      const sent = Array.isArray(req.body.amenities) ? req.body.amenities.map(String) : [];
+      const unknown = sent.filter(a => !known.has(a));
+      if (unknown.length) {
+        return res.status(400).json({ error: `Tiện ích không hợp lệ: ${unknown.join(', ')}`, code: 'UNKNOWN_AMENITY' });
+      }
+      updates.amenities = [...new Set(sent)] as CoffeeShop['amenities'];
+    }
     const loc = req.body?.location;
     if (loc && Number.isFinite(Number(loc.lat)) && Number.isFinite(Number(loc.lng)) && Math.abs(Number(loc.lat)) <= 90 && Math.abs(Number(loc.lng)) <= 180) {
       updates.location = { lat: Number(loc.lat), lng: Number(loc.lng) };
@@ -790,7 +805,10 @@ export function registerCoreRoutes(app: Express) {
         ...current.bookingSettings!,
         ...(typeof bs.autoConfirm === 'boolean' ? { autoConfirm: bs.autoConfirm } : {}),
         ...(typeof bs.acceptingBookings === 'boolean' ? { acceptingBookings: bs.acceptingBookings } : {}),
-        ...(Number(bs.slotDurationMin) >= 30 && Number(bs.slotDurationMin) <= 360 ? { slotDurationMin: Number(bs.slotDurationMin) } : {})
+        ...(Number(bs.slotDurationMin) >= 30 && Number(bs.slotDurationMin) <= 360 ? { slotDurationMin: Number(bs.slotDurationMin) } : {}),
+        ...(Number.isFinite(Number(bs.noShowGraceMin))
+          ? { noShowGraceMin: Math.min(NO_SHOW_GRACE_MAX_BOUND, Math.max(NO_SHOW_GRACE_MIN_BOUND, Number(bs.noShowGraceMin))) }
+          : {})
       };
     }
     const updated = db.updateShop(req.params.id, updates);

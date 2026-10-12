@@ -719,17 +719,26 @@ export default function HomeView({
       // Shop Style filter
       if (selectedStyle && !shop.styles?.includes(selectedStyle)) return false;
 
-      // Amenities filter (must have all selected amenities)
-      if (selectedAmenities.length > 0) {
-        const hasAll = selectedAmenities.every(a => shop.amenities?.includes(a));
-        if (!hasAll) return false;
-      }
-
+      // Amenities are NOT a hard filter. Requiring every tick produces an empty screen
+      // as soon as three or four are chosen — and a shop that has simply not declared
+      // its amenities yet would disappear entirely. Instead every shop stays in the
+      // list and the ones that match more are sorted to the top, with what is missing
+      // shown on the card so the person decides for themselves.
       return true;
     });
 
+    const amenityMatch = (shop: CoffeeShop) =>
+      selectedAmenities.length === 0
+        ? 0
+        : selectedAmenities.filter(a => shop.amenities?.includes(a)).length;
+
     // Sắp xếp danh sách quán
     return [...filtered].sort((a, b) => {
+      // Whatever else is chosen, a better amenity match comes first.
+      if (selectedAmenities.length > 0) {
+        const diff = amenityMatch(b) - amenityMatch(a);
+        if (diff !== 0) return diff;
+      }
       if (sortBy === 'distance') {
         const getKm = (s: CoffeeShop) => {
           if (s.location && typeof s.location.lat === 'number' && typeof s.location.lng === 'number') {
@@ -1704,6 +1713,28 @@ export default function HomeView({
                           {shop.distance}
                         </span>
                       </div>
+
+                      {/* With amenities chosen, say plainly how well this shop matches
+                          instead of hiding it — a shop that simply has not declared its
+                          amenities is not the same as one that lacks them. */}
+                      {selectedAmenities.length > 0 && (() => {
+                        const missing = selectedAmenities.filter(a => !shop.amenities?.includes(a));
+                        const undeclared = !shop.amenities || shop.amenities.length === 0;
+                        if (missing.length === 0) {
+                          return (
+                            <div className="mt-1.5 inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-500/85 text-white">
+                              {t('home.matchAll', 'Có đủ tiện ích bạn chọn')}
+                            </div>
+                          );
+                        }
+                        return (
+                          <div className="mt-1.5 inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-black/60 border border-white/25 text-white/85 backdrop-blur-xs">
+                            {undeclared
+                              ? t('home.amenitiesUnknown', 'Quán chưa khai tiện ích')
+                              : `${t('home.missingAmenities', 'Thiếu')}: ${missing.map(a => translateAmenity(a)).join(', ')}`}
+                          </div>
+                        );
+                      })()}
                     </div>
                   </GlowingButton>
                 );

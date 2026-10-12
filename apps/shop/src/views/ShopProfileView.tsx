@@ -1,6 +1,8 @@
 import { useEffect, useState, FormEvent } from 'react';
 import { Check, Loader2, Store } from 'lucide-react';
-import { CoffeeShop } from '@shared/types';
+import { Amenity, CoffeeShop } from '@shared/types';
+import { AMENITIES_CONFIG } from '@shared/data';
+import { NO_SHOW_GRACE_MAX_BOUND, NO_SHOW_GRACE_MIN_BOUND, NO_SHOW_GRACE_DEFAULT_MIN } from '@shared/booking';
 import { shopApi } from '../services/shopApi';
 import { useShopAuth } from '../context/ShopAuthContext';
 
@@ -11,11 +13,20 @@ const inputCls =
 export default function ShopProfileView({ shop }: { shop: CoffeeShop }) {
   const { replaceShop, user } = useShopAuth();
   const [form, setForm] = useState(() => toForm(shop));
+  const [amenities, setAmenities] = useState<Amenity[]>(shop.amenities || []);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => setForm(toForm(shop)), [shop.id]);
+  useEffect(() => {
+    setForm(toForm(shop));
+    setAmenities(shop.amenities || []);
+  }, [shop.id]);
+
+  const toggleAmenity = (id: Amenity) => {
+    setSaved(false);
+    setAmenities(prev => (prev.includes(id) ? prev.filter(a => a !== id) : [...prev, id]));
+  };
 
   const set = (k: keyof ReturnType<typeof toForm>) => (e: { target: { value: string } }) => {
     setSaved(false);
@@ -38,9 +49,11 @@ export default function ShopProfileView({ shop }: { shop: CoffeeShop }) {
         coverImage: form.coverImage.trim() || shop.coverImage,
         images: form.coverImage.trim() ? [form.coverImage.trim(), ...(shop.images || []).filter(i => i !== form.coverImage.trim())] : shop.images,
         openingHours: [{ day: 'Hằng ngày', time: form.openingHours.trim() || '07:00 - 22:00' }],
+        amenities,
         bookingSettings: {
           ...(shop.bookingSettings || { autoConfirm: false, acceptingBookings: true, slotDurationMin: 120 }),
-          slotDurationMin: Number(form.slotDurationMin) || 120
+          slotDurationMin: Number(form.slotDurationMin) || 120,
+          noShowGraceMin: Number(form.noShowGraceMin) || NO_SHOW_GRACE_DEFAULT_MIN
         }
       });
       replaceShop(res.shop);
@@ -75,9 +88,50 @@ export default function ShopProfileView({ shop }: { shop: CoffeeShop }) {
               {[60, 90, 120, 150, 180].map(m => <option key={m} value={m}>{m} phút</option>)}
             </select>
           </label>
+          <label>
+            <span className="block text-xs font-bold text-gray-700 mb-1.5">Giữ bàn thêm bao lâu khi khách tới trễ</span>
+            <select className={inputCls} value={form.noShowGraceMin} onChange={set('noShowGraceMin')}>
+              {[10, 15, 20, 25, 30, 45]
+                .filter(m => m >= NO_SHOW_GRACE_MIN_BOUND && m <= NO_SHOW_GRACE_MAX_BOUND)
+                .map(m => <option key={m} value={m}>{m} phút</option>)}
+            </select>
+            <span className="block mt-1 text-[11px] text-gray-500">
+              Quá chừng này mà chưa ai bấm nhận bàn, hệ thống tự mở lại bàn cho khách khác. Giờ cao điểm tự rút ngắn còn 15 phút.
+            </span>
+          </label>
           <label className="md:col-span-2"><span className="block text-xs font-bold text-gray-700 mb-1.5">Ảnh bìa (đường dẫn https)</span><input className={inputCls} value={form.coverImage} onChange={set('coverImage')} /></label>
           <label className="md:col-span-2"><span className="block text-xs font-bold text-gray-700 mb-1.5">Giới thiệu</span><textarea className={`${inputCls} min-h-[96px]`} value={form.description} onChange={set('description')} /></label>
         </div>
+      </div>
+
+      <div className="bg-white rounded-2xl border border-gray-200 p-5">
+        <p className="font-bold text-gray-900">Tiện ích của quán</p>
+        <p className="text-sm text-gray-500 mt-1">
+          Khách lọc quán bằng đúng những ô này. Quán không khai thì sẽ không hiện ra khi khách bật bộ lọc,
+          nên hãy tick đủ những gì quán thật sự có.
+        </p>
+        <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+          {AMENITIES_CONFIG.map(a => {
+            const on = amenities.includes(a.id);
+            return (
+              <button
+                type="button"
+                key={a.id}
+                onClick={() => toggleAmenity(a.id)}
+                aria-pressed={on}
+                className={`text-left px-3 py-2.5 rounded-xl border text-sm transition ${
+                  on
+                    ? 'border-red-500 bg-red-50 text-red-900 font-semibold'
+                    : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <span className="mr-1.5">{a.icon}</span>{a.name}
+                <span className="block text-[11px] font-normal text-gray-500 mt-0.5">{a.description}</span>
+              </button>
+            );
+          })}
+        </div>
+        <p className="mt-3 text-[11px] text-gray-400">Đã chọn {amenities.length}/{AMENITIES_CONFIG.length} tiện ích.</p>
       </div>
 
       <div className="flex items-center gap-3">
@@ -104,6 +158,7 @@ function toForm(shop: CoffeeShop) {
     description: shop.description || shop.aiIntel?.summary || '',
     coverImage: shop.coverImage || '',
     openingHours: shop.openingHours?.[0]?.time || '07:00 - 22:00',
-    slotDurationMin: String(shop.bookingSettings?.slotDurationMin || 120)
+    slotDurationMin: String(shop.bookingSettings?.slotDurationMin || 120),
+    noShowGraceMin: String(shop.bookingSettings?.noShowGraceMin || NO_SHOW_GRACE_DEFAULT_MIN)
   };
 }

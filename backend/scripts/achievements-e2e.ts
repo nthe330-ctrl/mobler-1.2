@@ -130,9 +130,12 @@ async function main() {
 
     console.log('\nProgress only counts COMPLETED (checked-in) bookings');
     const date = isoInDays(2);
+    // One morning visit per day: a person cannot hold two slots that overlap, and the
+    // default slot is two hours, so three 05:00–07:00 holds on one day is not a thing
+    // a real customer could do either.
     const morning: string[] = [];
     for (const [i, table] of ['t1', 't2', 't3'].entries()) {
-      const b = await call('POST', '/bookings', { shop_id: shopId, date, time: `0${5 + i}:00`, table_id: table, guests: 2 }, T);
+      const b = await call('POST', '/bookings', { shop_id: shopId, date: isoInDays(2 + i), time: '06:00', table_id: table, guests: 2 }, T);
       morning.push(b.data.booking.id);
     }
     const dawn = (x: any) => x.data.achievements.find((a: any) => a.id === 'ach-4');

@@ -315,6 +315,22 @@ async function main() {
         otherInbox.data.notifications.every((n: any) => n.id !== first.id));
     }
 
+    console.log('\nThe shop declares its own amenities');
+    {
+      const ok = await call('PUT', `/merchant/shops/${shopId}`, { amenities: ['Wi-Fi', 'Điều hòa', 'Điều hòa'] }, shopToken);
+      check('a shop can declare amenities', ok.status === 200);
+      check('duplicates are collapsed', JSON.stringify(ok.data.shop.amenities) === JSON.stringify(['Wi-Fi', 'Điều hòa']));
+      const bad = await call('PUT', `/merchant/shops/${shopId}`, { amenities: ['Wi-Fi', 'Có bể bơi'] }, shopToken);
+      check('an unknown amenity is refused rather than stored', bad.status === 400 && bad.data.code === 'UNKNOWN_AMENITY');
+      const stillThere = await call('GET', `/shops/${shopId}`);
+      check('the refused write changed nothing', JSON.stringify(stillThere.data.shop?.amenities || stillThere.data.amenities) === JSON.stringify(['Wi-Fi', 'Điều hòa']));
+
+      const grace = await call('PUT', `/merchant/shops/${shopId}`, { bookingSettings: { noShowGraceMin: 600 } }, shopToken);
+      check('a shop cannot set a grace window past the bound', grace.data.shop.bookingSettings.noShowGraceMin === 45);
+      const grace2 = await call('PUT', `/merchant/shops/${shopId}`, { bookingSettings: { noShowGraceMin: 30 } }, shopToken);
+      check('a shop can set its own grace window', grace2.data.shop.bookingSettings.noShowGraceMin === 30);
+    }
+
     shopStream.close();
     custStream.close();
     publicStream.close();
