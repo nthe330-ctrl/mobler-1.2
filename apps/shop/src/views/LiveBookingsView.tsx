@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Bell, BellRing, CalendarDays, Check, ChevronLeft, ChevronRight, Clock, Coffee, Lock, LockOpen,
-  Phone, RefreshCw, StickyNote, UserCheck, UserX, Undo2, Users, X, CheckCheck, Armchair
+  Bell, BellRing, CalendarDays, ChevronLeft, ChevronRight, Clock, Coffee, Lock, LockOpen,
+  Phone, RefreshCw, StickyNote, Users, X, CheckCheck, Armchair, ScanLine
 } from 'lucide-react';
 import { CoffeeShop } from '@shared/types';
 import {
@@ -11,6 +11,8 @@ import {
 import { connectRealtime, RealtimeStatus } from '@shared/api/realtime';
 import { http, shopApi } from '../services/shopApi';
 import { useShopAuth } from '../context/ShopAuthContext';
+import IncomingOrderModal from '../components/dashboard/IncomingOrderModal';
+import QrScannerModal from '../components/dashboard/QrScannerModal';
 
 const STATUS_STYLE: Record<BookingStatus, string> = {
   pending: 'bg-amber-100 text-amber-800 border-amber-200',
@@ -18,8 +20,7 @@ const STATUS_STYLE: Record<BookingStatus, string> = {
   arrived: 'bg-sky-100 text-sky-800 border-sky-200',
   completed: 'bg-gray-100 text-gray-600 border-gray-200',
   cancelled: 'bg-rose-50 text-rose-700 border-rose-200',
-  rejected: 'bg-rose-50 text-rose-700 border-rose-200',
-  no_show: 'bg-orange-50 text-orange-800 border-orange-300'
+  rejected: 'bg-rose-50 text-rose-700 border-rose-200'
 };
 
 const TABLE_STYLE: Record<string, string> = {
@@ -101,17 +102,12 @@ export default function LiveBookingsView({ shop, onPendingCountChange }: Props) 
     }
   }, [shop.id]);
 
-  const [reliability, setReliability] = useState<Record<string, { noShows: number; completed: number; windowDays: number }>>({});
-  const [graceMin, setGraceMin] = useState(20);
-
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const [b, t] = await Promise.all([shopApi.getBookings(shop.id, date), shopApi.getTables(shop.id, date)]);
       setBookings(b.bookings);
       setClock(b.clock);
-      setReliability(b.reliability || {});
-      setGraceMin(b.grace_min || 20);
       setTables(t);
       setError(null);
     } catch (err: any) {
@@ -198,26 +194,22 @@ export default function LiveBookingsView({ shop, onPendingCountChange }: Props) 
 
   const changeStatus = async (b: BookingDTO, status: BookingStatus) => {
     let note: string | undefined;
-    if (status === 'no_show') {
-      // A deliberate press is the only thing that counts against the customer, so it
-      // asks first — the sweeper releases tables silently without ever landing here.
-      const ok = window.confirm(
-        `Ghi nhận ${b.user_name} không đến lúc ${b.time}?\n\n`
-        + 'Bàn sẽ được mở lại ngay và lần này được tính vào lịch sử của khách. '
-        + 'Nếu khách thật ra có tới mà quán quên bấm nhận bàn, hãy chọn "Khách đã đến".'
-      );
-      if (!ok) return;
-    }
-    if (status === 'rejected' || status === 'cancelled') {
-      const input = window.prompt(status === 'rejected' ? 'Lý do từ chối (khách sẽ thấy):' : 'Lý do hủy (khách sẽ thấy):', 'Quán đã kín chỗ vào giờ này');
+    // The incoming-order modal has an explicit Reject action. Do not put a
+    // browser prompt between that click and the API request: embedded browsers
+    // can suppress prompts, leaving the pending order stuck in the modal.
+    if (status === 'cancelled') {
+      const input = window.prompt('Lý do hủy (khách sẽ thấy):', 'Quán đã kín chỗ vào giờ này');
       if (input === null) return;
-      note = input.trim() || undefined;
+      note = input.trim() || 'Quán không thể nhận đặt bàn vào khung giờ này';
+    } else if (status === 'rejected') {
+      note = 'Quán hiện không thể nhận đặt bàn vào khung giờ này';
     }
     setBusyId(b.id);
     try {
       const res = await shopApi.setBookingStatus(b.id, status, note);
       setBookings(prev => prev.map(x => (x.id === b.id ? res.booking : x)));
       setPendingAll(prev => prev.filter(x => x.id !== b.id || res.booking.status === 'pending'));
+      if (status === 'rejected') showToast('Đã từ chối đơn đặt bàn và gửi thông báo cho khách.', 'info');
     } catch (err: any) {
       showToast(err?.message || 'Không cập nhật được', 'error');
       load();
@@ -232,6 +224,62 @@ export default function LiveBookingsView({ shop, onPendingCountChange }: Props) 
       loadTables();
     } catch (err: any) {
       showToast(err?.message || 'Không cập nhật được bàn', 'error');
+    }
+  };
+
+  // ----- Camera QR check-in: scanning is the ONLY way a confirmed booking becomes "arrived".
+  // expectedId narrows the scan to one specific card; omitted for the header's walk-up scanner. -----
+  const [scanner, setScanner] = useState<{ expectedId?: string } | null>(null);
+  const [scanError, setScanError] = useState<string | null>(null);
+  const [scanBusy, setScanBusy] = useState(false);
+
+  const parseScannedCode = (raw: string) => {
+    const trimmed = raw.trim();
+    const m = /^MOBLER-BOOKING:(.+)$/i.exec(trimmed);
+    return (m ? m[1] : trimmed).toUpperCase();
+  };
+
+  const handleScanDecode = async (raw: string) => {
+    if (scanBusy) return;
+    const code = parseScannedCode(raw);
+    setScanBusy(true);
+    setScanError(null);
+    try {
+      let found = [...bookings, ...pendingAll].find(x => x.id.toUpperCase() === code);
+      if (!found) {
+        const all = await shopApi.getBookings(shop.id);
+        found = all.bookings.find(x => x.id.toUpperCase() === code);
+      }
+      if (!found) {
+        setScanError('Mã QR không hợp lệ hoặc không thuộc quán này.');
+        return;
+      }
+      if (scanner?.expectedId && found.id !== scanner.expectedId) {
+        setScanError(`Mã này không khớp với đơn đang chọn (${scanner.expectedId}).`);
+        return;
+      }
+      if (found.status === 'pending') {
+        setScanError('Đơn này chưa được quán xác nhận, chưa thể nhận bàn.');
+        return;
+      }
+      if (found.status === 'arrived') {
+        setScanError(`${found.user_name} đã được nhận bàn trước đó.`);
+        return;
+      }
+      if (found.status !== 'confirmed') {
+        setScanError(`Đơn này đã "${BOOKING_STATUS_LABEL_VI[found.status]}", không thể nhận bàn.`);
+        return;
+      }
+      // Quét mã thành công = mới tính là đã hoàn thành nhận bàn — không có đường tắt nào khác.
+      const res = await shopApi.setBookingStatus(found.id, 'arrived');
+      setBookings(prev => prev.map(x => (x.id === found!.id ? res.booking : x)));
+      setPendingAll(prev => prev.filter(x => x.id !== found!.id));
+      setScanner(null);
+      showToast(`✅ Quét mã thành công — đã nhận bàn cho ${found.user_name}`, 'new');
+    } catch (err: any) {
+      setScanError(err?.message || 'Không xác nhận được, vui lòng thử lại.');
+    } finally {
+      setScanBusy(false);
     }
   };
 
@@ -323,35 +371,29 @@ export default function LiveBookingsView({ shop, onPendingCountChange }: Props) 
                       </details>
                     ) : null}
                     {b.shop_note && <p className="mt-2 text-[11px] text-gray-500">Ghi chú của quán: {b.shop_note}</p>}
-                    {b.late_extension_min ? (
-                      <p className="mt-2 text-[11px] font-semibold text-amber-700">Khách báo đang trên đường — bàn giữ thêm {b.late_extension_min} phút.</p>
-                    ) : null}
-                    {b.status === 'confirmed' && (reliability[b.user_id]?.noShows || 0) > 0 ? (
-                      <p className="mt-1 text-[11px] text-orange-700">
-                        Khách này có {reliability[b.user_id].noShows} lần không đến trong {reliability[b.user_id].windowDays} ngày qua
-                        {reliability[b.user_id].completed > 0 ? ` (và ${reliability[b.user_id].completed} lượt hoàn tất)` : ''}.
-                      </p>
-                    ) : null}
                   </div>
                   <div className="flex sm:flex-col gap-2 sm:w-36 shrink-0">
                     {b.status === 'pending' && (
-                      <>
-                        <button disabled={busy} onClick={() => changeStatus(b, 'confirmed')} className="flex-1 px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center justify-center gap-1.5 disabled:opacity-50"><Check size={14} /> Xác nhận</button>
-                        <button disabled={busy} onClick={() => changeStatus(b, 'rejected')} className="flex-1 px-3 py-2 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 text-xs font-bold flex items-center justify-center gap-1.5 disabled:opacity-50"><X size={14} /> Từ chối</button>
-                      </>
+                      // The call-style IncomingOrderModal below is the ONLY way to accept/reject —
+                      // this just reflects that a decision is pending, it isn't a second path.
+                      <span className="flex-1 px-3 py-2 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 text-[11px] font-bold flex items-center justify-center gap-1.5">
+                        <Phone size={13} className="animate-pulse" /> Đang chờ xác nhận
+                      </span>
                     )}
                     {b.status === 'confirmed' && (
                       <>
-                        <button disabled={busy} onClick={() => changeStatus(b, 'arrived')} className="flex-1 px-3 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold flex items-center justify-center gap-1.5 disabled:opacity-50"><UserCheck size={14} /> Khách đã đến</button>
-                        <button disabled={busy} onClick={() => changeStatus(b, 'no_show')} className="flex-1 px-3 py-2 rounded-xl border border-orange-300 text-orange-800 bg-orange-50 hover:bg-orange-100 text-xs font-bold flex items-center justify-center gap-1.5 disabled:opacity-50"><UserX size={14} /> Khách không đến</button>
+                        <button
+                          disabled={busy}
+                          onClick={() => { setScanner({ expectedId: b.id }); setScanError(null); }}
+                          className="flex-1 px-3 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold flex items-center justify-center gap-1.5 disabled:opacity-50"
+                        >
+                          <ScanLine size={14} /> Quét mã nhận bàn
+                        </button>
                         <button disabled={busy} onClick={() => changeStatus(b, 'cancelled')} className="flex-1 px-3 py-2 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 text-xs font-bold disabled:opacity-50">Hủy lịch</button>
                       </>
                     )}
                     {b.status === 'arrived' && (
                       <button disabled={busy} onClick={() => changeStatus(b, 'completed')} className="flex-1 px-3 py-2 rounded-xl bg-gray-900 hover:bg-black text-white text-xs font-bold flex items-center justify-center gap-1.5 disabled:opacity-50"><CheckCheck size={14} /> Hoàn tất</button>
-                    )}
-                    {b.status === 'no_show' && (
-                      <button disabled={busy} onClick={() => changeStatus(b, 'arrived')} className="flex-1 px-3 py-2 rounded-xl border border-sky-300 text-sky-800 bg-sky-50 hover:bg-sky-100 text-xs font-bold flex items-center justify-center gap-1.5 disabled:opacity-50"><Undo2 size={14} /> Khách có đến, gỡ ghi nhận</button>
                     )}
                   </div>
                 </div>
@@ -369,9 +411,6 @@ export default function LiveBookingsView({ shop, onPendingCountChange }: Props) 
         <div>
           <div className="flex items-center gap-2">
             <h2 className="text-2xl font-black text-gray-900">Đặt bàn trực tiếp</h2>
-            <span className="text-[11px] text-gray-500" title="Đơn đã xác nhận mà quá giờ hẹn chừng này mà chưa nhận bàn sẽ được hệ thống tự nhả, không tính vào lịch sử của khách.">
-              bàn tự nhả sau {graceMin} phút quá giờ
-            </span>
             <span className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2 py-0.5 rounded-full border ${
               live === 'live' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'
             }`}>
@@ -402,6 +441,12 @@ export default function LiveBookingsView({ shop, onPendingCountChange }: Props) 
               <Bell size={15} /> Bật âm báo
             </button>
           )}
+          <button
+            onClick={() => { setScanner({}); setScanError(null); }}
+            className="px-3 py-2 rounded-xl text-sm font-bold bg-gray-900 hover:bg-black text-white flex items-center gap-1.5"
+          >
+            <ScanLine size={15} /> Quét mã QR nhận bàn
+          </button>
         </div>
       </div>
 
@@ -531,6 +576,32 @@ export default function LiveBookingsView({ shop, onPendingCountChange }: Props) 
           <button onClick={() => setToast(null)} aria-label="Đóng"><X size={16} /></button>
         </div>
       )}
+
+      {/* Blocking, ringing "incoming call" gate — the ONLY way a PENDING request leaves this
+          screen is the shop explicitly choosing Xác nhận or Từ chối here. Processes the oldest
+          unresolved request first; the next one (if any) takes over as soon as this resolves. */}
+      {pendingSorted.length > 0 && (
+        <IncomingOrderModal
+          key={pendingSorted[0].id}
+          booking={pendingSorted[0]}
+          queueCount={pendingSorted.length}
+          busy={busyId === pendingSorted[0].id}
+          onAccept={() => changeStatus(pendingSorted[0], 'confirmed')}
+          onReject={() => changeStatus(pendingSorted[0], 'rejected')}
+        />
+      )}
+
+      {/* Camera check-in: scanning the customer's real booking QR is the only way a confirmed
+          booking becomes "arrived" — see handleScanDecode. */}
+      <QrScannerModal
+        open={!!scanner}
+        title={scanner?.expectedId ? 'Quét mã QR nhận bàn' : 'Quét mã QR nhận bàn (mọi đơn)'}
+        subtitle={scanner?.expectedId ? `Chỉ nhận cho đơn ${scanner.expectedId}` : 'Quét mã khách đưa ra để xác nhận nhận bàn'}
+        errorMessage={scanError}
+        busy={scanBusy}
+        onDecode={handleScanDecode}
+        onClose={() => { setScanner(null); setScanError(null); }}
+      />
     </div>
   );
 }

@@ -12,7 +12,8 @@ import {
   Receipt,
   Users,
   Building2,
-  Share2
+  Share2,
+  Star
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { ViewState } from '../App';
@@ -22,8 +23,9 @@ import { LanguageControlButton } from './LanguageSelectorModal';
 import { useAuth } from '../context/AuthContext';
 import { api, http, BookingData } from '../services/api';
 import { connectRealtime } from '@shared/api/realtime';
-import { BOOKING_STATUS_LABEL_VI, BookingStatus, formatDateVi, isActiveBooking } from '@shared/booking';
+import { BOOKING_STATUS_LABEL_VI, BookingStatus, formatDateVi, hasCheckedIn, isActiveBooking } from '@shared/booking';
 import { CoffeeShop } from '@shared/types';
+import BookingQrCode from './booking/BookingQrCode';
 
 interface Props {
   shops?: CoffeeShop[];
@@ -45,6 +47,8 @@ function toDisplay(b: BookingData, shops: CoffeeShop[] | undefined, t: (k: strin
   const shop = shops?.find(s => s.id === b.shop_id);
   return {
     id: b.id,
+    /** Needed to post a review against the right shop. */
+    shopId: b.shop_id,
     store: {
       id: b.shop_id,
       name: b.shop_name,
@@ -67,14 +71,8 @@ function toDisplay(b: BookingData, shops: CoffeeShop[] | undefined, t: (k: strin
     contactPhone: b.user_phone,
     bookingNote: b.note,
     shopNote: b.shop_note,
-    lateExtensionMin: b.late_extension_min || 0,
     order: b.order
   };
-}
-
-/** The stored status stays a code; only what the reader sees is translated. */
-function statusLabel(status: BookingStatus, t: (k: string, f?: string) => string): string {
-  return t(`bookings.st.${status}`, BOOKING_STATUS_LABEL_VI[status] || status);
 }
 
 const STATUS_BADGE: Record<BookingStatus, string> = {
@@ -83,8 +81,7 @@ const STATUS_BADGE: Record<BookingStatus, string> = {
   arrived: 'bg-sky-50 text-sky-800 border-sky-300 dark:bg-sky-950/60 dark:text-sky-300 dark:border-sky-700',
   completed: 'bg-blue-50 text-blue-800 border-blue-200 dark:bg-blue-950/50 dark:text-blue-300',
   cancelled: 'bg-rose-50 text-rose-800 border-rose-200 dark:bg-rose-950/50 dark:text-rose-300',
-  rejected: 'bg-rose-50 text-rose-800 border-rose-200 dark:bg-rose-950/50 dark:text-rose-300',
-  no_show: 'bg-orange-50 text-orange-800 border-orange-300 dark:bg-orange-950/50 dark:text-orange-300'
+  rejected: 'bg-rose-50 text-rose-800 border-rose-200 dark:bg-rose-950/50 dark:text-rose-300'
 };
 
 export default function BookingsView({ shops, onNavigate, highlightBookingId }: Props) {
@@ -99,8 +96,13 @@ export default function BookingsView({ shops, onNavigate, highlightBookingId }: 
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isLoadingList, setIsLoadingList] = useState(false);
   const [cancelling, setCancelling] = useState(false);
-  const [notifyingLate, setNotifyingLate] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [reviewText, setReviewText] = useState('');
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewSending, setReviewSending] = useState(false);
+  const [reviewError, setReviewError] = useState<string | null>(null);
+  /** Booking ids this session already reviewed, so the form doesn't invite a duplicate. */
+  const [reviewedBookingIds, setReviewedBookingIds] = useState<string[]>([]);
   const allBookings = rawBookings.map(b => toDisplay(b, shops, t));
 
   const load = async () => {
@@ -144,7 +146,7 @@ export default function BookingsView({ shops, onNavigate, highlightBookingId }: 
         });
         setSelectedBooking((cur: any) => (cur && cur.id === incoming.id ? toDisplay(incoming, shops, t) : cur));
         if (data.action === 'updated') {
-          setToast(`${incoming.shop_name}: ${statusLabel(incoming.status, t)} (${incoming.id})`);
+          setToast(`${incoming.shop_name}: ${BOOKING_STATUS_LABEL_VI[incoming.status]} (${incoming.id})`);
           setTimeout(() => setToast(null), 5000);
         }
       }
@@ -190,23 +192,43 @@ export default function BookingsView({ shops, onNavigate, highlightBookingId }: 
     }
   };
 
-  const handleRunningLate = async (id: string) => {
-    setNotifyingLate(true);
+  const reviewDone = !!selectedBooking && reviewedBookingIds.includes(selectedBooking.id);
+
+  /**
+   * Post a review for the shop of the open booking. The server re-checks that this guest
+   * really checked in at this shop, so a failure here is reported rather than hidden.
+   */
+  const handleSubmitReview = async () => {
+    if (!selectedBooking) return;
+    const shopId = selectedBooking.shopId || selectedBooking.store?.id;
+    if (!shopId) {
+      setReviewError(t('bookings.reviewNoShop', 'Không xác định được quán của lịch đặt này.'));
+      return;
+    }
+    setReviewSending(true);
+    setReviewError(null);
     try {
-      const res = await api.runningLate(id);
-      setRawBookings(prev => prev.map(b => (b.id === id ? res.booking : b)));
-      setSelectedBooking(toDisplay(res.booking, shops, t));
-      setToast(res.message);
-    } catch (err: any) {
-      setToast(err?.message || t('bookings.lateFailed', 'Không báo trễ được'));
-    } finally {
-      setNotifyingLate(false);
+      await api.addReview(shopId, {
+        content: reviewText.trim(),
+        rating: reviewRating,
+        metrics: { noise: reviewRating, seating: reviewRating, accuracy: reviewRating }
+      });
+      setReviewedBookingIds(prev => [...prev, selectedBooking.id]);
+      setReviewText('');
+      setToast(t('bookings.reviewThanks', 'Cảm ơn bạn đã đánh giá quán!'));
       setTimeout(() => setToast(null), 5000);
+    } catch (err: any) {
+      setReviewError(err?.message || t('bookings.reviewFailed', 'Không gửi được đánh giá, vui lòng thử lại.'));
+    } finally {
+      setReviewSending(false);
     }
   };
 
   const closeModal = () => {
     setSelectedBooking(null);
+    setReviewText('');
+    setReviewRating(5);
+    setReviewError(null);
     window.dispatchEvent(new CustomEvent('show-bottom-nav'));
   };
 
@@ -359,7 +381,7 @@ export default function BookingsView({ shops, onNavigate, highlightBookingId }: 
                     </div>
 
                     <div className={`px-2.5 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider border shrink-0 ${STATUS_BADGE[booking.liveStatus]}`}>
-                      {statusLabel(booking.liveStatus, t)}
+                      {BOOKING_STATUS_LABEL_VI[booking.liveStatus]}
                     </div>
                   </div>
 
@@ -486,22 +508,43 @@ export default function BookingsView({ shops, onNavigate, highlightBookingId }: 
                     selectedBooking.liveStatus === 'pending' ? 'text-amber-600' : ['cancelled', 'rejected'].includes(selectedBooking.liveStatus) ? 'text-rose-600' : 'text-emerald-600 dark:text-emerald-400'
                   }`}>
                     <CheckCircle2 size={11} />
-                    <span>{statusLabel(selectedBooking.liveStatus as BookingStatus, t)}</span>
+                    <span>{BOOKING_STATUS_LABEL_VI[selectedBooking.liveStatus as BookingStatus]}</span>
                   </p>
                 </div>
               </div>
 
-              {/* QR Code Check-in Box */}
+              {/* QR Code Check-in Box — a real, scannable code, and only once the shop has
+                  confirmed. Nothing but the booking code is encoded or shown here. */}
               <div className={`p-4 rounded-2xl border text-center flex flex-col items-center justify-center ${
                 isLight ? 'bg-red-50/50 border-red-200' : 'bg-[#1C1612] border-[#3E3023]'
               }`}>
-                <p className="text-[10px] uppercase tracking-wider font-bold text-slate-500 mb-2">
-                  {t('booking.qrAtCounter', t('booking.qrAtCounter', 'Quét mã QR tại quầy để nhận bàn & nhận nước'))}
-                </p>
-                
-                <div className="bg-white p-3 rounded-2xl shadow-md border border-slate-200 inline-block mb-3">
-                  <QrCode size={140} className="text-slate-900" />
-                </div>
+                {selectedBooking.liveStatus === 'confirmed' ? (
+                  <>
+                    <p className="text-[10px] uppercase tracking-wider font-bold text-slate-500 mb-2">
+                      {t('booking.qrAtCounter', 'Quét mã QR tại quầy để nhận bàn & nhận nước')}
+                    </p>
+                    <div className="bg-white p-3 rounded-2xl shadow-md border border-slate-200 inline-block mb-3">
+                      <BookingQrCode value={selectedBooking.id} size={140} />
+                    </div>
+                  </>
+                ) : (
+                  <div className="mb-3 flex flex-col items-center gap-1.5">
+                    <div className={`w-11 h-11 rounded-full flex items-center justify-center ${
+                      hasCheckedIn(selectedBooking.liveStatus) ? 'bg-emerald-100 text-emerald-700' : 'bg-black/5 dark:bg-white/10 text-slate-500'
+                    }`}>
+                      {hasCheckedIn(selectedBooking.liveStatus) ? <CheckCircle2 size={22} /> : <QrCode size={22} />}
+                    </div>
+                    <p className="text-[11px] font-bold text-slate-600 dark:text-stone-300 max-w-[16rem]">
+                      {selectedBooking.liveStatus === 'pending'
+                        ? t('booking.qrAfterConfirm', 'Mã QR nhận bàn sẽ hiện ở đây ngay khi quán xác nhận lịch đặt.')
+                        : selectedBooking.liveStatus === 'arrived'
+                          ? t('booking.qrCheckedIn', 'Bạn đã nhận bàn. Chúc bạn có buổi cà phê thật vui!')
+                          : selectedBooking.liveStatus === 'completed'
+                            ? t('booking.qrVisitDone', 'Lượt ghé quán này đã hoàn tất.')
+                            : t('booking.qrUnavailable', 'Lịch đặt này không còn hiệu lực nên không có mã nhận bàn.')}
+                    </p>
+                  </div>
+                )}
 
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-xl bg-black/5 dark:bg-white/10">
                   <span className="text-[11px] text-slate-400 uppercase font-bold tracking-wider">{t('bookings.code', 'Mã đặt bàn:')}</span>
@@ -510,6 +553,67 @@ export default function BookingsView({ shops, onNavigate, highlightBookingId }: 
                   </span>
                 </div>
               </div>
+
+              {/* Review — unlocked by a real check-in, so it appears only after the shop
+                  scanned the guest in. The server enforces the same rule. */}
+              {hasCheckedIn(selectedBooking.liveStatus) && (
+                <div className={`p-3.5 rounded-2xl border space-y-2.5 ${
+                  isLight ? 'bg-amber-50/60 border-amber-200' : 'bg-[#1C1612] border-[#3E3023]'
+                }`}>
+                  <h5 className="font-bold text-xs uppercase tracking-wider flex items-center gap-1.5 text-slate-500">
+                    <Star size={13} />
+                    <span>{t('bookings.reviewTitle', 'Đánh giá quán')}</span>
+                  </h5>
+                  {reviewDone ? (
+                    <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+                      <CheckCircle2 size={14} />
+                      {t('bookings.reviewThanks', 'Cảm ơn bạn đã đánh giá quán!')}
+                    </p>
+                  ) : (
+                    <>
+                      <p className="text-[11px] text-slate-500">
+                        {t('bookings.reviewHint', 'Bạn đã nhận bàn tại quán này nên có thể để lại đánh giá.')}
+                      </p>
+                      <div className="flex items-center gap-1">
+                        {[1, 2, 3, 4, 5].map(n => (
+                          <button
+                            key={n}
+                            type="button"
+                            aria-label={`${n}/5`}
+                            onClick={() => setReviewRating(n)}
+                            className="p-0.5"
+                          >
+                            <Star
+                              size={20}
+                              className={n <= reviewRating ? 'text-amber-500 fill-amber-500' : 'text-slate-300 dark:text-stone-600'}
+                            />
+                          </button>
+                        ))}
+                      </div>
+                      <textarea
+                        value={reviewText}
+                        onChange={e => setReviewText(e.target.value)}
+                        rows={3}
+                        placeholder={t('bookings.reviewPlaceholder', 'Quán thế nào? Chia sẻ cảm nhận của bạn…')}
+                        className={`w-full px-3 py-2 rounded-xl border text-xs resize-none focus:outline-none focus:ring-2 focus:ring-amber-300 ${
+                          isLight ? 'bg-white border-slate-200 text-slate-800' : 'bg-[#14100D] border-[#2E241B] text-stone-200'
+                        }`}
+                      />
+                      {reviewError && <p className="text-[11px] font-bold text-rose-600">{reviewError}</p>}
+                      <button
+                        type="button"
+                        disabled={!reviewText.trim() || reviewSending}
+                        onClick={handleSubmitReview}
+                        className="w-full py-2.5 rounded-xl bg-[#800020] hover:bg-[#6b001b] text-white text-xs font-bold disabled:opacity-50"
+                      >
+                        {reviewSending
+                          ? t('bookings.reviewSending', 'Đang gửi…')
+                          : t('bookings.reviewSubmit', 'Gửi đánh giá')}
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
 
               {/* Booking Information Grid */}
               <div className={`p-3.5 rounded-2xl border space-y-2.5 text-xs ${
@@ -617,7 +721,7 @@ export default function BookingsView({ shops, onNavigate, highlightBookingId }: 
                     <span className={`font-bold ${
                       selectedBooking.paymentStatus === 'paid_online' ? 'text-emerald-600' : 'text-purple-600'
                     }`}>
-                      {selectedBooking.paymentStatus === 'paid_online' ? t('booking.paidOnline', 'Đã thanh toán online') : t('booking.payAtCounterOnArrival', 'Thanh toán tại quầy khi đến')}
+                      {['paid_online', 'paid'].includes(selectedBooking.paymentStatus || '') ? t('booking.paidOnline', 'Đã thanh toán online') : selectedBooking.paymentStatus === 'paid_at_store' ? 'Đã thanh toán tại quán' : selectedBooking.paymentStatus === 'pending_online' ? 'Chờ quán xác nhận thanh toán' : t('booking.payAtCounterOnArrival', 'Thanh toán tại quầy khi đến')}
                     </span>
                   </div>
 
@@ -656,31 +760,6 @@ export default function BookingsView({ shops, onNavigate, highlightBookingId }: 
                   <strong>{t('bookings.shopMessage', 'Lời nhắn từ quán:')}</strong> {selectedBooking.shopNote}
                 </div>
               )}
-
-              {selectedBooking.liveStatus === 'no_show' && (
-                <div className="rounded-xl border px-3 py-2 text-xs bg-orange-50 border-orange-300 text-orange-900 dark:bg-orange-950/50 dark:border-orange-800 dark:text-orange-200">
-                  {t('bookings.noShowExplain', 'Quá giờ hẹn mà bàn chưa được nhận nên hệ thống đã mở lại bàn cho khách khác. Nếu bạn thật ra có tới quán, hãy báo quán để gỡ ghi nhận này.')}
-                </div>
-              )}
-
-              {selectedBooking.liveStatus === 'confirmed' && !selectedBooking.lateExtensionMin && (
-                <button
-                  type="button"
-                  disabled={notifyingLate}
-                  onClick={() => handleRunningLate(selectedBooking.id)}
-                  className="w-full py-2.5 rounded-xl font-bold text-xs border border-amber-300 text-amber-800 bg-amber-50 hover:bg-amber-100 disabled:opacity-60"
-                >
-                  {notifyingLate
-                    ? t('bookings.lateSending', 'Đang báo quán…')
-                    : t('bookings.runningLate', 'Tôi đang tới, giữ bàn thêm 15 phút')}
-                </button>
-              )}
-
-              {selectedBooking.lateExtensionMin ? (
-                <div className="rounded-xl border px-3 py-2 text-xs bg-amber-50 border-amber-200 text-amber-900 dark:bg-amber-950/40 dark:border-amber-800 dark:text-amber-200">
-                  {t('bookings.lateNoted', 'Đã báo quán bạn tới trễ. Bàn được giữ thêm 15 phút.')}
-                </div>
-              ) : null}
 
               {(selectedBooking.liveStatus === 'pending' || selectedBooking.liveStatus === 'confirmed') && (
                 <button

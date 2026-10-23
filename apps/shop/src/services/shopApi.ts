@@ -59,12 +59,7 @@ export const shopApi = {
   },
 
   getBookings(shopId: string, date?: string) {
-    return http.get<{
-      bookings: BookingDTO[];
-      clock: { today: string; now: string };
-      reliability: Record<string, { noShows: number; completed: number; windowDays: number }>;
-      grace_min: number;
-    }>(
+    return http.get<{ bookings: BookingDTO[]; clock: { today: string; now: string } }>(
       `/merchant/shops/${shopId}/bookings${date ? `?date=${date}` : ''}`
     );
   },

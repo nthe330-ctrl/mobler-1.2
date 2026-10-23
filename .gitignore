@@ -9,3 +9,4 @@ coverage/
 backend/data/
 # Runtime telemetry written by the server on every run
 backend/mobler_telemetry.json
+backend/data-demo/

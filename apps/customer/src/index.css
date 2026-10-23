@@ -1,4 +1,6 @@
 @import "tailwindcss";
+/* Brand palette + the glass surface used by the floating bottom bar. */
+@import "../../../shared/styles/glass.css";
 @source "../../../shared";
 
 html {
@@ -42,3 +44,153 @@ html {
   scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
 }
 
+
+/* ============================================================================
+   Customer sign-in screen
+   ----------------------------------------------------------------------------
+   The customer app has light and dark themes (the shop app does not), so every
+   surface here is driven by the .light-theme / .dark-theme classes ThemeContext
+   already puts on <html>. Brand rule: light is red-dominant, dark is
+   brown-dominant with the gold accent.
+
+   Two background tiles rather than one recoloured by CSS: a filter on a
+   full-screen layer is expensive and washes the artwork out. Both are seamless
+   patterns composed from the same cut stickers, so nothing is ever clipped at a
+   repeat and they can be drawn small enough to stay quiet behind the card.
+   ========================================================================== */
+
+.cauth-scene {
+  background: #f6ecec;
+}
+.dark-theme .cauth-scene {
+  background: #0d0a08;
+}
+
+.cauth-backdrop,
+.cauth-shade {
+  position: fixed;          /* pinned to the viewport: the register form is taller than the
+                               screen, and an absolute layer would stretch and zoom with it */
+  inset: -2%;
+  pointer-events: none;
+}
+
+.cauth-backdrop {
+  z-index: -2;
+  background-image: url('/mobler-boba-tile-light.webp');
+  background-size: 430px;
+  background-repeat: repeat;
+  background-position: center top;
+  animation: cauth-drift 38s ease-in-out infinite alternate;
+  transform-origin: center;
+}
+.dark-theme .cauth-backdrop {
+  background-image: url('/mobler-boba-tile-dark.webp');
+}
+
+/* The shade is what buys readability. Light mode keeps the brand red but lifts the
+   centre so the card reads; dark mode leans brown and goes heavier, because white
+   text on a lit pattern is the worst case. */
+.cauth-shade {
+  z-index: -1;
+  background: linear-gradient(180deg,
+    rgba(128, 0, 32, .52) 0%,
+    rgba(128, 0, 32, .34) 28%,
+    rgba(110, 10, 30, .18) 52%,
+    rgba(74, 14, 23, .44) 100%);
+}
+.dark-theme .cauth-shade {
+  background: linear-gradient(180deg,
+    rgba(10, 8, 7, .80) 0%,
+    rgba(16, 13, 11, .66) 28%,
+    rgba(22, 18, 16, .52) 52%,
+    rgba(10, 8, 7, .78) 100%);
+}
+
+.cauth-card {
+  background: linear-gradient(145deg, rgba(255,255,255,.93), rgba(255,255,255,.82));
+  border: 1px solid rgba(255,255,255,.8);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.95), 0 24px 70px rgba(54,14,25,.28);
+}
+.dark-theme .cauth-card {
+  background: linear-gradient(145deg, rgba(31,25,21,.90), rgba(22,18,16,.84));
+  border: 1px solid rgba(212,175,55,.22);   /* a thin gold hairline, the dark-mode accent */
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.07), 0 24px 70px rgba(0,0,0,.6);
+}
+
+.cauth-chip {
+  background: rgba(255,255,255,.16);
+  border: 1px solid rgba(255,255,255,.34);
+}
+.dark-theme .cauth-chip {
+  background: rgba(255,255,255,.07);
+  border: 1px solid rgba(212,175,55,.2);
+}
+
+/* Floating cut-outs — the same artwork pieces as the shop screen. In dark mode they
+   are dimmed rather than swapped for a second set of files: they are small and
+   already sit behind a heavy shade, so a filter here is cheap and invisible. */
+.cboba {
+  position: absolute;
+  z-index: 0;
+  pointer-events: none;
+  transform: translate3d(calc(var(--mx, 0px) * var(--d)), calc(var(--my, 0px) * var(--d)), 0);
+  transition: transform .45s cubic-bezier(.22, 1, .36, 1);
+}
+.cboba::before {
+  content: '';
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: center / contain no-repeat var(--img);
+  animation: cboba-drift var(--dur, 8s) ease-in-out var(--delay, 0s) infinite;
+  filter: drop-shadow(0 14px 22px rgba(58, 14, 20, .34));
+  will-change: transform;
+}
+.dark-theme .cboba::before {
+  filter: brightness(.6) saturate(.6) drop-shadow(0 14px 22px rgba(0, 0, 0, .55));
+}
+
+@keyframes cboba-drift {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(0deg); }
+  33%      { transform: translate3d(5px, -16px, 0) rotate(1.6deg); }
+  66%      { transform: translate3d(-4px, -8px, 0) rotate(-1.2deg); }
+}
+@keyframes cauth-drift {
+  from { transform: scale(1.01); }
+  to   { transform: scale(1.05); }
+}
+
+.cboba-near { --d: 1;   opacity: .96; }
+.cboba-mid  { --d: .62; opacity: .88; }
+.cboba-far  { --d: .3;  opacity: .7; }
+
+/* Positions keep the centre column clear — the card is max 420px wide and centred. */
+.cboba-1 { --img: url('/boba/boba-cup-face.webp');    width: 176px; height: 352px; top: 15%;   left: 4%;   --dur: 9s;   --delay: -1s; }
+.cboba-2 { --img: url('/boba/boba-cup-sundae.webp');  width: 140px; height: 291px; top: 9%;    right: 5%;  --dur: 10s;  --delay: -3s; }
+.cboba-3 { --img: url('/boba/boba-cup-caramel.webp'); width: 124px; height: 210px; bottom: 14%; left: 8%;  --dur: 8.5s; --delay: -5s; }
+.cboba-4 { --img: url('/boba/boba-pearls-bowl.webp'); width: 138px; height: 104px; bottom: 20%; right: 6%; --dur: 7.5s; --delay: -2s; }
+.cboba-5 { --img: url('/boba/boba-strawberry.webp');  width:  52px; height:  54px; top: 31%;   right: 17%; --dur: 6s;   --delay: -1.5s; }
+.cboba-6 { --img: url('/boba/boba-leaf.webp');        width:  70px; height:  46px; top: 68%;   right: 20%; --dur: 6.5s; --delay: -3.5s; }
+.cboba-7 { --img: url('/boba/boba-pearl.webp');       width:  34px; height:  34px; top: 23%;   left: 23%;  --dur: 5.5s; --delay: -2.2s; }
+
+@media (max-width: 1100px) {
+  .cboba-1, .cboba-2 { display: none; }
+  .cauth-backdrop { background-size: 390px; }
+}
+
+/* Phone: keep three small pieces in the header band, clear of the card and the
+   submit button, and shrink the pattern so a cup keeps the share of the screen it
+   has on desktop instead of being blown up. */
+@media (max-width: 680px) {
+  .cauth-backdrop { background-size: 300px; }
+  .cboba-3, .cboba-4 { display: none; }
+  .cboba-5 { top: 6%;  right: 5%; width: 62px; height: 64px; }
+  .cboba-6 { top: 11%; left: 4%; right: auto; width: 80px; height: 53px; }
+  .cboba-7 { top: 3%;  left: 33%; width: 40px; height: 40px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cauth-backdrop { animation: none; }
+  .cboba { transition: none; transform: none; }
+  .cboba::before { animation: none; }
+}

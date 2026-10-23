@@ -16,8 +16,9 @@ import BookingView from './components/BookingView';
 import ProfileView from './components/ProfileView';
 import PromotionsView from './components/PromotionsView';
 import BookingsView from './components/BookingsView';
-import NotificationBell from './components/NotificationBell';
 import AuthModal from './components/AuthModal';
+import CustomerAuthScreen from './views/CustomerAuthScreen';
+import { useAuth } from './context/AuthContext';
 import LoadingScreen from './components/LoadingScreen';
 import GoogleMapsConfigModal from './components/GoogleMapsConfigModal';
 import { MOCK_SHOPS } from '@shared/data';
@@ -79,6 +80,7 @@ const getInitialKey = () => {
 
 export default function App() {
   const { theme } = useTheme();
+  const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const { t, isLanguageModalOpen, closeLanguageModal } = useLanguage();
   const { profile } = useUser();
   const [currentView, setCurrentView] = useState<ViewState>({ name: 'home' });
@@ -365,6 +367,14 @@ export default function App() {
 
   const isLight = theme === 'light';
 
+  /* Sign-in gate. Every hook above runs unconditionally — these early returns sit
+     below all of them, so the hook order never changes between renders.
+     AuthContext restores a saved session asynchronously, so wait for isLoading to
+     settle before deciding: gating on !isAuthenticated alone would flash the login
+     screen on every reload for a customer who is already signed in. */
+  if (isAuthLoading) return <LoadingScreen />;
+  if (!isAuthenticated) return <CustomerAuthScreen />;
+
   const appContent = (
     <div className={`w-full h-[100dvh] max-h-[100dvh] overflow-hidden font-sans transition-colors duration-300 ${isLight ? 'bg-[#FAFBFD] text-[#1E1B18]' : 'bg-[#0A0807] text-[#EBE3DB]'}`}>
       <div className={`w-full h-full flex flex-col relative overflow-hidden transition-colors duration-300 ${
@@ -372,9 +382,6 @@ export default function App() {
           ? 'bg-gradient-to-b from-[#FAFBFD] via-[#F1F5F9] to-[#E2E8F0]' 
           : 'bg-gradient-to-br from-[#161210] to-[#0A0807]'
       }`}>
-        {/* The inbox follows the person across every screen, so it lives in the shell. */}
-        {currentView.name !== 'store' && currentView.name !== 'booking' && <NotificationBell />}
-
         {/* Main Content Area */}
         <main className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden no-scrollbar relative">
           <AnimatePresence mode="wait">
@@ -395,15 +402,11 @@ export default function App() {
         {currentView.name !== 'store' && currentView.name !== 'booking' && (
           <nav 
             aria-label="Bottom Navigation Bar"
-            className={`fixed bottom-0 left-0 right-0 z-50 w-full transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] will-change-transform motion-reduce:transition-none motion-reduce:duration-0 pb-[env(safe-area-inset-bottom,0px)] ${
-              isNavHidden ? 'translate-y-full pointer-events-none shadow-none' : 'translate-y-0'
-            } ${
-              isLight 
-                ? 'bg-white/95 backdrop-blur-xl border-t border-red-800/20 shadow-[0_-8px_25px_rgba(128,0,32,0.08)]' 
-                : 'bg-[#100D0B]/95 backdrop-blur-xl border-t border-[#4A3B2C] shadow-[0_-8px_30px_rgba(0,0,0,0.8)]'
+            className={`glass-nav fixed z-50 left-1/2 -translate-x-1/2 bottom-[max(0.75rem,env(safe-area-inset-bottom))] w-[min(30rem,calc(100%-1.5rem))] rounded-full transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] will-change-transform motion-reduce:transition-none motion-reduce:duration-0 ${
+              isNavHidden ? 'translate-y-[150%] pointer-events-none' : 'translate-y-0'
             }`}
           >
-            <div className="w-full max-w-4xl mx-auto flex justify-around items-center py-2.5 px-3 md:py-3 md:px-6">
+            <div className="w-full flex justify-around items-center py-2 px-2 md:py-2.5 md:px-3">
               <NavItem 
                 icon={<Search size={22} />} 
                 label={t('nav.explore', 'Khám phá')} 

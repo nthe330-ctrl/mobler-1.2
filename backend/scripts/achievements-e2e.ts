@@ -9,6 +9,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { ACHIEVEMENTS } from '../../shared/achievements';
+import { bookingQrPayload } from '../../shared/booking';
 
 /** Point value a mission is really worth, read from the mission table itself. */
 const missionPoints = (id: string) => ACHIEVEMENTS.find(a => a.id === id)!.reward.points;
@@ -38,11 +39,19 @@ async function call(method: string, url: string, body?: unknown, token?: string)
   return { status: res.status, data: (await res.json().catch(() => ({}))) as any };
 }
 
-/** Drive a booking pending → confirmed → arrived → completed (a real check-in). */
+/**
+ * Check a booking in the way the shop really does it: confirm, then post the guest's own
+ * booking code to the check-in route. `arrived` is not reachable any other way.
+ */
+async function checkIn(shopToken: string, bookingId: string) {
+  return call('POST', '/merchant/bookings/check-in', { code: bookingQrPayload(bookingId) }, shopToken);
+}
+
+/** Drive a booking pending → confirmed → arrived (QR scan) → completed. */
 async function complete(shopToken: string, bookingId: string) {
-  for (const status of ['confirmed', 'arrived', 'completed']) {
-    await call('PUT', `/merchant/bookings/${bookingId}/status`, { status }, shopToken);
-  }
+  await call('PUT', `/merchant/bookings/${bookingId}/status`, { status: 'confirmed' }, shopToken);
+  await checkIn(shopToken, bookingId);
+  await call('PUT', `/merchant/bookings/${bookingId}/status`, { status: 'completed' }, shopToken);
 }
 
 /** Minimal SSE client collecting events. */
@@ -128,32 +137,35 @@ async function main() {
     const stream = openStream(`ticket=${ticket.data.ticket}`);
     await stream.ready;
 
-    console.log('\nProgress only counts COMPLETED (checked-in) bookings');
+    console.log('\nProgress only counts bookings the guest really checked in to');
     const date = isoInDays(2);
-    // One morning visit per day: a person cannot hold two slots that overlap, and the
-    // default slot is two hours, so three 05:00–07:00 holds on one day is not a thing
-    // a real customer could do either.
     const morning: string[] = [];
     for (const [i, table] of ['t1', 't2', 't3'].entries()) {
-      const b = await call('POST', '/bookings', { shop_id: shopId, date: isoInDays(2 + i), time: '06:00', table_id: table, guests: 2 }, T);
+      const b = await call('POST', '/bookings', { shop_id: shopId, date, time: `0${5 + i}:00`, table_id: table, guests: 2 }, T);
       morning.push(b.data.booking.id);
     }
     const dawn = (x: any) => x.data.achievements.find((a: any) => a.id === 'ach-4');
     const a1 = await call('GET', '/me/achievements', undefined, T);
     check('pending bookings do not count yet', dawn(a1).progress === 0, dawn(a1));
 
-    // Confirming / arriving must NOT count — only a completed check-in does.
+    // Confirming alone must NOT count — the guest has not turned up yet.
     await call('PUT', `/merchant/bookings/${morning[0]}/status`, { status: 'confirmed' }, S);
-    await call('PUT', `/merchant/bookings/${morning[0]}/status`, { status: 'arrived' }, S);
     const a1b = await call('GET', '/me/achievements', undefined, T);
-    check('confirmed/arrived alone do NOT count', dawn(a1b).progress === 0 && a1b.data.stats.shops_visited === 0, { dawn: dawn(a1b).progress, stats: a1b.data.stats });
+    check('confirmed alone does NOT count', dawn(a1b).progress === 0 && a1b.data.stats.shops_visited === 0, { dawn: dawn(a1b).progress, stats: a1b.data.stats });
 
-    // Drive the first two morning bookings all the way to completed.
+    // The QR scan is what counts: progress moves at check-in, before "Hoàn tất".
+    await checkIn(S, morning[0]);
+    const a1c = await call('GET', '/me/achievements', undefined, T);
+    check('a QR check-in counts straight away (1/3)', dawn(a1c).progress === 1 && a1c.data.stats.shops_visited === 1, { dawn: dawn(a1c).progress, stats: a1c.data.stats });
+
+    // Wrapping that visit up must not count it twice, and a second visit adds exactly one.
     await call('PUT', `/merchant/bookings/${morning[0]}/status`, { status: 'completed' }, S);
+    const a1d = await call('GET', '/me/achievements', undefined, T);
+    check('completing a checked-in visit does not count it twice', dawn(a1d).progress === 1, dawn(a1d));
     await complete(S, morning[1]);
     const a2 = await call('GET', '/me/achievements', undefined, T);
-    check('completed morning check-ins count (2/3)', dawn(a2).progress === 2 && !dawn(a2).achieved, dawn(a2));
-    check('visited-shop and district progress update on completion', a2.data.stats.shops_visited === 1 && a2.data.stats.districts_visited === 1, a2.data.stats);
+    check('two checked-in morning visits count (2/3)', dawn(a2).progress === 2 && !dawn(a2).achieved, dawn(a2));
+    check('visited-shop and district progress update on check-in', a2.data.stats.shops_visited === 1 && a2.data.stats.districts_visited === 1, a2.data.stats);
 
     console.log('\nCompleting the mission grants its difficulty-based reward exactly once');
     await complete(S, morning[2]);
@@ -190,19 +202,29 @@ async function main() {
     const fake = await call('POST', '/bookings', { shop_id: shopId, date: isoInDays(3), time: '14:00', table_id: 't5', guests: 2, deposit_fee: 20000, voucher_applied: { code: 'KHONGCO', discount: 50000 }, discount_amount: 50000 }, T);
     check('unknown voucher codes give no discount', fake.data.booking.discount_amount === 0 && !fake.data.booking.voucher_applied, fake.data.booking);
 
-    console.log('\nMissions need a real completed check-in, not just arrival');
+    console.log('\nMissions need a real QR check-in, and pay for it exactly once');
     const night = await call('POST', '/bookings', { shop_id: shopId, date, time: '23:00', table_id: 't6', guests: 2 }, T);
-    await call('PUT', `/merchant/bookings/${night.data.booking.id}/status`, { status: 'confirmed' }, S);
-    await call('PUT', `/merchant/bookings/${night.data.booking.id}/status`, { status: 'arrived' }, S);
+    const nightId = night.data.booking.id;
+    await call('PUT', `/merchant/bookings/${nightId}/status`, { status: 'confirmed' }, S);
     const owl = (x: any) => x.data.achievements.find((a: any) => a.id === 'ach-8');
     const n1 = await call('GET', '/me/achievements', undefined, T);
-    check('arrived alone does not complete the night mission', !owl(n1).achieved, owl(n1));
-    await call('PUT', `/merchant/bookings/${night.data.booking.id}/status`, { status: 'completed' }, S);
+    check('confirmed alone does not complete the night mission', !owl(n1).achieved, owl(n1));
+    const forced = await call('PUT', `/merchant/bookings/${nightId}/status`, { status: 'arrived' }, S);
+    check('the shop cannot mark arrival without the guest code', forced.status === 403 && forced.data.code === 'CHECKIN_REQUIRES_SCAN', forced.data);
+    const nn1 = await call('GET', '/me/achievements', undefined, T);
+    check('the refused attempt granted nothing', !owl(nn1).achieved, owl(nn1));
+    await checkIn(S, nightId);
     const n2 = await call('GET', '/me/achievements', undefined, T);
-    check('Cú Đêm unlocked after a completed night check-in', owl(n2).achieved, owl(n2));
+    check('Cú Đêm unlocked at the QR check-in', owl(n2).achieved, owl(n2));
     const r4 = await call('GET', '/me/rewards', undefined, T);
     const expected4 = dawnPts + missionPoints('ach-8'); // ach-4 + ach-8, no booking points
     check('points come only from completed missions', r4.data.points === expected4, { got: r4.data.points, expected: expected4 });
+    await checkIn(S, nightId); // re-scan
+    await call('PUT', `/merchant/bookings/${nightId}/status`, { status: 'completed' }, S);
+    const r4b = await call('GET', '/me/rewards', undefined, T);
+    check('re-scanning and completing pay nothing extra', r4b.data.points === expected4, { got: r4b.data.points, expected: expected4 });
+    const n3b = await call('GET', '/me/achievements', undefined, T);
+    check('the night visit is still counted once', n3b.data.stats.night_bookings === 1, n3b.data.stats);
 
     console.log('\nReviews and photos');
     const rv = await call('POST', `/shops/${shopId}/reviews`, { content: 'Quán đẹp', images: ['https://example.com/1.jpg', 'https://example.com/2.jpg'] }, T);

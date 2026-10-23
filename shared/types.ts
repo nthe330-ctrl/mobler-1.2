@@ -5,11 +5,9 @@ export type Amenity =
   | 'Chỗ sạc' 
   | 'WC' 
   | 'Parking' 
-  | 'Indoor'
-  | 'Outdoor'
-  | 'Điều hòa'
-  | 'Hóa đơn điện tử'
-  | 'Private'
+  | 'Indoor' 
+  | 'Outdoor' 
+  | 'Private' 
   | 'Shared' 
   | 'Table Service' 
   | 'Self Service';
@@ -207,8 +205,6 @@ export interface CoffeeShop {
     slotDurationMin: number;
     /** Whether the shop is currently accepting online bookings. */
     acceptingBookings: boolean;
-    /** Minutes the shop holds a table past the agreed time before releasing it. */
-    noShowGraceMin?: number;
   };
 }
 

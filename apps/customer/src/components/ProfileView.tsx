@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect, useMemo, ChangeEvent, DragEvent, FormEvent } from 'react';
-import PushToggle from './PushToggle';
 import { 
   CreditCard, Award, QrCode, ChevronRight, ChevronLeft, Zap, Coffee, ShieldCheck, 
   LayoutGrid, List, X, MessageSquare, ThumbsUp, Footprints, Compass, Star,
@@ -20,6 +19,7 @@ import { api, http } from '../services/api';
 import { connectRealtime } from '@shared/api/realtime';
 import { resolveRank, ResolvedRank, RANK_TIERS } from '@shared/ranks';
 import { buildProgress, EMPTY_STATS } from '@shared/achievements';
+import { ShopLoyalty } from '@shared/shopLoyalty';
 
 interface Props {
   onNavigate: (view: ViewState) => void;
@@ -778,8 +778,6 @@ function SettingsModal({
             </h4>
 
             <div className="space-y-2 text-xs">
-              <PushToggle />
-
               <label className="flex items-center justify-between cursor-pointer py-1">
                 <span className="font-medium text-slate-700 dark:text-[#A48F7A]">
                   {t('settings.promoNotif', 'Thông báo Khuyến mãi & Voucher')}
@@ -898,12 +896,20 @@ function PassportTab({ isLight }: { isLight: boolean }) {
   const [stats, setStats] = useState<Record<string, number>>({});
   const [rank, setRank] = useState<ResolvedRank>(() => resolveRank(0));
   const [reloadKey, setReloadKey] = useState(0);
+  // Per-shop titles, computed server-side from completed check-ins and real reviews.
+  const [shopLoyalty, setShopLoyalty] = useState<ShopLoyalty[]>([]);
+  const [loyaltyLoading, setLoyaltyLoading] = useState(false);
   useEffect(() => {
-    if (!isAuthenticated) { setServerAch(emptyMissions); setStats({}); setRank(resolveRank(0)); return; }
+    if (!isAuthenticated) { setServerAch(emptyMissions); setStats({}); setRank(resolveRank(0)); setShopLoyalty([]); return; }
     let alive = true;
+    setLoyaltyLoading(true);
     api.getAchievements()
       .then(r => { if (alive) { setServerAch(r.achievements?.length ? r.achievements : emptyMissions); setStats(r.stats || {}); setRank(r.rank || resolveRank(r.points)); } })
       .catch(() => { if (alive) { setServerAch(emptyMissions); setStats({}); setRank(resolveRank(0)); } });
+    api.getShopLoyalty()
+      .then(r => { if (alive) setShopLoyalty(r.shops || []); })
+      .catch(() => { if (alive) setShopLoyalty([]); })
+      .finally(() => { if (alive) setLoyaltyLoading(false); });
     return () => { alive = false; };
   }, [isAuthenticated, reloadKey, emptyMissions]);
 
@@ -1189,84 +1195,36 @@ function PassportTab({ isLight }: { isLight: boolean }) {
           {t('profile.favoriteStoreAchievements', 'Thành Tựu Quán Yêu Thích')}
         </h3>
         <div className="space-y-3">
-          <StoreRankCard 
-            name="The Workshop Coffee" 
-            visits={15} 
-            tierKey="storeTier.vip"
-            tier="Khách ruột (VIP)" 
-            nextRewardKey="storeReward.freePastry"
-            nextReward="Bánh ngọt miễn phí" 
-            progress={80} 
-            isLight={isLight}
-            onClick={() => setSelectedStoreRank({
-              name: "The Workshop Coffee", 
-              visits: 15, 
-              tierKey: "storeTier.vip",
-              tier: "Khách ruột (VIP)", 
-              nextRewardKey: "storeReward.freePastry",
-              nextReward: "Bánh ngọt miễn phí", 
-              progress: 80, 
-              reviews: 3,
-              achievements: [
-                { titleKey: 'storeAch.newTitle', title: t('tier.newLabel', 'Khách Mới'), descKey: 'storeAch.newDesc', desc: t('tier.firstVisit', 'Ghé quán lần đầu tiên'), achieved: true, date: '02/01/2026' },
-                { titleKey: 'storeAch.regularTitle', title: t('tier.regularLabel', 'Khách Quen'), descKey: 'storeAch.regularDesc', desc: t('tier.fiveVisits', 'Ghé quán 5 lần'), achieved: true, date: '15/03/2026' },
-                { titleKey: 'storeAch.vipTitle', title: t('tier.vipLabel', 'Khách Ruột (VIP)'), descKey: 'storeAch.vipDesc', desc: t('tier.tenVisits', 'Ghé quán 10 lần & viết 2 review'), achieved: true, date: '10/05/2026' },
-                { titleKey: 'storeAch.soulmateTitle', title: t('tier.soulmate', 'Tri Kỷ Cà Phê'), descKey: 'storeAch.soulmateDesc', desc: t('tier.twentyVisits', 'Ghé quán 20 lần'), achieved: false, progress: '15/20' }
-              ]
-            })}
-          />
-          <StoreRankCard 
-            name="SOK - Space of K" 
-            visits={5} 
-            tierKey="storeTier.regular"
-            tier="Khách quen (Regular)" 
-            nextRewardKey="storeReward.discount10"
-            nextReward="Giảm 10% hóa đơn" 
-            progress={40} 
-            isLight={isLight}
-            onClick={() => setSelectedStoreRank({
-              name: "SOK - Space of K", 
-              visits: 5, 
-              tierKey: "storeTier.regular",
-              tier: "Khách quen (Regular)", 
-              nextRewardKey: "storeReward.discount10",
-              nextReward: "Giảm 10% hóa đơn", 
-              progress: 40, 
-              reviews: 1,
-              achievements: [
-                { titleKey: 'storeAch.newTitle', title: t('tier.newLabel', 'Khách Mới'), descKey: 'storeAch.newDesc', desc: t('tier.firstVisit', 'Ghé quán lần đầu tiên'), achieved: true, date: '10/04/2026' },
-                { titleKey: 'storeAch.regularTitle', title: t('tier.regularLabel', 'Khách Quen'), descKey: 'storeAch.regularDesc', desc: t('tier.fiveVisits', 'Ghé quán 5 lần'), achieved: true, date: '20/06/2026' },
-                { titleKey: 'storeAch.vipTitle', title: t('tier.vipLabel', 'Khách Ruột (VIP)'), descKey: 'storeAch.vipDesc', desc: t('tier.tenVisits', 'Ghé quán 10 lần & viết 2 review'), achieved: false, progress: '5/10' },
-                { titleKey: 'storeAch.soulmateTitle', title: t('tier.soulmate', 'Tri Kỷ Cà Phê'), descKey: 'storeAch.soulmateDesc', desc: t('tier.twentyVisits', 'Ghé quán 20 lần'), achieved: false, progress: '5/20' }
-              ]
-            })}
-          />
-          <StoreRankCard 
-            name="Blanc. Cafe" 
-            visits={1} 
-            tierKey="storeTier.new"
-            tier="Khách mới (New)" 
-            nextRewardKey="storeReward.welcomeDrink"
-            nextReward="Nước chào mừng" 
-            progress={10} 
-            isLight={isLight}
-            onClick={() => setSelectedStoreRank({
-              name: "Blanc. Cafe", 
-              visits: 1, 
-              tierKey: "storeTier.new",
-              tier: "Khách mới (New)", 
-              nextRewardKey: "storeReward.welcomeDrink",
-              nextReward: "Nước chào mừng", 
-              progress: 10, 
-              reviews: 0,
-              achievements: [
-                { titleKey: 'storeAch.newTitle', title: t('tier.newLabel', 'Khách Mới'), descKey: 'storeAch.newDesc', desc: t('tier.firstVisit', 'Ghé quán lần đầu tiên'), achieved: true, date: '18/07/2026' },
-                { titleKey: 'storeAch.regularTitle', title: t('tier.regularLabel', 'Khách Quen'), descKey: 'storeAch.regularDesc', desc: t('tier.fiveVisits', 'Ghé quán 5 lần'), achieved: false, progress: '1/5' },
-                { titleKey: 'storeAch.vipTitle', title: t('tier.vipLabel', 'Khách Ruột (VIP)'), descKey: 'storeAch.vipDesc', desc: t('tier.tenVisits', 'Ghé quán 10 lần & viết 2 review'), achieved: false, progress: '1/10' },
-                { titleKey: 'storeAch.soulmateTitle', title: t('tier.soulmate', 'Tri Kỷ Cà Phê'), descKey: 'storeAch.soulmateDesc', desc: t('tier.twentyVisits', 'Ghé quán 20 lần'), achieved: false, progress: '1/20' }
-              ]
-            })}
-          />
+          {shopLoyalty.map(s => (
+            <StoreRankCard
+              key={s.shop_id}
+              name={s.shop_name}
+              visits={s.visits}
+              tierKey={s.tierKey}
+              tier={s.tier}
+              nextRewardKey={s.nextRewardKey}
+              nextReward={s.nextReward}
+              progress={s.progress}
+              isLight={isLight}
+              onClick={() => setSelectedStoreRank(s)}
+            />
+          ))}
+
+          {/* A title only exists after a real completed check-in, so a new account sees
+              guidance instead of invented shops. */}
+          {!loyaltyLoading && shopLoyalty.length === 0 && (
+            <div className={`rounded-2xl p-5 border text-center ${
+              isLight ? 'bg-white border-red-700/20 text-slate-600' : 'bg-[#1A1510] border-[#3E3023] text-[#A48F7A]'
+            }`}>
+              <Coffee size={22} className="mx-auto mb-2 opacity-60" />
+              <p className="text-xs font-bold mb-1">
+                {t('profile.noStoreTitlesTitle', 'Chưa có danh hiệu tại quán nào')}
+              </p>
+              <p className="text-[11px] leading-relaxed">
+                {t('profile.noStoreTitlesDesc', 'Hoàn tất check-in tại quán để mở khóa danh hiệu "Khách Mới" và bắt đầu tích lũy.')}
+              </p>
+            </div>
+          )}
         </div>
       </div>
 
@@ -1404,7 +1362,7 @@ function StoreProgressModal({ data, onClose, isLight }: { data: any, onClose: ()
           }`}>
             <Coffee size={40} />
           </div>
-          <h2 className={`text-2xl font-bold mb-1 ${isLight ? 'text-white' : 'text-[#EBE3DB]'}`}>{data.name}</h2>
+          <h2 className={`text-2xl font-bold mb-1 ${isLight ? 'text-white' : 'text-[#EBE3DB]'}`}>{data.shop_name}</h2>
           <span className={`font-bold px-3 py-1 rounded text-xs uppercase tracking-wider border ${
             isLight ? 'bg-white/20 text-white border-white/40' : 'bg-[#1A1510] text-[#D4AF37] border-[#3E3023]'
           }`}>{displayTier}</span>
@@ -1423,22 +1381,31 @@ function StoreProgressModal({ data, onClose, isLight }: { data: any, onClose: ()
             }`} style={{ width: `${data.progress}%` }} />
           </div>
           <p className="text-xs text-center opacity-80">
-            {5 - (data.visits % 5)} {t('profile.visits', 'lần ghé')} &rarr; <span className="font-bold text-red-600 dark:text-[#D4AF37]">{displayReward}</span>
+            {data.visitsToNext > 0 && (
+              <>{data.visitsToNext} {t('profile.visits', 'lần ghé')}</>
+            )}
+            {data.visitsToNext > 0 && data.reviewsToNext > 0 && ' + '}
+            {data.reviewsToNext > 0 && (
+              <>{data.reviewsToNext} {t('profile.reviewsCount', 'review')}</>
+            )}
+            {data.visitsToNext === 0 && data.reviewsToNext === 0
+              ? <span className="font-bold text-red-600 dark:text-[#D4AF37]">{t('profile.allTitlesUnlocked', 'Đã mở khóa mọi danh hiệu tại quán này')}</span>
+              : <> &rarr; <span className="font-bold text-red-600 dark:text-[#D4AF37]">{displayReward}</span></>}
           </p>
         </div>
 
         {/* Store Specific Achievements */}
-        {data.achievements && (
+        {data.titles && (
           <div className={`border rounded-2xl p-5 ${
             isLight ? 'bg-white text-slate-800 border-red-300' : 'bg-[#1A1510] text-[#EBE3DB] border-[#4A3B2C]'
           }`}>
             <h3 className="font-bold text-xs uppercase tracking-widest mb-4 opacity-90">
-              {t('profile.storeTitles', 'Danh hiệu tại')} {data.name}
+              {t('profile.storeTitles', 'Danh hiệu tại')} {data.shop_name}
             </h3>
             <div className="space-y-3">
-              {data.achievements.map((ach: any, idx: number) => {
+              {data.titles.map((ach: any, idx: number) => {
                 const titleText = ach.titleKey ? t(ach.titleKey, ach.title) : ach.title;
-                const descText = ach.descKey ? t(ach.descKey, ach.desc) : ach.desc;
+                const descText = ach.descKey ? t(ach.descKey, ach.description) : ach.description;
                 return (
                   <div key={idx} className={`p-3 rounded-xl border flex items-center justify-between ${
                     ach.achieved 

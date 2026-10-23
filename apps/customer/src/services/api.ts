@@ -3,6 +3,7 @@ import { HttpClient } from '@shared/api/http';
 import { AvailabilityResponse, BookingDTO } from '@shared/booking';
 import { LocalitySearchResponse } from '@shared/locality';
 import { ResolvedRank } from '@shared/ranks';
+import { ShopLoyalty } from '@shared/shopLoyalty';
 
 /** Customer-app session is stored separately from the shop app's session. */
 const TOKEN_KEY = 'mobler_customer_token';
@@ -80,6 +81,10 @@ class ApiService {
 
   public async getRewards() {
     return this.request<{ points: number; badges: string[]; vouchers: any[] }>('/me/rewards');
+  }
+
+  public async getShopLoyalty() {
+    return this.request<{ shops: ShopLoyalty[] }>('/me/shop-loyalty');
   }
 
   public async updateProfile(updates: Partial<UserAccount>) {
@@ -194,43 +199,6 @@ class ApiService {
     return this.request<{ message: string; booking: BookingData }>(`/bookings/${bookingId}/cancel`, {
       method: 'PUT',
       body: JSON.stringify({ reason })
-    });
-  }
-
-  public async runningLate(bookingId: string) {
-    return this.request<{ message: string; booking: BookingData; extended_min: number }>(
-      `/me/bookings/${bookingId}/running-late`,
-      { method: 'POST' }
-    );
-  }
-
-  public async getNotifications(limit = 50) {
-    return this.request<{ notifications: any[]; unread: number }>(`/me/notifications?limit=${limit}`);
-  }
-
-  public async markNotificationRead(id: string) {
-    return this.request<{ changed: boolean; unread: number }>(`/me/notifications/${id}/read`, { method: 'POST' });
-  }
-
-  public async markAllNotificationsRead() {
-    return this.request<{ changed: number; unread: number }>('/me/notifications/read-all', { method: 'POST' });
-  }
-
-  public async getPushKey() {
-    return this.request<{ enabled: boolean; publicKey: string }>('/push/key');
-  }
-
-  public async subscribePush(subscription: { endpoint: string; keys: { p256dh: string; auth: string } }) {
-    return this.request<{ message: string }>('/me/push/subscribe', {
-      method: 'POST',
-      body: JSON.stringify({ subscription })
-    });
-  }
-
-  public async unsubscribePush(endpoint: string) {
-    return this.request<{ removed: boolean }>('/me/push/unsubscribe', {
-      method: 'POST',
-      body: JSON.stringify({ endpoint })
     });
   }
 

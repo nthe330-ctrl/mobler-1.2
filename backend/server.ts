@@ -7,13 +7,12 @@ import { searchConsoleGamingCafe } from './server/consoleGaming';
 import { progressiveSpecialtySearch } from './server/progressiveSearch';
 import { freeOrSyntheticPlaces, registerFreePlacesRoutes } from './server/freePlacesRoutes';
 import { isPrivateIp, lookupIpLocation, normalizeIp } from './server/ipLocation';
-import express, { Request, Response } from 'express';
+import express, { NextFunction, Request, Response } from 'express';
 import path from 'path';
+import fsSync from 'fs';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { registerCoreRoutes } from './server/coreRoutes';
-import { startNoShowSweeper } from './server/noShow';
-import { initWebPush } from './server/webPush';
 
 
 
@@ -1539,17 +1538,88 @@ app.get('/api/telemetry/run-tests', async (req: Request, res: Response) => {
 });
 
 // ==================== START ====================
-// The backend is API-only. The customer app (apps/customer) and the shop app (apps/shop)
-// are built and hosted independently and both talk to this server under /api.
-
 app.use('/api', (_req: Request, res: Response) => {
   res.status(404).json({ error: 'API endpoint not found' });
 });
 
+/* ==================== DEMO: serve the built front-ends ====================
+ *
+ * Normally the backend is API-only and each app is hosted separately. That does not
+ * survive a tunnel: a tunnel exposes ONE port, and the apps live on four. So when
+ * SERVE_STATIC=true this process also serves the built apps, putting everything on a
+ * single origin:
+ *
+ *     /        → apps/customer/dist
+ *     /shop    → apps/shop/dist
+ *     /admin   → apps/admin/dist
+ *     /api     → this server
+ *
+ * Same origin means the front-ends' relative `/api` calls just work — no Vite dev proxy,
+ * no CORS, no VITE_API_URL. It also keeps the Vite dev server off the public internet.
+ *
+ * Opt-in, and skipped for any app that has not been built, so plain `npm run dev` is
+ * completely unaffected.
+ */
+if (process.env.SERVE_STATIC === 'true') {
+  /* Resolve apps/ from the working directory, not __dirname: package.json is
+     "type": "module", so __dirname does not exist when this runs under tsx (it only
+     exists in the esbuild CJS bundle). The server is started from backend/ in dev and
+     may be started from the repo root in the demo, so check both. */
+  const appsDir = [
+    path.resolve(process.cwd(), 'apps'),
+    path.resolve(process.cwd(), '..', 'apps'),
+  ].find(p => fsSync.existsSync(p));
+
+  if (!appsDir) {
+    console.warn('[MOBLER API] SERVE_STATIC=true but no apps/ directory found — serving API only.');
+  }
+
+  const mounts: [string, string][] = !appsDir ? [] : [
+    ['/shop', path.join(appsDir, 'shop', 'dist')],
+    ['/admin', path.join(appsDir, 'admin', 'dist')],
+    ['/', path.join(appsDir, 'customer', 'dist')],   // last: '/' would shadow the others
+  ];
+
+  for (const [route, dir] of mounts) {
+    const index = path.join(dir, 'index.html');
+    if (!fsSync.existsSync(index)) {
+      console.warn(`[MOBLER API] SERVE_STATIC: no build at ${dir} — ${route} not served. Run: npm run demo:build`);
+      continue;
+    }
+    app.use(route, express.static(dir));
+    // SPA fallback for this mount only. Anything under the mount that is not a real file
+    // returns that app's index.html; /api is already handled above, so it can't be caught.
+    app.use(route, (req: Request, res: Response, next: NextFunction) => {
+      if (req.method !== 'GET' && req.method !== 'HEAD') return next();
+      res.sendFile(index);
+    });
+    console.log(`[MOBLER API] serving ${route} from ${dir}`);
+  }
+}
+
+/**
+ * Last-resort error handler for /api.
+ *
+ * Without this, an unhandled throw in any handler falls through to Express' default
+ * handler, which answers with an HTML error page. API clients parse the body as JSON, so
+ * an HTML body leaves them with no message at all — the shared HttpClient then falls back
+ * to "Yêu cầu thất bại (500)", which says nothing about what broke. Worse, the stack was
+ * never logged, so the failure left no trace to investigate.
+ *
+ * So: always answer JSON, log the stack server-side, and never send internals to the client.
+ * Express identifies an error handler by its four parameters — keep `next` even if unused.
+ */
+app.use('/api', (err: any, req: Request, res: Response, _next: NextFunction) => {
+  const ref = Math.random().toString(36).slice(2, 10);
+  console.error(`[MOBLER API] unhandled error ref=${ref} ${req.method} ${req.originalUrl}\n`, err);
+  if (res.headersSent) return;
+  res.status(500).json({
+    error: 'Hệ thống gặp lỗi khi xử lý yêu cầu. Vui lòng thử lại.',
+    code: 'INTERNAL_ERROR',
+    ref // lets a user report point at the exact line in the server log
+  });
+});
+
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`[MOBLER API] Server running on http://0.0.0.0:${PORT}`);
-  // Confirmed bookings stop holding their table once their grace window closes.
-  startNoShowSweeper();
-  // Push is optional: if no keys can be loaded the inbox still works on its own.
-  initWebPush();
 });

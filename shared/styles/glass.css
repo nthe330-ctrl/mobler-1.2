@@ -1,0 +1,87 @@
+/**
+ * Mobler — glass surface for the floating bottom bar
+ * ==================================================
+ *
+ * Scope is deliberately small: the only thing using this is the customer app's floating
+ * bottom navigation (`glass-nav` in apps/customer/src/App.tsx). Everything else in both apps
+ * keeps the styling it already had.
+ *
+ * It hooks onto `.light-theme` / `.dark-theme`, the classes ThemeContext already puts on
+ * <html>, so the existing theme toggle keeps working untouched.
+ *
+ * The palette is not invented — these values are taken from the hexes already used across the
+ * apps: brown surfaces with a gold accent in dark, white over burgundy hairlines in light.
+ *
+ * NOTE: this file lives outside each app's Vite root, so a change here is not always picked
+ * up by a running dev server. Restart `npm run dev` after editing it.
+ */
+
+/* Everything below sits in Tailwind's `components` layer.
+ *
+ * It has to be declared here, not as `@import ... layer(components)` at the call site:
+ * Tailwind v4 inlines the import and drops the layer() qualifier, which leaves these rules
+ * unlayered — and unlayered CSS outranks every layer, so this would silently beat the
+ * bg-* and border-* utilities sitting on the same element. Inside `components` the glass is
+ * only a default surface and any utility in the markup still wins.
+ */
+@layer components {
+
+  /* Order matters: `:root` matches <html> with the same specificity as `.dark-theme`, so
+   * whichever is declared LAST wins. Light carries the :root defaults and must come first,
+   * dark second — reversed, the dark class applies but the light palette still resolves and
+   * the theme toggle appears to do nothing.
+   *
+   * The :root default also covers the shop app, which mounts no ThemeProvider and therefore
+   * never gets a theme class on <html>. */
+
+  :root,
+  .light-theme {
+    --surface: 255 255 255;
+    --line: 128 0 32;            /* #800020, the light-mode brand red */
+    --line-alpha-strong: 0.22;
+    --glass-alpha-nav: 0.88;
+    --sheen: 255 255 255;
+    --sheen-alpha: 0.6;
+    --shadow-soft: 0 10px 28px -14px rgb(128 0 32 / 0.22), 0 2px 8px -4px rgb(128 0 32 / 0.12);
+  }
+
+  .dark-theme {
+    --surface: 37 30 24;         /* #251E18, warm brown */
+    --line: 74 59 44;            /* #4A3B2C */
+    --line-alpha-strong: 0.95;
+    --glass-alpha-nav: 0.82;
+    --sheen: 255 255 255;
+    --sheen-alpha: 0.07;
+    --shadow-soft: 0 10px 30px -12px rgb(0 0 0 / 0.75), 0 2px 8px -4px rgb(0 0 0 / 0.5);
+  }
+
+  /* The bar itself. It sets only its surface — background, border, shadow, blur — and leaves
+   * shape, size, position and spacing to the utilities in the markup. */
+  .glass-nav {
+    -webkit-backdrop-filter: blur(32px) saturate(150%);
+    backdrop-filter: blur(32px) saturate(150%);
+    background-color: rgb(var(--surface) / var(--glass-alpha-nav));
+    border: 1px solid rgb(var(--line) / var(--line-alpha-strong));
+    /* the inset line along the top edge is what reads as glass catching light */
+    box-shadow:
+      inset 0 1px 0 rgb(var(--sheen) / var(--sheen-alpha)),
+      var(--shadow-soft);
+  }
+
+  /* Without backdrop-filter (older Firefox, some embedded webviews) drop the transparency
+   * rather than leave the labels floating over whatever scrolls underneath. */
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .glass-nav { background-color: rgb(var(--surface) / 0.97); }
+  }
+
+  /* A blurred layer is cheap on desktop and not on a mid-range phone, so narrow screens get
+   * a lighter blur and lean on opacity instead. */
+  @media (max-width: 640px) {
+    .glass-nav {
+      -webkit-backdrop-filter: blur(22px) saturate(150%);
+      backdrop-filter: blur(22px) saturate(150%);
+    }
+    :root, .light-theme { --glass-alpha-nav: 0.92; }
+    .dark-theme         { --glass-alpha-nav: 0.88; }
+  }
+}

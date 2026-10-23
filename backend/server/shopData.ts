@@ -2,7 +2,7 @@ import crypto from 'crypto';
 import express, { Express, Request, Response } from 'express';
 import fs from 'fs';
 import path from 'path';
-import { db, VoucherRecord } from './db';
+import { db, isSettledOrder, VoucherRecord } from './db';
 import { AuthRequest, authenticateToken, requireAccount, requireShopAccess } from './auth';
 import { publish, topics } from './realtime';
 import { isActiveBooking } from '../../shared/booking';
@@ -236,15 +236,13 @@ export function registerShopDataRoutes(app: Express) {
       const c = get(b.user_id, b.user_name, b.user_phone);
       c.bookingCount++;
       if (b.status === 'completed' || b.status === 'arrived') c.visitCount++;
-      if (b.status !== 'cancelled' && b.status !== 'rejected') c.totalSpent += b.grand_total || 0;
       const when = `${b.date}T${b.time}`;
       if (!c.joinDate || when < c.joinDate) c.joinDate = when;
       if ((b.status === 'completed' || b.status === 'arrived') && when > c.lastVisit) c.lastVisit = when;
     }
     for (const o of db.getOrdersByShopId(shopId)) {
-      if (o.booking_id) continue; // already counted through the booking
       const c = get(o.user_id, o.user_name, '');
-      if (o.status !== 'cancelled') c.totalSpent += o.total || 0;
+      if (isSettledOrder(o)) c.totalSpent += o.total || 0;
       o.items.forEach(i => c._items.set(i.name, (c._items.get(i.name) || 0) + i.quantity));
       if (!c.joinDate || o.created_at < c.joinDate) c.joinDate = o.created_at;
       if (o.created_at > c.lastVisit) c.lastVisit = o.created_at;
@@ -276,7 +274,8 @@ export function registerShopDataRoutes(app: Express) {
     const shopId = req.params.id;
     const days = Math.min(90, Math.max(7, Number(req.query.days) || 14));
     const bookings = db.getBookingsByShopId(shopId);
-    const orders = db.getOrdersByShopId(shopId).filter(o => o.status !== 'cancelled');
+    const orders = db.getOrdersByShopId(shopId);
+    const settledOrders = orders.filter(isSettledOrder);
     const reviews = db.getReviewsByShopId(shopId);
 
     const series: { date: string; revenue: number; bookings: number; guests: number; orders: number }[] = [];
@@ -286,7 +285,7 @@ export function registerShopDataRoutes(app: Express) {
       series.push({ date: d, revenue: 0, bookings: 0, guests: 0, orders: 0 });
     }
     const idx = new Map(series.map((s, i) => [s.date, i]));
-    for (const o of orders) {
+    for (const o of settledOrders) {
       const i = idx.get(dayKey(o.created_at));
       if (i !== undefined) {
         series[i].revenue += o.total || 0;
@@ -303,7 +302,7 @@ export function registerShopDataRoutes(app: Express) {
     }
 
     const itemCount = new Map<string, { name: string; quantity: number; revenue: number }>();
-    for (const o of orders) for (const it of o.items) {
+    for (const o of settledOrders) for (const it of o.items) {
       const cur = itemCount.get(it.name) || { name: it.name, quantity: 0, revenue: 0 };
       cur.quantity += it.quantity;
       cur.revenue += (it.price || 0) * it.quantity;
@@ -313,13 +312,13 @@ export function registerShopDataRoutes(app: Express) {
     bookings.filter(b => b.status !== 'cancelled' && b.status !== 'rejected').forEach(b => hours[Number(b.time.slice(0, 2))].bookings++);
 
     const today = now.toISOString().slice(0, 10);
-    const totalRevenue = orders.reduce((s, o) => s + (o.total || 0), 0);
+    const totalRevenue = settledOrders.reduce((s, o) => s + (o.total || 0), 0);
     const ratings = reviews.map((r: any) => r.metrics?.accuracy).filter((x: any) => typeof x === 'number');
     res.json({
       totals: {
         revenue: totalRevenue,
-        todayRevenue: orders.filter(o => dayKey(o.created_at) === today).reduce((s, o) => s + (o.total || 0), 0),
-        orders: orders.length,
+        todayRevenue: settledOrders.filter(o => dayKey(o.created_at) === today).reduce((s, o) => s + (o.total || 0), 0),
+        orders: settledOrders.length,
         bookings: bookings.length,
         activeBookings: bookings.filter(b => isActiveBooking(b.status)).length,
         pendingBookings: bookings.filter(b => b.status === 'pending').length,

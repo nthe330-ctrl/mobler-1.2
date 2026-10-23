@@ -12,7 +12,7 @@ import {
   slotsOverlap
 } from '../../shared/booking';
 
-export const SCHEMA_VERSION = 5;
+export const SCHEMA_VERSION = 4;
 export const DEFAULT_SLOT_DURATION_MIN = Number(process.env.BOOKING_SLOT_DURATION_MIN || 120);
 
 export interface UserRole {
@@ -41,12 +41,6 @@ export interface UserRecord {
   achievements?: { unlocked: Record<string, string>; updated_at: string };
   /** Reward vouchers granted by achievements, usable only by this customer. */
   wallet_vouchers?: any[];
-  /**
-   * Times a shop deliberately marked this customer as not having turned up. Kept as
-   * dated entries rather than a running total so reliability can later be read as a
-   * rate inside a window, and so a wrongly recorded one can be removed again.
-   */
-  no_show_history?: { booking_id: string; shop_id: string; at: string }[];
   notifyPromos: boolean;
   notifyBookings: boolean;
   created_at: string;
@@ -84,6 +78,11 @@ export interface OrderRecord {
   payment_status: 'pending' | 'paid';
   note?: string;
   created_at: string;
+}
+
+/** Only shop-confirmed payments count as realized revenue. */
+export function isSettledOrder(order: Pick<OrderRecord, 'status' | 'payment_status'>): boolean {
+  return order.status === 'paid' && order.payment_status === 'paid';
 }
 
 export interface VoucherRecord {
@@ -133,19 +132,6 @@ export interface DatabaseSchema {
   favorites: { user_id: string; shop_id: string; created_at: string }[];
   /** Per-shop data owned by the shop (menu, vouchers…), created in the shop app. */
   shop_data?: Record<string, { menu?: any[]; vouchers?: any[] }>;
-  /**
-   * Browsers a person asked to be pushed to. One account can have several — a phone,
-   * a laptop, a shop tablet — and each subscription belongs to exactly one browser.
-   */
-  push_subscriptions?: {
-    id: string;
-    user_id: string;
-    endpoint: string;
-    keys: { p256dh: string; auth: string };
-    created_at: string;
-    /** Consecutive send failures; a subscription the browser has dropped is pruned. */
-    failures?: number;
-  }[];
   notifications: {
     id: string;
     user_id: string;
@@ -365,7 +351,6 @@ function createInitialSeed(): DatabaseSchema {
 
   return {
     schema_version: SCHEMA_VERSION,
-    push_subscriptions: [],
     users,
     shops,
     products,
@@ -597,6 +582,7 @@ class DatabaseManager {
     const idx = this.db.orders.findIndex(o => o.id === id);
     if (idx === -1) return null;
     this.db.orders[idx].status = status;
+    if (status === 'paid') this.db.orders[idx].payment_status = 'paid';
     this.saveDatabase();
     return this.db.orders[idx];
   }
@@ -700,8 +686,6 @@ function migrateDatabase(data: any): { db: DatabaseSchema; changed: boolean } {
       ? { ...u, points: 0, badges: [], achievements: { unlocked: {}, updated_at: new Date().toISOString() }, wallet_vouchers: u.wallet_vouchers || [] }
       : u
   );
-  // v5: browsers can be pushed to even when no tab is open.
-  data.push_subscriptions = data.push_subscriptions || [];
   data.schema_version = SCHEMA_VERSION;
   return { db: data as DatabaseSchema, changed: true };
 }

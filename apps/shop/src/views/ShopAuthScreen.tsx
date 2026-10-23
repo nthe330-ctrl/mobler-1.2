@@ -1,5 +1,5 @@
-import { useState, FormEvent, ReactNode } from 'react';
-import { AlertCircle, CalendarCheck, Loader2, LogIn, Radio, Store, UserPlus, Bell, MapPin } from 'lucide-react';
+import { useState, useEffect, useRef, FormEvent, ReactNode } from 'react';
+import { AlertCircle, CalendarCheck, Loader2, LogIn, Radio, Store, UserPlus, Bell, MapPin, CupSoda, Sparkles } from 'lucide-react';
 import { useShopAuth } from '../context/ShopAuthContext';
 import { PHONE_REGEX, normalizePhone } from '@shared/booking';
 
@@ -16,8 +16,31 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
   );
 }
 
+const BOBA = [1, 2, 3, 4, 5, 6, 7, 8, 9] as const;
+
 export default function ShopAuthScreen() {
   const { login, register } = useShopAuth();
+  const sceneRef = useRef<HTMLDivElement>(null);
+
+  /* Pointer parallax: one passive listener, coalesced into a single rAF, writing two
+     custom properties the objects read via --d. No per-frame loop, nothing running when
+     the pointer is still. Skipped on touch and when reduced motion is requested. */
+  useEffect(() => {
+    const el = sceneRef.current;
+    if (!el) return;
+    if (!window.matchMedia('(pointer: fine)').matches) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    let raf = 0, mx = 0, my = 0;
+    const apply = () => { raf = 0; el.style.setProperty('--mx', `${mx}px`); el.style.setProperty('--my', `${my}px`); };
+    const onMove = (e: PointerEvent) => {
+      const r = el.getBoundingClientRect();
+      mx = ((e.clientX - r.left) / r.width - 0.5) * -26;
+      my = ((e.clientY - r.top) / r.height - 0.5) * -18;
+      if (!raf) raf = requestAnimationFrame(apply);
+    };
+    el.addEventListener('pointermove', onMove, { passive: true });
+    return () => { el.removeEventListener('pointermove', onMove); if (raf) cancelAnimationFrame(raf); };
+  }, []);
   const [tab, setTab] = useState<'login' | 'register'>('login');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -103,37 +126,43 @@ export default function ShopAuthScreen() {
   };
 
   return (
-    <div className="min-h-[100dvh] bg-gray-50 flex flex-col lg:flex-row">
-      {/* Brand panel */}
-      <aside className="lg:w-[42%] bg-gradient-to-br from-red-700 via-red-800 to-rose-950 text-white px-6 py-8 lg:p-12 flex flex-col justify-between">
-        <div className="flex items-center gap-2.5">
-          <div className="w-10 h-10 rounded-xl bg-white text-red-700 flex items-center justify-center font-black">M</div>
-          <div>
-            <p className="font-black text-lg leading-tight">Mobler Shop</p>
-            <p className="text-xs text-red-100">Ứng dụng dành cho cửa hàng</p>
-          </div>
-        </div>
-        <div className="hidden lg:block space-y-6 my-10">
-          <h1 className="text-3xl font-black leading-tight">Nhận đặt bàn trực tuyến,<br />cập nhật theo thời gian thực.</h1>
-          <ul className="space-y-4 text-sm text-red-50">
-            <li className="flex gap-3"><Bell size={18} className="shrink-0 mt-0.5" /> Báo ngay khi khách gửi yêu cầu đặt bàn</li>
-            <li className="flex gap-3"><CalendarCheck size={18} className="shrink-0 mt-0.5" /> Xác nhận, từ chối, check-in khách chỉ với một chạm</li>
-            <li className="flex gap-3"><Radio size={18} className="shrink-0 mt-0.5" /> Sơ đồ bàn đồng bộ trực tiếp với ứng dụng khách hàng</li>
-          </ul>
-        </div>
-        <p className="hidden lg:block text-xs text-red-200">Khách hàng đặt bàn qua ứng dụng Mobler. Tài khoản cửa hàng tách riêng với tài khoản khách hàng.</p>
-      </aside>
+    /* overflow-x-clip, not overflow-hidden. The scene still has to clip the drifting backdrop
+       and the cut-outs sideways, but `hidden` clips VERTICALLY too without creating a scroll
+       container — so the register form, which is taller than the viewport, was cut off and its
+       submit button could not be reached at any screen size. `clip` on one axis leaves the
+       other visible, so the page scrolls normally. */
+    <div ref={sceneRef} className="shop-auth-scene relative isolate min-h-[100dvh] overflow-x-clip text-white">
+      <div className="shop-auth-backdrop" aria-hidden="true" />
+      <div className="shop-auth-shade" aria-hidden="true" />
+      {/* Real cut-outs lifted from the same illustration (see /boba), so these drift
+          independently while the untouched artwork stays behind them. Decorative only:
+          aria-hidden, pointer-events:none, and below the header/card/dock. */}
+      {BOBA.map(n => (
+        <span key={n} className={`boba boba-${n} ${n <= 2 ? 'boba-near' : n <= 5 ? 'boba-mid' : 'boba-far'}`} aria-hidden="true" />
+      ))}
 
-      {/* Form */}
-      <main className="flex-1 flex items-start lg:items-center justify-center px-4 py-8 lg:p-12">
-        <div className="w-full max-w-lg">
-          <div className="flex p-1 mb-6 rounded-xl bg-gray-200/70 text-sm font-bold">
+      <header className="relative z-10 flex items-center justify-between px-5 py-5 sm:px-9 sm:py-7">
+        <div className="flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/50 bg-white/80 text-red-700 shadow-lg backdrop-blur-xl"><CupSoda size={23} /></div>
+          <div><p className="font-black leading-tight tracking-tight">Mobler Shop</p><p className="text-xs text-white/75">Ứng dụng dành cho cửa hàng</p></div>
+        </div>
+        <div className="hidden items-center gap-2 rounded-full border border-white/25 bg-white/10 px-4 py-2 text-xs text-white/85 shadow-lg backdrop-blur-xl sm:flex"><Sparkles size={14} /> Không gian quản lý cửa hàng</div>
+      </header>
+
+      <main className="relative z-10 flex min-h-[calc(100dvh-190px)] items-center justify-center px-4 pb-32 pt-3 sm:px-8 sm:pb-36">
+        <div className="w-full max-w-[440px]">
+          <div className="mb-5 text-center drop-shadow-lg">
+            <p className="mb-2 text-xs font-bold uppercase tracking-[.24em] text-white/85">Chào mừng đến với Mobler</p>
+            <h1 className="text-3xl font-black tracking-tight sm:text-4xl">Quán bạn, luôn trong tầm tay</h1>
+            <p className="mt-2 text-sm text-white/85">Nhận đặt bàn và quản lý quán theo thời gian thực.</p>
+          </div>
+          <div className="mb-3 flex rounded-2xl border border-white/35 bg-white/15 p-1.5 text-sm font-bold shadow-xl backdrop-blur-2xl">
             {([['login', 'Đăng nhập', <LogIn key="i" size={15} />], ['register', 'Đăng ký cửa hàng', <UserPlus key="i" size={15} />]] as const).map(([id, label, icon]) => (
               <button
                 key={id}
                 type="button"
                 onClick={() => { setTab(id); setError(null); }}
-                className={`flex-1 py-2.5 rounded-lg flex items-center justify-center gap-2 transition ${tab === id ? 'bg-white text-red-700 shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}
+                className={`flex-1 rounded-xl py-3 flex items-center justify-center gap-2 transition ${tab === id ? 'bg-white/90 text-red-700 shadow-md backdrop-blur-xl' : 'text-white/90 hover:bg-white/10'}`}
               >
                 {icon} {label}
               </button>
@@ -141,17 +170,17 @@ export default function ShopAuthScreen() {
           </div>
 
           {error && (
-            <div role="alert" className="mb-4 flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm text-rose-700">
+            <div role="alert" className="mb-4 flex items-start gap-2 rounded-xl border border-rose-200 bg-white/90 px-3 py-2.5 text-sm text-rose-700 shadow-lg backdrop-blur-xl">
               <AlertCircle size={16} className="mt-0.5 shrink-0" />
               <span>{error}</span>
             </div>
           )}
 
           {tab === 'login' ? (
-            <form onSubmit={onLogin} className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 space-y-4">
+            <form onSubmit={onLogin} className="shop-glass-card rounded-[28px] border border-white/75 p-6 shadow-2xl shadow-rose-950/25 backdrop-blur-2xl sm:p-7 space-y-4">
               <div>
                 <h2 className="text-xl font-black text-gray-900">Đăng nhập cửa hàng</h2>
-                <p className="text-sm text-gray-500 mt-1">Dùng tài khoản cửa hàng, không phải tài khoản khách hàng.</p>
+                <p className="text-sm text-gray-600 mt-1">Dùng tài khoản cửa hàng, không phải tài khoản khách hàng.</p>
               </div>
               <Field label="Số điện thoại hoặc email">
                 <input className={inputCls} autoComplete="username" value={identifier} onChange={e => setIdentifier(e.target.value)} placeholder="0912 345 678" />
@@ -162,13 +191,18 @@ export default function ShopAuthScreen() {
               <button disabled={busy} className="w-full py-3 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-60">
                 {busy ? <Loader2 size={16} className="animate-spin" /> : <LogIn size={16} />} Đăng nhập
               </button>
-              <p className="text-center text-sm text-gray-500">
+                <p className="text-center text-sm text-gray-600">
                 Quán chưa có tài khoản?{' '}
                 <button type="button" onClick={() => { setTab('register'); setError(null); }} className="font-bold text-red-700 underline">Đăng ký cửa hàng</button>
               </p>
             </form>
           ) : (
-            <form onSubmit={onRegister} className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 space-y-5">
+            // No max-height / internal scroll here. Capping the card at 65dvh clipped it in
+            // the middle of a field, and the 6px translucent scrollbar is invisible against
+            // the light card, so it read as a broken form rather than a scrollable one. The
+            // page scrolls instead, and main's bottom padding keeps the submit button clear
+            // of the floating dock.
+            <form onSubmit={onRegister} className="shop-glass-card rounded-[28px] border border-white/75 p-6 shadow-2xl shadow-rose-950/25 backdrop-blur-2xl sm:p-7 space-y-5">
               <div>
                 <h2 className="text-xl font-black text-gray-900">Đăng ký cửa hàng</h2>
                 <p className="text-sm text-gray-500 mt-1">Sau khi đăng ký, quán xuất hiện ngay trên ứng dụng khách hàng và nhận đặt bàn trực tuyến.</p>
@@ -211,6 +245,25 @@ export default function ShopAuthScreen() {
           )}
         </div>
       </main>
+
+      {/* Centred with inset + margin:auto, NOT with -translate-x-1/2: Tailwind v4 compiles
+          translate-* to the `translate` property while shop-dock-float animates `transform`.
+          Both apply, so a -50% utility plus a translate(-50%) keyframe shifts the bar a full
+          -100% of its own width and hangs it off the left edge. Keep the float on translateY
+          only and let margin do the centring — it also survives prefers-reduced-motion, which
+          switches the animation off.
+          Each cell is flex-1 min-w-0 with a truncating label, so a longer string can shrink
+          instead of pushing a sibling out of the bar. */}
+      <nav aria-label="Tính năng Mobler Shop" className="shop-floating-dock fixed inset-x-3 bottom-4 z-20 mx-auto flex w-auto max-w-[720px] items-center justify-between gap-1 rounded-[20px] border border-white/40 bg-white/20 px-2 py-2 shadow-2xl shadow-rose-950/25 backdrop-blur-2xl sm:inset-x-5 sm:bottom-7 sm:gap-2 sm:rounded-[24px] sm:px-6 sm:py-3.5">
+        {([[Bell, 'Báo đặt bàn tức thì', 'Thông báo'], [CalendarCheck, 'Quản lý lịch đặt', 'Lịch đặt'], [Radio, 'Đồng bộ trực tiếp', 'Đồng bộ']] as const).map(([Icon, long, short], i) => (
+          <div key={long} className="flex min-w-0 flex-1 items-center gap-1.5 sm:gap-2.5">
+            {i > 0 && <span className="mr-1 hidden h-8 w-px shrink-0 bg-white/30 sm:mr-2 sm:block" />}
+            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white/30 sm:h-9 sm:w-9 sm:rounded-xl"><Icon size={16} /></span>
+            <span className="hidden min-w-0 truncate text-xs font-semibold sm:block">{long}</span>
+            <span className="min-w-0 truncate text-[10px] font-semibold sm:hidden">{short}</span>
+          </div>
+        ))}
+      </nav>
     </div>
   );
 }

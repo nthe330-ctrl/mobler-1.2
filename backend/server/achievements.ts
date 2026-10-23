@@ -3,13 +3,24 @@ import { db, UserRecord } from './db';
 import {
   ACHIEVEMENTS, AchievementDef, AchievementStats, EMPTY_STATS, buildProgress
 } from '../../shared/achievements';
+import { ShopLoyalty, buildShopLoyalty } from '../../shared/shopLoyalty';
+import { CHECKED_IN_STATUSES as CHECKED_IN_BOOKING_STATUSES } from '../../shared/booking';
 
 /**
- * Only a COMPLETED booking counts — the customer actually checked in at the shop.
- * Confirmed or merely "arrived" bookings do not count toward any mission.
+ * A booking counts from the moment the guest is really checked in — that is, when the shop
+ * scanned the guest's QR and the booking moved to `arrived` — and keeps counting once the
+ * visit is wrapped up as `completed`.
+ *
+ * Counting both statuses is what makes mission progress idempotent: every metric below is
+ * RECOMPUTED from the bookings table, and a booking holds exactly one status at a time, so
+ * the same visit contributes exactly 1 whether it currently reads `arrived` or `completed`.
+ * Re-scanning the code, reloading the page or the shop later pressing "Hoàn tất" therefore
+ * cannot advance a bar twice. Rewards are additionally guarded by user.achievements.unlocked.
+ *
+ * `pending`, `confirmed`, `cancelled` and `rejected` never count — no visit happened.
  */
-const VISIT_STATUSES = ['completed'];
-const CHECKED_IN_STATUSES = ['completed'];
+const VISIT_STATUSES = CHECKED_IN_BOOKING_STATUSES;
+const CHECKED_IN_STATUSES = CHECKED_IN_BOOKING_STATUSES;
 
 export interface PersonalVoucher {
   id: string;
@@ -50,7 +61,7 @@ function distanceKm(a: { lat: number; lng: number }, b: { lat: number; lng: numb
 }
 
 /**
- * Cumulative distance travelled between consecutive completed check-ins, in km.
+ * Cumulative distance travelled between consecutive check-ins, in km.
  * Visits are walked in chronological order; two check-ins at the same shop add 0,
  * and a shop without coordinates is skipped rather than guessed.
  */
@@ -162,6 +173,55 @@ export function syncUserAchievements(userId: string): SyncResult {
     } as any);
   }
   return { stats, newlyUnlocked };
+}
+
+/**
+ * Per-shop loyalty titles, computed from the same real activity as the global missions:
+ * checked-in bookings (`arrived` or `completed`) and this customer's own reviews. Shops the
+ * customer has never actually checked in at are left out entirely — no title to show yet.
+ */
+export function getShopLoyalty(userId: string): ShopLoyalty[] {
+  const visits = db.getBookingsByUserId(userId).filter(b => VISIT_STATUSES.includes(b.status));
+  const reviews = db.getRawDb().reviews.filter((r: any) => r.userId === userId);
+
+  const byShop = new Map<string, { visitDates: string[]; reviewDates: (string | null)[]; name: string; image?: string }>();
+
+  for (const b of visits) {
+    const shop = db.getShopById(b.shop_id);
+    const entry = byShop.get(b.shop_id) || {
+      visitDates: [],
+      reviewDates: [],
+      name: shop?.name || b.shop_name,
+      image: shop?.coverImage || shop?.images?.[0] || b.shop_image
+    };
+    // The visit happened at QR check-in, not on the date the table was booked for — a
+    // reservation date can sit in the future, a real check-in never can. Fall back to the
+    // completion stamp for visits recorded before check-in was tracked.
+    const history = b.status_history || [];
+    const arrivedAt = history.filter(h => h.status === 'arrived').pop()?.at;
+    const completedAt = history.filter(h => h.status === 'completed').pop()?.at;
+    entry.visitDates.push(arrivedAt || completedAt || b.date);
+    byShop.set(b.shop_id, entry);
+  }
+
+  for (const r of reviews) {
+    const entry = byShop.get((r as any).shop_id);
+    // Only count reviews for shops the customer has actually checked in at.
+    if (!entry) continue;
+    entry.reviewDates.push((r as any).created_at || null);
+  }
+
+  return [...byShop.entries()]
+    .map(([shop_id, e]) =>
+      buildShopLoyalty({
+        shop_id,
+        shop_name: e.name,
+        shop_image: e.image,
+        visitDates: e.visitDates,
+        reviewDates: e.reviewDates
+      })
+    )
+    .sort((a, b) => b.visits - a.visits || a.shop_name.localeCompare(b.shop_name));
 }
 
 /** Full achievement list with live progress for display. */

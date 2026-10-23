@@ -592,10 +592,14 @@ export default function BookingView({ id, shops, initialVoucher, onNavigate }: P
 
           <div className="text-center">
             <h1 className="text-sm md:text-base font-bold truncate max-w-[200px] md:max-w-md">
-              {step === 'booking' && `1. ${t('booking.step1', 'Chọn bàn & Giờ')}`}
-              {step === 'menu' && `2. ${t('booking.step2', 'Chọn món trước')}`}
-              {step === 'confirm' && `3. ${t('booking.step3', 'Xác nhận đặt bàn')}`}
-              {step === 'payment' && `4. ${t('booking.step4', 'Thanh toán')}`}
+              {/* The step number is already part of every booking.stepN translation
+                  ("1. Choose Zone & Table", "1. Chọn vị trí & bàn", …), so prefixing one here
+                  printed it twice in every language. The fallbacks carry the number instead,
+                  for the case where a key is missing. */}
+              {step === 'booking' && t('booking.step1', '1. Chọn bàn & Giờ')}
+              {step === 'menu' && t('booking.step2', '2. Chọn món trước')}
+              {step === 'confirm' && t('booking.step3', '3. Xác nhận đặt bàn')}
+              {step === 'payment' && t('booking.step4', '4. Thanh toán')}
               {step === 'success' && t('booking.success', 'Thành công')}
             </h1>
             <p className={`text-[10px] md:text-xs truncate max-w-[200px] md:max-w-md ${isLight ? 'text-red-900 font-semibold' : 'text-[#D4AF37]'}`}>
@@ -687,7 +691,7 @@ export default function BookingView({ id, shops, initialVoucher, onNavigate }: P
         {step === 'booking' && (
           <div className="animate-in fade-in slide-in-from-right-3 space-y-5">
             {/* View Switcher Tabs: Calendar / Clock / Both */}
-            <div className={`p-1.5 rounded-2xl border flex items-center gap-1 text-xs font-bold transition-all ${
+            <div className={`p-1.5 rounded-2xl border flex items-center gap-1 text-xs font-bold transition-all overflow-hidden ${
               isLight 
                 ? 'bg-red-50/80 border-red-200 shadow-sm' 
                 : 'bg-[#18130F] border-[#3E3023]'
@@ -695,7 +699,7 @@ export default function BookingView({ id, shops, initialVoucher, onNavigate }: P
               <button
                 type="button"
                 onClick={() => setDateTimeTab('both')}
-                className={`flex-1 py-2 px-3 rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+                className={`flex-1 min-w-0 py-2 px-3 rounded-xl transition-all flex items-center justify-center gap-1.5 ${
                   dateTimeTab === 'both'
                     ? isLight 
                       ? 'bg-white text-[#800020] shadow-sm font-extrabold' 
@@ -703,14 +707,14 @@ export default function BookingView({ id, shops, initialVoucher, onNavigate }: P
                     : isLight ? 'text-slate-600 hover:text-slate-900' : 'text-[#A48F7A] hover:text-[#EBE3DB]'
                 }`}
               >
-                <span>⚡</span>
-                <span className="truncate">{t('booking.dateTimeTabs', 'Lịch & Giờ hẹn')}</span>
+                <span className="shrink-0">⚡</span>
+                <span className="truncate min-w-0">{t('booking.dateTimeTabs', 'Lịch & Giờ hẹn')}</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setDateTimeTab('calendar')}
-                className={`flex-1 py-2 px-3 rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+                className={`flex-1 min-w-0 py-2 px-3 rounded-xl transition-all flex items-center justify-center gap-1.5 ${
                   dateTimeTab === 'calendar'
                     ? isLight 
                       ? 'bg-white text-[#800020] shadow-sm font-extrabold' 
@@ -718,14 +722,17 @@ export default function BookingView({ id, shops, initialVoucher, onNavigate }: P
                     : isLight ? 'text-slate-600 hover:text-slate-900' : 'text-[#A48F7A] hover:text-[#EBE3DB]'
                 }`}
               >
-                <CalendarDays size={14} className={isLight ? 'text-[#800020]' : 'text-[#D4AF37]'} />
-                <span className="truncate">{t('booking.calendarTab', 'Lịch ngày')}: {formatDateDisplay(selectedDate)}</span>
+                <CalendarDays size={14} className={`shrink-0 ${isLight ? 'text-[#800020]' : 'text-[#D4AF37]'}`} />
+                <span className="truncate min-w-0">
+                  <span className="hidden sm:inline">{t('booking.calendarTab', 'Lịch ngày')}: </span>
+                  {formatDateDisplay(selectedDate)}
+                </span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setDateTimeTab('clock')}
-                className={`flex-1 py-2 px-3 rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+                className={`flex-1 min-w-0 py-2 px-3 rounded-xl transition-all flex items-center justify-center gap-1.5 ${
                   dateTimeTab === 'clock'
                     ? isLight 
                       ? 'bg-white text-[#800020] shadow-sm font-extrabold' 
@@ -733,8 +740,11 @@ export default function BookingView({ id, shops, initialVoucher, onNavigate }: P
                     : isLight ? 'text-slate-600 hover:text-slate-900' : 'text-[#A48F7A] hover:text-[#EBE3DB]'
                 }`}
               >
-                <Clock size={14} className={isLight ? 'text-[#800020]' : 'text-[#D4AF37]'} />
-                <span className="truncate">{t('booking.clockTab', 'Đồng hồ')}: {selectedTime}</span>
+                <Clock size={14} className={`shrink-0 ${isLight ? 'text-[#800020]' : 'text-[#D4AF37]'}`} />
+                <span className="truncate min-w-0">
+                  <span className="hidden sm:inline">{t('booking.clockTab', 'Đồng hồ')}: </span>
+                  {selectedTime}
+                </span>
               </button>
             </div>
 
@@ -1598,9 +1608,9 @@ export default function BookingView({ id, shops, initialVoucher, onNavigate }: P
                   {bookingCode}
                 </span>
                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full mt-1 ${
-                  paymentMethod === 'at_store' ? 'bg-purple-100 text-purple-800' : 'bg-emerald-100 text-emerald-800'
+                  'bg-amber-100 text-amber-800'
                 }`}>
-                  {paymentMethod === 'at_store' ? t('booking.payAtShop', 'Thanh toán tại quán') : t('booking.paidOnline', 'Đã thanh toán online')}
+                  {paymentMethod === 'at_store' ? t('booking.payAtShop', 'Thanh toán tại quán') : 'Chờ quán xác nhận thanh toán'}
                 </span>
               </div>
 

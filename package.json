@@ -17,7 +17,9 @@
     "preview:shop": "vite preview --config apps/shop/vite.config.ts",
     "lint": "tsc --noEmit",
     "test:booking": "cd backend && tsx scripts/booking-e2e.ts",
-    "test": "npm run test:contract && npm run test:telemetry && npm run test:taxonomy && npm run test:compatibility && npm run test:understanding && npm run test:eval && npm run test:booking && npm run test:locality && npm run test:achievements",
+    "test:checkin": "cd backend && tsx scripts/checkin-e2e.ts",
+    "test:robustness": "cd backend && tsx scripts/robustness-e2e.ts",
+    "test": "npm run test:contract && npm run test:telemetry && npm run test:taxonomy && npm run test:compatibility && npm run test:understanding && npm run test:eval && npm run test:booking && npm run test:checkin && npm run test:robustness && npm run test:locality && npm run test:achievements",
     "test:contract": "cd backend && tsx -e \"import { runSearchContractTestSuite } from './server/search/contract/searchContract.test'; runSearchContractTestSuite().then(r => { console.log(JSON.stringify(r, null, 2)); if (r.failed > 0) process.exit(1); });\"",
     "test:telemetry": "cd backend && tsx -e \"import { runTelemetryTestSuite } from './server/telemetry/telemetry.test'; runTelemetryTestSuite().then(r => { console.log(JSON.stringify(r, null, 2)); if (r.failed > 0) process.exit(1); });\"",
     "test:taxonomy": "cd backend && tsx -e \"import { runTaxonomyTestSuite } from './server/search/taxonomy/taxonomy.test'; runTaxonomyTestSuite().then(r => { console.log(JSON.stringify(r, null, 2)); if (r.failed > 0) process.exit(1); });\"",
@@ -31,7 +33,11 @@
     "preview:admin": "vite preview --config apps/admin/vite.config.ts",
     "test:achievements": "cd backend && tsx scripts/achievements-e2e.ts",
     "test:freeplaces": "cd backend && tsx scripts/free-places-e2e.ts",
-    "test:ranks": "cd backend && tsx scripts/ranks-e2e.ts"
+    "test:ranks": "cd backend && tsx scripts/ranks-e2e.ts",
+    "demo:seed": "cd backend && tsx scripts/seed-demo.ts",
+    "demo:build": "node scripts/demo.mjs build",
+    "demo:start": "node scripts/demo.mjs start",
+    "demo:public": "node scripts/demo.mjs public"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
@@ -39,7 +45,7 @@
     "@vis.gl/react-google-maps": "^1.9.0",
     "@vitejs/plugin-react": "^5.0.4",
     "bcryptjs": "^3.0.3",
-    "cors": "^2.8.6",
+    "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^4.21.2",
     "jsonwebtoken": "^9.0.3",
@@ -50,8 +56,7 @@
     "motion": "^12.23.24",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
-    "vite": "^6.2.3",
-    "web-push": "^3.6.7"
+    "vite": "^6.2.3"
   },
   "devDependencies": {
     "@types/bcryptjs": "^3.0.0",
@@ -66,7 +71,7 @@
     "esbuild": "^0.25.0",
     "tailwindcss": "^4.1.14",
     "tsx": "^4.21.0",
-    "typescript": "~5.8.2",
+    "typescript": "^5.8.2",
     "vite": "^6.2.3"
   }
 }
