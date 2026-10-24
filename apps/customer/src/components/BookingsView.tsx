@@ -1,20 +1,5 @@
-import { useState, useEffect } from 'react';
-import { 
-  CalendarDays, 
-  Clock, 
-  MapPin, 
-  X, 
-  QrCode, 
-  Phone, 
-  CheckCircle2, 
-  Coffee, 
-  Sparkles, 
-  Receipt,
-  Users,
-  Building2,
-  Share2,
-  Star
-} from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { CalendarDays, Clock, MapPin, X, QrCode, Phone, CheckCircle2, Coffee, Sparkles, Receipt, Users, Building2, Share2, Star, Camera, Loader2, Heart, MessageCircle, Send } from 'lucide-react';
 import { motion } from 'motion/react';
 import { ViewState } from '../App';
 import { useTheme } from '@shared/context/ThemeContext';
@@ -101,6 +86,13 @@ export default function BookingsView({ shops, onNavigate, highlightBookingId }: 
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewSending, setReviewSending] = useState(false);
   const [reviewError, setReviewError] = useState<string | null>(null);
+  /* Photos attached to the review being written. Each is uploaded as soon as it is
+     picked, so by submit time these are already URLs the server issued — the review
+     route accepts nothing else. */
+  const [reviewPhotos, setReviewPhotos] = useState<string[]>([]);
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const photoInputRef = useRef<HTMLInputElement>(null);
+  const MAX_REVIEW_PHOTOS = 4;
   /** Booking ids this session already reviewed, so the form doesn't invite a duplicate. */
   const [reviewedBookingIds, setReviewedBookingIds] = useState<string[]>([]);
   const allBookings = rawBookings.map(b => toDisplay(b, shops, t));
@@ -198,6 +190,38 @@ export default function BookingsView({ shops, onNavigate, highlightBookingId }: 
    * Post a review for the shop of the open booking. The server re-checks that this guest
    * really checked in at this shop, so a failure here is reported rather than hidden.
    */
+  /** Read the picked files and upload them one by one. */
+  const handlePickPhotos = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    const room = MAX_REVIEW_PHOTOS - reviewPhotos.length;
+    if (room <= 0) return;
+    setPhotoUploading(true);
+    setReviewError(null);
+    try {
+      for (const file of Array.from(files).slice(0, room)) {
+        // 3MB is the server's cap; refuse here too so the guest hears it immediately
+        // instead of after a slow upload.
+        if (file.size > 3 * 1024 * 1024) {
+          setReviewError(t('bookings.photoTooLarge', 'Ảnh tối đa 3MB: {name}').replace('{name}', file.name));
+          continue;
+        }
+        const dataUrl: string = await new Promise((resolve, reject) => {
+          const r = new FileReader();
+          r.onload = () => resolve(String(r.result));
+          r.onerror = () => reject(new Error('read failed'));
+          r.readAsDataURL(file);
+        });
+        const { url } = await api.uploadImage(dataUrl);
+        setReviewPhotos(prev => (prev.includes(url) ? prev : [...prev, url]));
+      }
+    } catch (err: any) {
+      setReviewError(err?.message || t('bookings.photoFailed', 'Không tải được ảnh, vui lòng thử lại.'));
+    } finally {
+      setPhotoUploading(false);
+      if (photoInputRef.current) photoInputRef.current.value = '';   // allow re-picking the same file
+    }
+  };
+
   const handleSubmitReview = async () => {
     if (!selectedBooking) return;
     const shopId = selectedBooking.shopId || selectedBooking.store?.id;
@@ -211,10 +235,15 @@ export default function BookingsView({ shops, onNavigate, highlightBookingId }: 
       await api.addReview(shopId, {
         content: reviewText.trim(),
         rating: reviewRating,
+        images: reviewPhotos,
         metrics: { noise: reviewRating, seating: reviewRating, accuracy: reviewRating }
       });
       setReviewedBookingIds(prev => [...prev, selectedBooking.id]);
       setReviewText('');
+      setReviewPhotos([]);
+      // Tell the shop page and the check-in diary to reload, so the photo just posted
+      // appears in both without the guest having to navigate away and back.
+      window.dispatchEvent(new CustomEvent('mobler:review-changed'));
       setToast(t('bookings.reviewThanks', 'Cảm ơn bạn đã đánh giá quán!'));
       setTimeout(() => setToast(null), 5000);
     } catch (err: any) {
@@ -228,6 +257,7 @@ export default function BookingsView({ shops, onNavigate, highlightBookingId }: 
     setSelectedBooking(null);
     setReviewText('');
     setReviewRating(5);
+    setReviewPhotos([]);
     setReviewError(null);
     window.dispatchEvent(new CustomEvent('show-bottom-nav'));
   };
@@ -599,6 +629,54 @@ export default function BookingsView({ shops, onNavigate, highlightBookingId }: 
                           isLight ? 'bg-white border-slate-200 text-slate-800' : 'bg-[#14100D] border-[#2E241B] text-stone-200'
                         }`}
                       />
+
+                      {/* Photos. `capture="environment"` makes a phone offer the camera
+                          first while still allowing the gallery; on desktop it is ignored
+                          and the normal file picker opens. */}
+                      <div className="mt-2">
+                        <input
+                          ref={photoInputRef}
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp"
+                          capture="environment"
+                          multiple
+                          className="sr-only"
+                          onChange={e => handlePickPhotos(e.target.files)}
+                        />
+                        <div className="flex flex-wrap items-center gap-2">
+                          {reviewPhotos.map(url => (
+                            <div key={url} className="relative h-14 w-14 overflow-hidden rounded-lg border border-black/10">
+                              <img src={url} alt="" className="h-full w-full object-cover" />
+                              <button
+                                type="button"
+                                onClick={() => setReviewPhotos(prev => prev.filter(u => u !== url))}
+                                aria-label={t('bookings.removePhoto', 'Bỏ ảnh này')}
+                                className="absolute right-0 top-0 grid h-5 w-5 place-items-center rounded-bl-lg bg-black/60 text-white"
+                              >
+                                <X size={11} />
+                              </button>
+                            </div>
+                          ))}
+
+                          {reviewPhotos.length < MAX_REVIEW_PHOTOS && (
+                            <button
+                              type="button"
+                              disabled={photoUploading}
+                              onClick={() => photoInputRef.current?.click()}
+                              className={`flex h-14 w-14 flex-col items-center justify-center gap-0.5 rounded-lg border border-dashed text-[9px] font-semibold disabled:opacity-50 ${
+                                isLight ? 'border-slate-300 text-slate-500' : 'border-[#3E3023] text-[#A48F7A]'
+                              }`}
+                            >
+                              {photoUploading
+                                ? <Loader2 size={15} className="animate-spin" />
+                                : <><Camera size={15} /><span>{t('bookings.addPhoto', 'Thêm ảnh')}</span></>}
+                            </button>
+                          )}
+                        </div>
+                        <p className={`mt-1 text-[10px] ${isLight ? 'text-slate-400' : 'text-[#7A6450]'}`}>
+                          {t('bookings.photoHint', 'Tối đa {n} ảnh, mỗi ảnh dưới 3MB').replace('{n}', String(MAX_REVIEW_PHOTOS))}
+                        </p>
+                      </div>
                       {reviewError && <p className="text-[11px] font-bold text-rose-600">{reviewError}</p>}
                       <button
                         type="button"

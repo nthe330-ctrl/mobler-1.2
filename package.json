@@ -40,7 +40,8 @@
     "demo:public": "node scripts/demo.mjs public",
     "test:points": "cd backend && tsx scripts/points-e2e.ts",
     "test:hours": "cd backend && tsx scripts/opening-hours-e2e.ts",
-    "test:storage": "cd backend && tsx scripts/storage-e2e.ts"
+    "test:storage": "cd backend && tsx scripts/storage-e2e.ts",
+    "test:social": "cd backend && tsx scripts/review-social-e2e.ts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

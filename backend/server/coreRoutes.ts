@@ -544,6 +544,84 @@ export function registerCoreRoutes(app: Express) {
     }
   );
 
+  /* ---------- review social: like + comment ----------
+     `likes` and `comments` were plain counters, so nothing recorded WHO acted: a like
+     could not be undone and could be repeated forever. Both are now derived from the
+     people who acted — liked_by holds user ids, comment_list holds the comments — and
+     the counters are kept in step for any client still reading them. */
+
+  /** Shape a stored review for a viewer: counts, their own like state, and comments. */
+  const publicReview = (r: any, viewerId?: string) => ({
+    ...r,
+    likes: Array.isArray(r.liked_by) ? r.liked_by.length : (r.likes || 0),
+    likedByMe: !!viewerId && Array.isArray(r.liked_by) && r.liked_by.includes(viewerId),
+    comment_list: Array.isArray(r.comment_list) ? r.comment_list : [],
+    comments: Array.isArray(r.comment_list) ? r.comment_list.length : (r.comments || 0)
+  });
+
+  const findReview = (id: string) =>
+    db.getRawDb().reviews.find((r: any) => String(r.id) === String(id));
+
+  app.post('/api/reviews/:id/like', authenticateToken, requireAccount('customer'), rateLimit(60, 60_000), (req: AuthRequest, res: Response) => {
+    const review = findReview(req.params.id);
+    if (!review) return res.status(404).json({ error: 'Không tìm thấy đánh giá', code: 'REVIEW_NOT_FOUND' });
+    const me = req.user!.userId;
+    const liked = Array.isArray(review.liked_by) ? review.liked_by : [];
+    // Toggle by identity, never by incrementing — a double tap must land back where it started.
+    review.liked_by = liked.includes(me) ? liked.filter((u: string) => u !== me) : [...liked, me];
+    review.likes = review.liked_by.length;
+    db.saveDatabase();
+    publish([topics.shop(review.shop_id)], 'review', { action: 'liked', review: publicReview(review) });
+    res.json({ likes: review.likes, likedByMe: review.liked_by.includes(me) });
+  });
+
+  app.post('/api/reviews/:id/comments', authenticateToken, requireAccount('customer'), rateLimit(20, 60_000), (req: AuthRequest, res: Response) => {
+    const review = findReview(req.params.id);
+    if (!review) return res.status(404).json({ error: 'Không tìm thấy đánh giá', code: 'REVIEW_NOT_FOUND' });
+    const content = String(req.body?.content || '').trim();
+    if (!content) return res.status(400).json({ error: 'Vui lòng nhập nội dung bình luận', code: 'COMMENT_EMPTY' });
+    if (content.length > 500) return res.status(400).json({ error: 'Bình luận tối đa 500 ký tự', code: 'COMMENT_TOO_LONG' });
+    const user = db.findUserById(req.user!.userId);
+    const comment = {
+      id: `cmt-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      userId: req.user!.userId,
+      userName: user?.name || req.user!.name,
+      userAvatar: user?.avatar || '',
+      content,
+      created_at: new Date().toISOString()
+    };
+    review.comment_list = [...(Array.isArray(review.comment_list) ? review.comment_list : []), comment];
+    review.comments = review.comment_list.length;
+    db.saveDatabase();
+    publish([topics.shop(review.shop_id)], 'review', { action: 'commented', review: publicReview(review) });
+    res.status(201).json({ comment, comments: review.comments });
+  });
+
+  /** Reviews of one shop, with the viewer's own like state when signed in. */
+  app.get('/api/shops/:id/reviews', optionalAuthenticateToken, (req: AuthRequest, res: Response) => {
+    const list = db.getReviewsByShopId(req.params.id) as any[];
+    res.json({ reviews: list.map(r => publicReview(r, req.user?.userId)) });
+  });
+
+  /** The guest's own check-in diary: every review they wrote, newest first. */
+  app.get('/api/me/reviews', authenticateToken, requireAccount('customer'), (req: AuthRequest, res: Response) => {
+    const me = req.user!.userId;
+    const mine = db.getRawDb().reviews
+      .filter((r: any) => r.userId === me)
+      .sort((a: any, b: any) => String(b.created_at || '').localeCompare(String(a.created_at || '')));
+    res.json({
+      reviews: mine.map((r: any) => {
+        const shop = db.getShopById(r.shop_id);
+        return {
+          ...publicReview(r, me),
+          shop_name: shop?.name || '',
+          shop_address: shop?.address || '',
+          shop_image: shop?.coverImage || shop?.images?.[0] || ''
+        };
+      })
+    });
+  });
+
   app.post('/api/shops/:id/favorites', authenticateToken, requireAccount('customer'), (req: AuthRequest, res: Response) => {
     res.json(db.toggleFavorite(req.user!.userId, req.params.id));
   });

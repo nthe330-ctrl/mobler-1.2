@@ -60,13 +60,30 @@ export interface Review {
   date: string;
   images: string[];
   content: string;
+  /** Derived from liked_by; kept in step for clients that only read the count. */
   likes: number;
+  /** Derived from comment_list, same reason. */
   comments: number;
+  /** Ids of the customers who liked this. The counter alone could not be un-liked. */
+  liked_by?: string[];
+  comment_list?: ReviewComment[];
+  /** Set per viewer by the API; never stored. */
+  likedByMe?: boolean;
+  created_at?: string;
   metrics: {
     noise: number; // 1-5 (quiet to noisy or vice versa, let's say 5 is best)
     seating: number;
     accuracy: number;
   };
+}
+
+export interface ReviewComment {
+  id: string;
+  userId: string;
+  userName: string;
+  userAvatar: string;
+  content: string;
+  created_at: string;
 }
 
 export interface AiGeneratedAmenity {

@@ -1959,38 +1959,53 @@ const INITIAL_COMMENTS_MAP: Record<string, CommentItem[]> = {
 };
 
 function DiaryTab({ isLight, onNavigate }: { isLight: boolean; onNavigate?: (view: ViewState) => void }) {
+  const { isAuthenticated } = useAuth();
   const { profile } = useUser();
   const { t } = useLanguage();
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [activePost, setActivePost] = useState<PostReviewData | null>(null);
 
   // Initialize interactive posts list from shops & profile
-  const [posts, setPosts] = useState<PostReviewData[]>(() => {
-    return MOCK_SHOPS.flatMap(s => 
-      s.reviews.map(r => ({
-        ...r,
-        userName: profile.name,
-        userAvatar: profile.avatar,
-        userSystemBadge: profile.title,
-        shopId: s.id,
-        shopName: s.name,
-        shopAddress: s.address,
-        likedByMe: false,
-        commentsList: INITIAL_COMMENTS_MAP[r.id] || [
-          {
-            id: `c-default-${r.id}`,
-            userName: 'Thanh Trúc',
-            userAvatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&auto=format&fit=crop&q=80',
-            content: 'Không gian quán nhìn ấn tượng quá! Cảm ơn bạn đã review chi tiết.',
-            time: '2 giờ trước',
-            likes: 3
-          }
-        ]
-      }))
-    );
-  });
+  /* The diary is the guest's OWN reviews, loaded from the server.
+     It used to be built from MOCK_SHOPS: every mock shop's reviews, relabelled with the
+     signed-in person's name and avatar. That showed fabricated posts as if they had
+     written them, and no photo they actually posted ever appeared here. */
+  const [posts, setPosts] = useState<PostReviewData[]>([]);
+  const [postsLoading, setPostsLoading] = useState(true);
+
+  useEffect(() => {
+    if (!isAuthenticated) { setPosts([]); setPostsLoading(false); return; }
+    let alive = true;
+    setPostsLoading(true);
+    api.myReviews()
+      .then(r => {
+        if (!alive) return;
+        setPosts((r.reviews || []).map((rv: any) => ({
+          ...rv,
+          shopId: rv.shop_id,
+          shopName: rv.shop_name,
+          shopAddress: rv.shop_address,
+          likedByMe: !!rv.likedByMe,
+          commentsList: (rv.comment_list || []).map((c: any) => ({
+            id: c.id, userName: c.userName, userAvatar: c.userAvatar,
+            content: c.content, time: c.created_at, likes: 0
+          }))
+        })));
+      })
+      .catch(() => { if (alive) setPosts([]); })
+      .finally(() => { if (alive) setPostsLoading(false); });
+    const reload = () => { if (alive) api.myReviews().then(r => setPosts(prev => (r.reviews || []).map((rv: any) => ({
+      ...rv, shopId: rv.shop_id, shopName: rv.shop_name, shopAddress: rv.shop_address,
+      likedByMe: !!rv.likedByMe,
+      commentsList: (rv.comment_list || []).map((c: any) => ({ id: c.id, userName: c.userName, userAvatar: c.userAvatar, content: c.content, time: c.created_at, likes: 0 }))
+    })))).catch(() => {}); };
+    window.addEventListener('mobler:review-changed', reload);
+    return () => { alive = false; window.removeEventListener('mobler:review-changed', reload); };
+  }, [isAuthenticated]);
 
   // Keep author profile updated when profile changes
+  /* The server already records who wrote each review; only refresh the display name and
+     avatar so renaming yourself updates your own posts. */
   const synchronizedPosts = posts.map(p => ({
     ...p,
     userName: profile.name,

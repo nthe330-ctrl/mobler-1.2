@@ -159,6 +159,35 @@ class ApiService {
     });
   }
 
+  /** Upload one review photo; returns the URL to attach to the review. */
+  public async uploadImage(dataUrl: string) {
+    return this.request<{ url: string }>(`/me/uploads`, {
+      method: 'POST',
+      body: JSON.stringify({ dataUrl })
+    });
+  }
+
+  public async shopReviews(shopId: string) {
+    return this.request<{ reviews: Review[] }>(`/shops/${shopId}/reviews`);
+  }
+
+  /** Toggle this guest's like. The server decides the new state — never guess locally. */
+  public async toggleReviewLike(reviewId: string) {
+    return this.request<{ likes: number; likedByMe: boolean }>(`/reviews/${reviewId}/like`, { method: 'POST' });
+  }
+
+  public async addReviewComment(reviewId: string, content: string) {
+    return this.request<{ comment: any; comments: number }>(`/reviews/${reviewId}/comments`, {
+      method: 'POST',
+      body: JSON.stringify({ content })
+    });
+  }
+
+  /** The signed-in guest's own reviews — the real check-in diary. */
+  public async myReviews() {
+    return this.request<{ reviews: (Review & { shop_name: string; shop_address: string; shop_image: string })[] }>(`/me/reviews`);
+  }
+
   public async toggleFavorite(shopId: string) {
     return this.request<{ isFavorite: boolean }>(`/shops/${shopId}/favorites`, {
       method: 'POST'

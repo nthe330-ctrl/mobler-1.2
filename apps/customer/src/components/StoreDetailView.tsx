@@ -2,6 +2,8 @@ import { useState, useMemo, useEffect, type MouseEvent } from 'react';
 import { api } from '../services/api';
 import { ArrowLeft, Star, MapPin, Share2, Heart, Check, ShieldCheck, Navigation, ExternalLink, Sparkles, X, Coffee as CoffeeIcon, Calendar, CheckCircle2, Armchair, Image as ImageIcon, MessageSquare } from 'lucide-react';
 import FreeMap from './FreeMap';
+import ReviewCard from './ReviewCard';
+import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { ViewState, AppliedVoucherInfo } from '../App';
 import { MOCK_SHOPS, AMENITIES_CONFIG, SPECIAL_MODELS_CONFIG, STYLES_CONFIG } from '@shared/data';
@@ -85,6 +87,12 @@ export default function StoreDetailView({ id, shops, appliedVoucher, hasValidKey
   const [activePhoto, setActivePhoto] = useState<string | null>(null);
   const [activeReview, setActiveReview] = useState<Review | null>(null);
   const [showMapModal, setShowMapModal] = useState(false);
+  const { isAuthenticated, openAuthModal } = useAuth();
+  /* null until the request lands, then the authoritative list (with each viewer's own
+     like state). Kept separate from shop.reviews so a failed fetch degrades to the
+     payload that came with the shop instead of an empty section. */
+  const [liveReviews, setLiveReviews] = useState<Review[] | null>(null);
+
   const [currentHeroPhotoIndex, setCurrentHeroPhotoIndex] = useState(0);
   
   if (!shop) {
@@ -222,6 +230,19 @@ export default function StoreDetailView({ id, shops, appliedVoucher, hasValidKey
   }, [heroGallery.length]);
 
   const allImages = heroGallery;
+
+  // Reload when the shop changes, and whenever a review event arrives for it.
+  useEffect(() => {
+    if (!shop?.id) return;
+    let alive = true;
+    const load = () => api.shopReviews(shop.id)
+      .then(r => { if (alive) setLiveReviews(r.reviews || []); })
+      .catch(() => { if (alive) setLiveReviews(null); });
+    load();
+    const onReview = () => load();
+    window.addEventListener('mobler:review-changed', onReview);
+    return () => { alive = false; window.removeEventListener('mobler:review-changed', onReview); };
+  }, [shop?.id, isAuthenticated]);
 
   const cleanPlaceId = shop.id.startsWith('gplace_') 
     ? shop.id.replace('gplace_', '') 
@@ -440,28 +461,17 @@ export default function StoreDetailView({ id, shops, appliedVoucher, hasValidKey
               <MessageSquare size={13} className="text-amber-500 shrink-0" />
               <span>{t('store.verifiedReviews', 'Đánh giá xác thực')}</span>
             </div>
+            {/* Live reviews, so a photo posted a moment ago appears without a reload.
+                Falls back to whatever came with the shop payload if the fetch fails. */}
             <div className="space-y-3">
-              {shop.reviews.map((review) => (
-                <div key={review.id} className={`p-4 rounded-xl border ${
-                  isLight ? 'bg-white border-black/5 shadow-xs' : 'bg-[#221A14] border-white/5'
-                }`}>
-                  <div className="flex items-center gap-3 mb-2">
-                    <img 
-                      src={review.userAvatar} 
-                      alt={review.userName} 
-                      className="w-8 h-8 rounded-full object-cover border border-black/10 dark:border-white/10" 
-                    />
-                    <div>
-                      <p className="font-bold text-xs">{review.userName}</p>
-                      <p className="font-mono text-[9px] uppercase tracking-wider text-[#800020] dark:text-[#D4AF37]">
-                        {review.userSystemBadge || t('store.verifiedReviewer', 'Verified Reviewer')}
-                      </p>
-                    </div>
-                  </div>
-                  <p className="text-xs leading-relaxed opacity-80 italic">
-                    "{review.content}"
-                  </p>
-                </div>
+              {(liveReviews ?? shop.reviews).map((review) => (
+                <ReviewCard
+                  key={review.id}
+                  review={review}
+                  isLight={isLight}
+                  canInteract={isAuthenticated}
+                  onRequireAuth={() => openAuthModal('login')}
+                />
               ))}
             </div>
           </section>
