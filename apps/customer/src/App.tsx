@@ -18,7 +18,11 @@ import PromotionsView from './components/PromotionsView';
 import BookingsView from './components/BookingsView';
 import AuthModal from './components/AuthModal';
 import CustomerAuthScreen from './views/CustomerAuthScreen';
+import CelebrationModal, { CelebrationPayload } from './components/CelebrationModal';
 import { useAuth } from './context/AuthContext';
+import { connectRealtime } from '@shared/api/realtime';
+import { http } from './services/api';
+import { RANK_TIERS } from '@shared/ranks';
 import LoadingScreen from './components/LoadingScreen';
 import GoogleMapsConfigModal from './components/GoogleMapsConfigModal';
 import { MOCK_SHOPS } from '@shared/data';
@@ -81,6 +85,35 @@ const getInitialKey = () => {
 export default function App() {
   const { theme } = useTheme();
   const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
+
+  /* Celebration. Driven only by the server's `achievement` event, which is published
+     after the unlock is already persisted — so the popup cannot appear for an attempt
+     that failed. A rank promotion outranks a mission when both land at once. */
+  const [celebration, setCelebration] = useState<CelebrationPayload | null>(null);
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    return connectRealtime({
+      http,
+      onEvent: (event, data: any) => {
+        if (event !== 'achievement') return;
+        if (data?.rankedUp) {
+          const tier = RANK_TIERS.find(t => t.id === data.rankedUp.id) || data.rankedUp;
+          setCelebration({
+            kind: 'rank', title: tier.title, subtitle: tier.subtitle, icon: tier.icon,
+            color: tier.color, pointsEarned: data.pointsEarned || 0, points: data.points || 0
+          });
+          return;
+        }
+        const first = data?.unlocked?.[0];
+        if (first) {
+          setCelebration({
+            kind: 'mission', title: first.title, subtitle: first.rewardLabel, icon: first.icon,
+            color: '#D4AF37', pointsEarned: data.pointsEarned || 0, points: data.points || 0
+          });
+        }
+      }
+    });
+  }, [isAuthenticated]);
   const { t, isLanguageModalOpen, closeLanguageModal } = useLanguage();
   const { profile } = useUser();
   const [currentView, setCurrentView] = useState<ViewState>({ name: 'home' });
@@ -462,6 +495,8 @@ export default function App() {
         />
 
         <AuthModal />
+
+        <CelebrationModal payload={celebration} onClose={() => setCelebration(null)} />
 
         <GoogleMapsConfigModal
           isOpen={isKeyConfigOpen}

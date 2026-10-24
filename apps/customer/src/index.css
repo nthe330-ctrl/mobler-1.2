@@ -194,3 +194,12 @@ html {
   .cboba { transition: none; transform: none; }
   .cboba::before { animation: none; }
 }
+
+/* The "+N điểm" marker that lifts off the rank bar when points land. Wrapped in
+   motion-safe in the markup, so reduced-motion users simply see it appear and go. */
+@keyframes rankPointsFloat {
+  0%   { opacity: 0; transform: translateY(6px); }
+  18%  { opacity: 1; transform: translateY(0); }
+  70%  { opacity: 1; transform: translateY(-6px); }
+  100% { opacity: 0; transform: translateY(-14px); }
+}

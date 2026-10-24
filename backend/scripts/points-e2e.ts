@@ -17,7 +17,7 @@ process.env.LOCALITY_WORKER_ENABLED = 'false';
 const express = (await import('express')).default;
 const { registerCoreRoutes } = await import('../server/coreRoutes');
 const { bookingQrPayload } = await import('../../shared/booking');
-const { POINTS_PER_VISIT, resolveRank, RANK_TIERS } = await import('../../shared/ranks');
+const { POINTS_PER_VISIT, POINTS_PER_REVIEW, POINTS_REVIEW_PHOTO_BONUS, resolveRank, RANK_TIERS } = await import('../../shared/ranks');
 const { db } = await import('../server/db');
 const bcrypt = (await import('bcryptjs')).default;
 
@@ -105,6 +105,34 @@ if (legacy) {
   check('điểm nhiệm vụ cũ được giữ', (after.mission_points ?? 0) >= 2000, after.mission_points);
   check('tổng = nhiệm vụ cũ + điểm lượt ghé', after.points >= 2000, after.points);
 } else { check('bỏ qua: không có tài khoản cũ để kiểm', true); }
+
+console.log('\nĐiểm cho bình luận (hiện trên thanh tiến trình):');
+const before = await pts();
+const rv = await api('POST', `/shops/${shop.id}/reviews`,
+  { content: 'Quán rất ổn, cà phê ngon.', metrics: { noise: 4, seating: 5, accuracy: 5 } }, cToken);
+check('đăng đánh giá thành công', rv.status === 201, rv.status + ' ' + JSON.stringify(rv.data).slice(0, 90));
+check(`đánh giá cộng ${POINTS_PER_REVIEW} điểm`, (await pts()) === before + POINTS_PER_REVIEW, { got: await pts(), before });
+check('API trả về points_earned để UI hiển thị', rv.data.points_earned === POINTS_PER_REVIEW, rv.data.points_earned);
+check('API trả về tổng điểm mới', rv.data.points === before + POINTS_PER_REVIEW, rv.data.points);
+
+console.log('\nPopup chỉ bật khi mở khoá THẬT:');
+const { syncUserAchievements } = await import('../server/achievements');
+const noop = syncUserAchievements(uid);
+check('sync lại khi không có gì mới → pointsEarned = 0', noop.pointsEarned === 0, noop.pointsEarned);
+check('sync lại khi không có gì mới → rankedUp = null', noop.rankedUp === null, noop.rankedUp);
+check('sync lại khi không có gì mới → không có nhiệm vụ mới', noop.newlyUnlocked.length === 0, noop.newlyUnlocked);
+
+// bước qua mốc bậc 2 và xác nhận rankedUp chỉ bật đúng một lần
+const uBefore = db.findUserById(uid)!;
+const curLevel = resolveRank(uBefore.points).level;
+const nextTier = RANK_TIERS[curLevel + 1];
+uBefore.mission_points = (uBefore.mission_points || 0) + (nextTier.minPoints - uBefore.points);
+db.saveDatabase();
+const up = syncUserAchievements(uid);
+check('vượt mốc → rankedUp có giá trị', !!up.rankedUp, up.rankedUp);
+check(`rankedUp đúng bậc kế tiếp (${nextTier.id})`, up.rankedUp?.id === nextTier.id, up.rankedUp?.id);
+const again = syncUserAchievements(uid);
+check('sync tiếp → rankedUp null (popup không lặp)', again.rankedUp === null, again.rankedUp);
 
 server.close();
 console.log(`\npoints: ${passed} passed, ${failed} failed`);

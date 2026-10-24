@@ -5,7 +5,7 @@ import {
 } from '../../shared/achievements';
 import { ShopLoyalty, buildShopLoyalty } from '../../shared/shopLoyalty';
 import { CHECKED_IN_STATUSES as CHECKED_IN_BOOKING_STATUSES } from '../../shared/booking';
-import { POINTS_PER_VISIT } from '../../shared/ranks';
+import { POINTS_PER_VISIT, POINTS_PER_REVIEW, POINTS_REVIEW_PHOTO_BONUS, resolveRank } from '../../shared/ranks';
 
 /**
  * A booking counts from the moment the guest is really checked in — that is, when the shop
@@ -151,6 +151,12 @@ function grantReward(user: UserRecord, def: AchievementDef, now: string): Person
 export interface SyncResult {
   stats: AchievementStats;
   newlyUnlocked: { id: string; title: string; icon: string; rewardLabel: string }[];
+  /** Points gained by THIS sync — 0 when nothing changed. Drives the "+N điểm" feedback. */
+  pointsEarned: number;
+  /** The guest's new total. */
+  points: number;
+  /** Set only when this sync crossed into a higher tier, otherwise null. */
+  rankedUp: import('../../shared/ranks').RankTier | null;
 }
 
 /**
@@ -159,7 +165,7 @@ export interface SyncResult {
  */
 export function syncUserAchievements(userId: string): SyncResult {
   const user = db.findUserById(userId);
-  if (!user || user.account_type !== 'customer') return { stats: EMPTY_STATS, newlyUnlocked: [] };
+  if (!user || user.account_type !== 'customer') return { stats: EMPTY_STATS, newlyUnlocked: [], pointsEarned: 0, points: 0, rankedUp: null };
   const stats = computeStats(userId);
   const unlocked = { ...getUnlocked(user) };
   const now = new Date().toISOString();
@@ -189,7 +195,12 @@ export function syncUserAchievements(userId: string): SyncResult {
      yields the same number. A second QR scan, a page reload, or the shop pressing
      "Hoàn tất" after check-in cannot inflate it. */
   const visits = db.getBookingsByUserId(userId).filter(b => VISIT_STATUSES.includes(b.status)).length;
-  user.points = visits * POINTS_PER_VISIT + (user.mission_points || 0);
+  const reviewCount = db.getRawDb().reviews.filter((r: any) => r.userId === userId).length;
+  user.points =
+    visits * POINTS_PER_VISIT +
+    reviewCount * POINTS_PER_REVIEW +
+    (stats.reviews_with_photo || 0) * POINTS_REVIEW_PHOTO_BONUS +
+    (user.mission_points || 0);
 
   // Persist whenever the total moved, not only when a mission unlocked — otherwise the
   // points earned by finishing a booking would be recomputed forever and never saved.
@@ -203,7 +214,17 @@ export function syncUserAchievements(userId: string): SyncResult {
       wallet_vouchers: (user as any).wallet_vouchers
     } as any);
   }
-  return { stats, newlyUnlocked };
+  /* The client needs to know what just changed, not just the new total: the celebration
+     screen shows the delta, and the rank-up card only appears on a real promotion. */
+  const rankBefore = resolveRank(pointsBefore);
+  const rankAfter = resolveRank(user.points);
+  return {
+    stats,
+    newlyUnlocked,
+    pointsEarned: user.points - pointsBefore,
+    points: user.points,
+    rankedUp: rankAfter.level > rankBefore.level ? rankAfter.current : null
+  };
 }
 
 /**

@@ -895,6 +895,9 @@ function PassportTab({ isLight }: { isLight: boolean }) {
   const [serverAch, setServerAch] = useState<any[]>(emptyMissions);
   const [stats, setStats] = useState<Record<string, number>>({});
   const [rank, setRank] = useState<ResolvedRank>(() => resolveRank(0));
+  /* "+N điểm" that floats off the progress bar when points land. Cleared on a timer so
+     it never lingers over the numbers it is explaining. */
+  const [pointsGained, setPointsGained] = useState<number | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
   // Per-shop titles, computed server-side from completed check-ins and real reviews.
   const [shopLoyalty, setShopLoyalty] = useState<ShopLoyalty[]>([]);
@@ -922,7 +925,11 @@ function PassportTab({ isLight }: { isLight: boolean }) {
     if (!isAuthenticated) return;
     const stop = connectRealtime({
       http,
-      onEvent: (event) => {
+      onEvent: (event, data) => {
+        if (event === 'achievement' && (data as any)?.pointsEarned > 0) {
+          setPointsGained((data as any).pointsEarned);
+          setTimeout(() => setPointsGained(null), 2600);
+        }
         if (event === 'achievement' || event === 'booking') setReloadKey(k => k + 1);
       }
     });
@@ -1004,6 +1011,15 @@ function PassportTab({ isLight }: { isLight: boolean }) {
           isLight ? 'bg-black/20 border-white/20' : 'bg-[#1A1510] border-[#3E3023]'
         }`}>
           <div className="h-full shadow-md transition-all duration-500" style={{ width: `${rank.progressPercent}%`, background: `linear-gradient(to right, ${rank.current.color}, ${rank.next?.color || rank.current.color})` }} />
+          {pointsGained !== null && (
+            <span
+              role="status"
+              className="pointer-events-none absolute -top-6 text-[11px] font-black text-white drop-shadow motion-safe:animate-[rankPointsFloat_2.6s_ease-out_forwards]"
+              style={{ left: `min(${rank.progressPercent}%, calc(100% - 4rem))` }}
+            >
+              +{pointsGained.toLocaleString('vi-VN')} {t('profile.points', 'điểm')}
+            </span>
+          )}
         </div>
         <div className={`flex justify-between text-[10px] font-bold relative z-10 uppercase tracking-wider ${
           isLight ? 'text-red-100' : 'text-[#A48F7A]'

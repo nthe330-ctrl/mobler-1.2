@@ -108,7 +108,12 @@ function syncAndPublishProgress(userId: string) {
   publish([topics.user(userId)], 'achievement', {
     unlocked: ach.newlyUnlocked,
     stats: ach.stats,
-    points: db.findUserById(userId)?.points || 0,
+    points: ach.points,
+    pointsEarned: ach.pointsEarned,
+    // Previously never sent, while the client already listened for it — so the rank-up
+    // celebration could not fire. It is set only on a real promotion.
+    rankedUp: ach.rankedUp,
+    reason: 'visit',
     rank: getUserRank(userId)
   });
   return ach;
@@ -478,10 +483,26 @@ export function registerCoreRoutes(app: Express) {
     db.addReview(newReview as any);
     publish([topics.shop(shopId)], 'review', { action: 'created', review: newReview });
     const achAfterReview = syncUserAchievements(req.user!.userId);
-    if (achAfterReview.newlyUnlocked.length) {
-      publish([topics.user(req.user!.userId)], 'achievement', { unlocked: achAfterReview.newlyUnlocked, rank: getUserRank(req.user!.userId) });
-    }
-    res.status(201).json({ message: 'Đăng đánh giá thành công', review: newReview, achievements_unlocked: achAfterReview.newlyUnlocked, rank: getUserRank(req.user!.userId) });
+    // Always publish, not only on an unlock: writing the review itself earns points, and
+    // the progress bar has to show them.
+    publish([topics.user(req.user!.userId)], 'achievement', {
+      unlocked: achAfterReview.newlyUnlocked,
+      stats: achAfterReview.stats,
+      points: achAfterReview.points,
+      pointsEarned: achAfterReview.pointsEarned,
+      rankedUp: achAfterReview.rankedUp,
+      reason: 'review',
+      rank: getUserRank(req.user!.userId)
+    });
+    res.status(201).json({
+      message: 'Đăng đánh giá thành công',
+      review: newReview,
+      achievements_unlocked: achAfterReview.newlyUnlocked,
+      points_earned: achAfterReview.pointsEarned,
+      points: achAfterReview.points,
+      ranked_up: achAfterReview.rankedUp,
+      rank: getUserRank(req.user!.userId)
+    });
   });
 
   app.post('/api/shops/:id/favorites', authenticateToken, requireAccount('customer'), (req: AuthRequest, res: Response) => {

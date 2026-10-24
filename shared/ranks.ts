@@ -50,6 +50,16 @@ export const RANK_TIERS: RankTier[] = [
  */
 export const POINTS_PER_VISIT = 30;
 
+/**
+ * Points for writing a review, and the extra for attaching at least one photo.
+ *
+ * Deliberately smaller than a visit: a review is a few minutes at home, a visit is a
+ * trip across town. Both are capped by reality — a guest can only review a shop they
+ * actually checked in at — so these cannot be farmed.
+ */
+export const POINTS_PER_REVIEW = 15;
+export const POINTS_REVIEW_PHOTO_BONUS = 10;
+
 export interface ResolvedRank {
   points: number;
   /** The tier currently held. */
