@@ -27,16 +27,24 @@ import {
   BOOKING_STATUS_LABEL_VI,
   BookingStatus,
   CHECK_IN_FROM_STATUS,
+  NO_SHOW_GRACE_MAX_BOUND,
+  NO_SHOW_GRACE_MIN_BOUND,
+  NO_SHOW_REVERT_WINDOW_MIN,
   PHONE_REGEX,
+  RUNNING_LATE_EXTENSION_MIN,
   SCAN_ONLY_TRANSITIONS,
   SHOP_TRANSITIONS,
   TableOperationalStatus,
+  graceWindowMin,
   hasCheckedIn,
   isActiveBooking,
   isTableFree,
   normalizePhone,
   parseBookingQr
 } from '../../shared/booking';
+import { notify, notifyShopStaff, listNotifications, countUnread, markRead, markAllRead } from './notifications';
+import { recordNoShow, countNoShowAgainstCustomer, releaseNoShowMark, reliabilityOf } from './noShow';
+import { vapidPublicKey, isPushEnabled, saveSubscription, removeSubscription } from './webPush';
 
 const SHOP_TIMEZONE = process.env.SHOP_TIMEZONE || 'Asia/Ho_Chi_Minh';
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -842,6 +850,15 @@ export function registerCoreRoutes(app: Express) {
       }
 
       broadcastBooking('created', booking);
+      // The shop decides for itself what to do with a customer's record, so it is told
+      // the history rather than having the platform act on it.
+      const rel = reliabilityOf(booking.user_id);
+      notifyShopStaff(shop.id, {
+        type: 'booking',
+        title: autoConfirm ? 'Đơn mới đã tự xác nhận' : 'Có đơn đặt bàn mới',
+        message: `${booking.user_name} · ${booking.guests} khách · ${booking.time} ngày ${booking.date}`
+          + (rel.noShows > 0 ? ` · khách này có ${rel.noShows} lần không đến trong ${rel.windowDays} ngày qua` : '')
+      });
       // Missions only progress on a COMPLETED check-in, so creating a booking grants no points.
       // We still recompute in case a mission's reward was pending from earlier activity.
       const ach = syncUserAchievements(req.user!.userId);
@@ -873,6 +890,71 @@ export function registerCoreRoutes(app: Express) {
     }
     broadcastBooking('updated', updated!);
     res.json({ message: 'Đã hủy lịch đặt bàn', booking: updated });
+  });
+
+  /**
+   * "I'm on my way." One extension per booking, so a customer who is genuinely late
+   * does not lose the table — and so the shop can see they are still coming.
+   */
+  app.post('/api/me/bookings/:id/running-late', authenticateToken, requireAccount('customer'), (req: AuthRequest, res: Response) => {
+    const booking = db.getBookingById(req.params.id);
+    if (!booking || booking.user_id !== req.user!.userId) {
+      return res.status(404).json({ error: 'Không tìm thấy lịch đặt' });
+    }
+    if (booking.status !== 'confirmed') {
+      return res.status(409).json({ error: 'Chỉ báo trễ được với đơn đã được quán xác nhận' });
+    }
+    if (booking.late_extension_min) {
+      return res.status(409).json({ error: 'Bạn đã báo trễ cho đơn này rồi' });
+    }
+    const updated = db.updateBooking(booking.id, { late_extension_min: RUNNING_LATE_EXTENSION_MIN })!;
+    broadcastBooking('updated', updated);
+    notifyShopStaff(updated.shop_id, {
+      type: 'booking',
+      title: 'Khách báo đang trên đường',
+      message: `${updated.user_name} (hẹn ${updated.time}) báo tới trễ khoảng ${RUNNING_LATE_EXTENSION_MIN} phút.`
+    });
+    res.json({
+      message: `Đã báo quán, bàn được giữ thêm ${RUNNING_LATE_EXTENSION_MIN} phút`,
+      booking: updated,
+      extended_min: RUNNING_LATE_EXTENSION_MIN
+    });
+  });
+
+  // ==================== NOTIFICATIONS ====================
+
+  app.get('/api/me/notifications', authenticateToken, (req: AuthRequest, res: Response) => {
+    const limit = Number(req.query.limit) || 50;
+    res.json({ notifications: listNotifications(req.user!.userId, limit), unread: countUnread(req.user!.userId) });
+  });
+
+  app.post('/api/me/notifications/:id/read', authenticateToken, (req: AuthRequest, res: Response) => {
+    const changed = markRead(req.user!.userId, req.params.id);
+    res.json({ changed, unread: countUnread(req.user!.userId) });
+  });
+
+  app.post('/api/me/notifications/read-all', authenticateToken, (req: AuthRequest, res: Response) => {
+    const changed = markAllRead(req.user!.userId);
+    res.json({ changed, unread: 0 });
+  });
+
+  // The public half of the VAPID pair is meant to be handed out; the private half
+  // never leaves the server.
+  app.get('/api/push/key', (_req: Request, res: Response) => {
+    res.json({ enabled: isPushEnabled(), publicKey: vapidPublicKey() });
+  });
+
+  app.post('/api/me/push/subscribe', authenticateToken, (req: AuthRequest, res: Response) => {
+    if (!isPushEnabled()) return res.status(503).json({ error: 'Máy chủ chưa bật thông báo đẩy' });
+    const ok = saveSubscription(req.user!.userId, req.body?.subscription || req.body);
+    if (!ok) return res.status(400).json({ error: 'Đăng ký thông báo không hợp lệ' });
+    res.status(201).json({ message: 'Đã bật thông báo đẩy' });
+  });
+
+  app.post('/api/me/push/unsubscribe', authenticateToken, (req: AuthRequest, res: Response) => {
+    const endpoint = String(req.body?.endpoint || '');
+    if (!endpoint) return res.status(400).json({ error: 'Thiếu endpoint' });
+    res.json({ removed: removeSubscription(req.user!.userId, endpoint) });
   });
 
   // ==================== CUSTOMER ORDERS ====================
@@ -982,7 +1064,10 @@ export function registerCoreRoutes(app: Express) {
         ...current.bookingSettings!,
         ...(typeof bs.autoConfirm === 'boolean' ? { autoConfirm: bs.autoConfirm } : {}),
         ...(typeof bs.acceptingBookings === 'boolean' ? { acceptingBookings: bs.acceptingBookings } : {}),
-        ...(Number(bs.slotDurationMin) >= 30 && Number(bs.slotDurationMin) <= 360 ? { slotDurationMin: Number(bs.slotDurationMin) } : {})
+        ...(Number(bs.slotDurationMin) >= 30 && Number(bs.slotDurationMin) <= 360 ? { slotDurationMin: Number(bs.slotDurationMin) } : {}),
+        ...(Number.isFinite(Number(bs.noShowGraceMin))
+          ? { noShowGraceMin: Math.min(NO_SHOW_GRACE_MAX_BOUND, Math.max(NO_SHOW_GRACE_MIN_BOUND, Number(bs.noShowGraceMin))) }
+          : {})
       };
     }
     const updated = db.updateShop(req.params.id, updates);
@@ -996,7 +1081,16 @@ export function registerCoreRoutes(app: Express) {
     const bookings = db
       .getBookingsByShopId(req.params.id, date)
       .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
-    res.json({ bookings, clock: shopClock() });
+    // The shop decides for itself what to do with a customer's record, so it is shown
+    // the history rather than having the platform act on it.
+    const reliability: Record<string, ReturnType<typeof reliabilityOf>> = {};
+    for (const b of bookings) reliability[b.user_id] ||= reliabilityOf(b.user_id);
+    res.json({
+      bookings,
+      clock: shopClock(),
+      reliability,
+      grace_min: graceWindowMin('12:00', db.getShopById(req.params.id)?.bookingSettings?.noShowGraceMin)
+    });
   });
 
   app.get('/api/merchant/shops/:id/tables', ...shopOnly, requireShopAccess(), (req: AuthRequest, res: Response) => {
@@ -1026,10 +1120,64 @@ export function registerCoreRoutes(app: Express) {
     if (!SHOP_TRANSITIONS[booking.status]?.includes(next)) {
       return res.status(409).json({ error: `Không thể chuyển từ "${booking.status}" sang "${next}"`, booking });
     }
-    const updated = db.setBookingStatus(booking.id, next, 'shop', req.body?.note ? String(req.body.note).slice(0, 300) : undefined)!;
+    const note = req.body?.note ? String(req.body.note).slice(0, 300) : undefined;
+    const wasNoShow = booking.status === 'no_show';
+
+    // Taking a no-show back. The shop is the only party that can see the customer was
+    // in fact sitting there, so this undo stays open for a day and clears the mark.
+    // It restores the hold (`confirmed`); presence itself still needs the guest's QR.
+    if (wasNoShow) {
+      const markedAt = booking.no_show_at ? Date.parse(booking.no_show_at) : 0;
+      const ageMin = markedAt ? (Date.now() - markedAt) / 60_000 : Infinity;
+      if (ageMin > NO_SHOW_REVERT_WINDOW_MIN) {
+        return res.status(409).json({ error: 'Đã quá hạn gỡ ghi nhận khách không đến', booking });
+      }
+      db.updateBooking(booking.id, { no_show_at: undefined });
+      releaseNoShowMark(booking.user_id, booking.id);
+    }
+
+    if (next === 'no_show') {
+      const marked = recordNoShow(booking, 'shop', note);
+      if (!marked) return res.status(404).json({ error: 'Không tìm thấy lịch đặt' });
+      // Only a deliberate press by someone at the shop counts against the customer.
+      // The sweeper never does this, because silence does not prove absence.
+      countNoShowAgainstCustomer(marked.user_id, marked.id, marked.shop_id);
+      notify({
+        user_id: marked.user_id,
+        shop_id: marked.shop_id,
+        type: 'booking',
+        title: 'Quán ghi nhận bạn không đến',
+        message: `${marked.shop_name} đã ghi nhận bạn không đến lúc ${marked.time}. Nếu bạn thật ra có tới, hãy báo lại với quán để gỡ.`
+      });
+      // recordNoShow already released the table and published to the shop, user and
+      // availability topics — broadcasting again here would double-fire the same event.
+      return res.json({ message: 'Đã ghi nhận khách không đến', booking: marked });
+    }
+
+    const updated = db.setBookingStatus(booking.id, next, 'shop', note)!;
 
     syncTableForStatus(updated, next);
     broadcastBooking('updated', updated);
+
+    // Only what the person would want their phone to buzz for gets pushed. The rest
+    // is still recorded, because the inbox is cheap and a buzz is not.
+    const CUSTOMER_FACING: Partial<Record<BookingStatus, { title: string; message: string; push?: boolean }>> = {
+      confirmed: { title: 'Quán đã xác nhận', message: `${updated.shop_name} đã giữ bàn cho bạn lúc ${updated.time} ngày ${updated.date}.` },
+      rejected: { title: 'Quán không nhận được đơn', message: `${updated.shop_name} đã từ chối yêu cầu lúc ${updated.time}. Bạn thử khung giờ khác nhé.` },
+      cancelled: { title: 'Đơn đã bị huỷ', message: `Đơn ở ${updated.shop_name} lúc ${updated.time} đã bị huỷ.` },
+      arrived: { title: 'Đã nhận bàn', message: `Chúc bạn ngồi vui ở ${updated.shop_name}.`, push: false },
+      completed: { title: 'Hoàn tất lượt ghé', message: `Cảm ơn bạn đã ghé ${updated.shop_name}. Tiến độ nhiệm vụ của bạn vừa được cộng.`, push: false }
+    };
+    // A booking going back to `confirmed` from a no-show is an undo, not a fresh
+    // confirmation — saying "the shop confirmed" a day later would read as a new booking.
+    const announce = wasNoShow && next === 'confirmed'
+      ? {
+          title: 'Quán đã gỡ ghi nhận không đến',
+          message: `${updated.shop_name} đã gỡ ghi nhận bạn không đến lúc ${updated.time} và giữ lại bàn cho bạn.`
+        }
+      : CUSTOMER_FACING[next];
+    if (announce) notify({ user_id: updated.user_id, shop_id: updated.shop_id, type: 'booking', ...announce });
+
     // Wrapping up a visit re-publishes the same progress the check-in already granted —
     // syncUserAchievements recomputes from the bookings table, so this never double-counts.
     if (next === 'completed') syncAndPublishProgress(updated.user_id);

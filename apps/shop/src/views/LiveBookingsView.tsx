@@ -20,7 +20,8 @@ const STATUS_STYLE: Record<BookingStatus, string> = {
   arrived: 'bg-sky-100 text-sky-800 border-sky-200',
   completed: 'bg-gray-100 text-gray-600 border-gray-200',
   cancelled: 'bg-rose-50 text-rose-700 border-rose-200',
-  rejected: 'bg-rose-50 text-rose-700 border-rose-200'
+  rejected: 'bg-rose-50 text-rose-700 border-rose-200',
+  no_show: 'bg-orange-50 text-orange-800 border-orange-300'
 };
 
 const TABLE_STYLE: Record<string, string> = {

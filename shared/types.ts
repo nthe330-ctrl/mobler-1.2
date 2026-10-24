@@ -222,6 +222,8 @@ export interface CoffeeShop {
     slotDurationMin: number;
     /** Whether the shop is currently accepting online bookings. */
     acceptingBookings: boolean;
+    /** Minutes the shop holds a table past the agreed time before releasing it. */
+    noShowGraceMin?: number;
   };
 }
 

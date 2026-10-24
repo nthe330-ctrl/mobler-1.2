@@ -13,6 +13,8 @@ import fsSync from 'fs';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { registerCoreRoutes } from './server/coreRoutes';
+import { startNoShowSweeper } from './server/noShow';
+import { initWebPush } from './server/webPush';
 
 
 
@@ -1622,4 +1624,8 @@ app.use('/api', (err: any, req: Request, res: Response, _next: NextFunction) => 
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`[MOBLER API] Server running on http://0.0.0.0:${PORT}`);
+  // Confirmed bookings stop holding their table once their grace window closes.
+  startNoShowSweeper();
+  // Push is optional: if no keys can be loaded the inbox still works on its own.
+  initWebPush();
 });

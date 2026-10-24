@@ -12,7 +12,8 @@ export type BookingStatus =
   | 'arrived'    // customer checked in at the shop
   | 'completed'  // visit finished
   | 'cancelled'  // cancelled by customer or shop
-  | 'rejected';  // shop declined the request
+  | 'rejected'   // shop declined the request
+  | 'no_show';   // grace window expired with no check-in, so the table was released
 
 /** Statuses that hold a table for the given time slot. */
 export const ACTIVE_BOOKING_STATUSES: BookingStatus[] = ['pending', 'confirmed', 'arrived'];
@@ -24,11 +25,21 @@ export function isActiveBooking(status: BookingStatus | string): boolean {
 /** Allowed status transitions performed by the shop. */
 export const SHOP_TRANSITIONS: Record<BookingStatus, BookingStatus[]> = {
   pending: ['confirmed', 'rejected'],
-  confirmed: ['arrived', 'cancelled'],
+  confirmed: ['arrived', 'cancelled', 'no_show'],
   arrived: ['completed'],
   completed: [],
   cancelled: [],
   rejected: [],
+  /**
+   * Undoing a no-show returns the booking to `confirmed`, NOT straight to `arrived`.
+   *
+   * The shop records a no-show, then sees the guest was in fact there and takes it back.
+   * Presence, however, is only ever established by the guest's own code (see
+   * SCAN_ONLY_TRANSITIONS): letting the undo write `arrived` would hand the shop the one
+   * thing the scan gate exists to withhold. So the undo restores the hold and the guest
+   * checks in by QR as normal. See NO_SHOW_REVERT_WINDOW_MIN for how long it stays open.
+   */
+  no_show: ['confirmed', 'cancelled'],
 };
 
 /**
@@ -86,7 +97,53 @@ export const BOOKING_STATUS_LABEL_VI: Record<BookingStatus, string> = {
   completed: 'Hoàn tất',
   cancelled: 'Đã hủy',
   rejected: 'Quán từ chối',
+  no_show: 'Khách không đến',
 };
+
+/**
+ * How long a confirmed booking keeps its table after the agreed time before the
+ * system releases it. The shop may narrow or widen this inside the bounds below,
+ * and peak hours use the shorter window because tables are scarcest then.
+ */
+export const NO_SHOW_GRACE_DEFAULT_MIN = 20;
+export const NO_SHOW_GRACE_PEAK_MIN = 15;
+export const NO_SHOW_GRACE_MIN_BOUND = 10;
+export const NO_SHOW_GRACE_MAX_BOUND = 45;
+
+/** Hours (shop local time) where tables are scarcest, so the grace window shortens. */
+export const PEAK_HOURS: number[] = [8, 9, 19, 20];
+
+/** How long before the agreed time the one reminder goes out. */
+export const REMINDER_LEAD_MIN = 30;
+
+/** A customer may push the deadline out once per booking by this many minutes. */
+export const RUNNING_LATE_EXTENSION_MIN = 15;
+
+/** A shop can undo a no-show it recorded by mistake for this long afterwards. */
+export const NO_SHOW_REVERT_WINDOW_MIN = 24 * 60;
+
+/**
+ * The moment a confirmed booking stops holding its table, as minutes from midnight
+ * on its own date. Callers compare it against the shop's local clock, never the
+ * server's or the customer's — a booking is made in the shop's timezone.
+ */
+export function holdExpiresAtMin(
+  booking: Pick<BookingDTO, 'time' | 'late_extension_min'>,
+  shopGraceMin?: number
+): number {
+  return timeToMinutes(booking.time)
+    + graceWindowMin(booking.time, shopGraceMin)
+    + (booking.late_extension_min || 0);
+}
+
+/** The grace window that applies to one booking, in minutes. */
+export function graceWindowMin(time: string, shopGraceMin?: number): number {
+  const configured = Number.isFinite(shopGraceMin)
+    ? Math.min(NO_SHOW_GRACE_MAX_BOUND, Math.max(NO_SHOW_GRACE_MIN_BOUND, Number(shopGraceMin)))
+    : NO_SHOW_GRACE_DEFAULT_MIN;
+  const hour = Math.floor(timeToMinutes(time) / 60);
+  return PEAK_HOURS.includes(hour) ? Math.min(configured, NO_SHOW_GRACE_PEAK_MIN) : configured;
+}
 
 export type TableOperationalStatus = 'available' | 'occupied' | 'reserved' | 'locked';
 
@@ -122,6 +179,12 @@ export interface BookingDTO {
   deposit_fee?: number;
   discount_amount?: number;
   grand_total?: number;
+  /** Minutes the customer pushed the hold out with "I'm on my way". Granted once. */
+  late_extension_min?: number;
+  /** When the hold was released as a no-show, so the shop's undo window can be checked. */
+  no_show_at?: string;
+  /** When the "your table is soon" reminder went out, so it is sent exactly once. */
+  reminded_at?: string;
   status_history?: { status: BookingStatus; at: string; by: AccountType | 'system'; note?: string }[];
   created_at: string;
   updated_at?: string;
