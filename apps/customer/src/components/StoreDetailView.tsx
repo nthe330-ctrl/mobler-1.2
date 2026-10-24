@@ -290,28 +290,17 @@ export default function StoreDetailView({ id, shops, appliedVoucher, hasValidKey
 
           {/* Compact Bottom Hero Overlay (Streamlined to expose maximum photo canvas) */}
           <div className="relative z-20 p-4 sm:p-6 lg:p-8 text-white flex flex-col justify-end">
-            <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-              <span className="font-['Times_New_Roman',Times,serif] text-[10px] uppercase tracking-[0.15em] text-[#D4AF37] font-bold">
-                {t('store.concept', 'Specialty Experience')}
-              </span>
-              {shop.isGoogleVerified && (
+            {/* The photo is the hero; it only needs the one badge a guest actually acts on.
+                The concept label and the model/style chips moved out — four stacked chips
+                over the image buried the shop's own name. Model and style still appear in
+                the body, where there is room to read them. */}
+            {shop.isGoogleVerified && (
+              <div className="mb-1.5">
                 <span className="inline-flex items-center gap-1 bg-[#800020]/90 backdrop-blur-xs text-white px-2 py-0.5 rounded-full text-[9px] font-mono font-bold uppercase tracking-wider">
                   <ShieldCheck size={10} /> {t('home.verified', 'Đã xác thực')}
                 </span>
-              )}
-              {shop.primaryModel && (
-                <span className="inline-flex items-center gap-1 bg-amber-500/90 text-black px-2 py-0.5 rounded-full text-[9px] font-mono font-bold uppercase tracking-wider">
-                  <ModelIcon model={shop.primaryModel} size={11} className="text-black" />
-                  <span>{translateModel(shop.primaryModel)}</span>
-                </span>
-              )}
-              {shop.primaryStyle && (
-                <span className="inline-flex items-center gap-1 bg-purple-500/80 text-white px-2 py-0.5 rounded-full text-[9px] font-mono font-bold uppercase tracking-wider">
-                  <StyleIcon styleName={shop.primaryStyle} size={11} className="text-white" />
-                  <span>{translateStyle(shop.primaryStyle)}</span>
-                </span>
-              )}
-            </div>
+              </div>
+            )}
 
             <div className="flex items-center justify-between gap-2.5 mb-1.5 min-w-0 w-full">
               <h1 className="font-['Times_New_Roman',Times,serif] font-bold text-lg xs:text-xl sm:text-2xl lg:text-3xl leading-tight tracking-tight drop-shadow-md whitespace-nowrap overflow-hidden text-ellipsis min-w-0 flex-1 block">

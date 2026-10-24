@@ -17,6 +17,10 @@ export default function AnalyticsView() {
   const maxRev = Math.max(1, ...data.series.map(s => s.revenue));
   const maxHour = Math.max(1, ...data.hours.map(h => h.bookings));
   const empty = periodRevenue === 0 && periodBookings === 0;
+  /* Bookings but no money: the commonest real case, and a bare "0đ" reads as a broken
+     dashboard. Revenue counts ONLY orders the shop has recorded payment for, and an order
+     only exists when the guest pre-ordered — so say that, and say what to do about it. */
+  const bookingsWithoutRevenue = periodRevenue === 0 && periodBookings > 0;
 
   return (
     <div className="space-y-6 pb-10">
@@ -38,6 +42,17 @@ export default function AnalyticsView() {
         <Stat label="Số khách" value={String(periodGuests)} />
         <Stat label="Tỷ lệ hủy/từ chối" value={t.bookings ? `${Math.round((t.cancelledBookings / t.bookings) * 100)}%` : '—'} />
       </div>
+
+      {bookingsWithoutRevenue && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <p className="font-bold">Có {periodBookings} lượt đặt bàn nhưng doanh thu đang là 0đ.</p>
+          <p className="mt-1 leading-relaxed">
+            Doanh thu chỉ cộng những đơn quán đã <strong>ghi nhận thanh toán</strong>, và đơn chỉ phát sinh khi
+            khách <strong>đặt món trước</strong>. Mở lượt đặt trong <strong>Lịch đặt</strong> rồi bấm ghi nhận
+            thanh toán sau khi khách trả tiền — số sẽ hiện ngay tại đây.
+          </p>
+        </div>
+      )}
 
       {empty ? (
         <div className="bg-white rounded-2xl border border-dashed border-gray-300 p-12 text-center text-sm text-gray-500">

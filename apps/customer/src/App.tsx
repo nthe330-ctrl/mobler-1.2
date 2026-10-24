@@ -89,6 +89,12 @@ export default function App() {
   /* Celebration. Driven only by the server's `achievement` event, which is published
      after the unlock is already persisted — so the popup cannot appear for an attempt
      that failed. A rank promotion outranks a mission when both land at once. */
+  /* <main> is its own scroll container, so opening a shop from halfway down the list
+     used to land you halfway down the shop page. Reset it whenever the view changes —
+     'instant' because html has scroll-behavior:smooth and a visible scroll-up on every
+     navigation reads as a glitch. */
+  const mainRef = useRef<HTMLElement>(null);
+
   const [celebration, setCelebration] = useState<CelebrationPayload | null>(null);
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -117,6 +123,9 @@ export default function App() {
   const { t, isLanguageModalOpen, closeLanguageModal } = useLanguage();
   const { profile } = useUser();
   const [currentView, setCurrentView] = useState<ViewState>({ name: 'home' });
+  useEffect(() => {
+    mainRef.current?.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
+  }, [currentView.name, 'id' in currentView ? currentView.id : '']);
   const [shops, setShops] = useState<CoffeeShop[]>(MOCK_SHOPS);
   const [apiKey, setApiKey] = useState<string>(getInitialKey());
   const [isMapAuthFailed, setIsMapAuthFailed] = useState<boolean>(false);
@@ -416,7 +425,7 @@ export default function App() {
           : 'bg-gradient-to-br from-[#161210] to-[#0A0807]'
       }`}>
         {/* Main Content Area */}
-        <main className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden no-scrollbar relative">
+        <main ref={mainRef} className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden no-scrollbar relative">
           <AnimatePresence mode="wait">
             <motion.div
               key={currentView.name + ('id' in currentView ? currentView.id : '')}

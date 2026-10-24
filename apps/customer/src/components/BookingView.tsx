@@ -34,6 +34,7 @@ import { useLanguage } from '@shared/context/LanguageContext';
 import { LanguageControlButton } from './LanguageSelectorModal';
 import CalendarPicker from './booking/CalendarPicker';
 import ClockTimePicker from './booking/ClockTimePicker';
+import { isWithinOpeningHours, isPastTime, formatOpenWindow } from '@shared/openingHours';
 import InteractiveFloorPlan from './booking/InteractiveFloorPlan';
 import { useAuth } from '../context/AuthContext';
 import { api, http } from '../services/api';
@@ -396,6 +397,19 @@ export default function BookingView({ id, shops, initialVoucher, onNavigate }: P
       </div>
     );
   }
+
+  /* Two different questions, deliberately kept apart:
+     - isTimeSelectable: is this hour bookable AT ALL on this date? Shop closed, or the
+       hour already gone today. True the moment a date is picked — it must not wait for a
+       table, which is what used to leave every hour open until one was chosen.
+     - isTableAvailable: is this particular table still free at that hour? Needs a table. */
+  const isTimeSelectable = (date: string, time: string) => {
+    const iso = resolveIsoDate(date);
+    if (isPastTime(iso, time)) return false;
+    return isWithinOpeningHours(shop?.openingHours, iso, time);
+  };
+
+  const openWindowLabel = formatOpenWindow(shop?.openingHours, resolveIsoDate(selectedDate));
 
   const isTableAvailable = (tableId: string, date: string, time: string) => {
     if (!availability) return !availabilityError;
@@ -770,7 +784,11 @@ export default function BookingView({ id, shops, initialVoucher, onNavigate }: P
                   <ClockTimePicker
                     selectedTime={selectedTime}
                     onSelectTime={(time) => setSelectedTime(time)}
-                    isTableAvailable={(time) => selectedTable ? isTableAvailable(selectedTable.id, selectedDate, time) : true}
+                    isTableAvailable={(time) =>
+                      isTimeSelectable(selectedDate, time) &&
+                      (selectedTable ? isTableAvailable(selectedTable.id, selectedDate, time) : true)
+                    }
+                    openWindowLabel={openWindowLabel}
                     isLight={isLight}
                   />
                 </div>

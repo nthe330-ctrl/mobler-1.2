@@ -38,7 +38,8 @@
     "demo:build": "node scripts/demo.mjs build",
     "demo:start": "node scripts/demo.mjs start",
     "demo:public": "node scripts/demo.mjs public",
-    "test:points": "cd backend && tsx scripts/points-e2e.ts"
+    "test:points": "cd backend && tsx scripts/points-e2e.ts",
+    "test:hours": "cd backend && tsx scripts/opening-hours-e2e.ts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
