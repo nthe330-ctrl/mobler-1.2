@@ -43,6 +43,13 @@ export const SUPPORTED_LANGUAGES: LanguageOption[] = [
   }
 ];
 
+/* Looked up by code, not by array index: the old `SUPPORTED_LANGUAGES[2]` silently
+   points at a different language the moment anyone reorders this list. */
+export const DEFAULT_LANGUAGE: Language = 'vi';
+export const DEFAULT_LANGUAGE_OPTION: LanguageOption =
+  SUPPORTED_LANGUAGES.find(l => l.code === DEFAULT_LANGUAGE) ?? SUPPORTED_LANGUAGES[0];
+
+
 export const TRANSLATIONS: Record<Language, Record<string, string>> = {
   'zh-TW': {
     // Navigation
@@ -4422,9 +4429,9 @@ interface LanguageContextType {
 }
 
 const LanguageContext = createContext<LanguageContextType>({
-  language: 'en',
+  language: 'vi',
   setLanguage: () => {},
-  currentLanguageOption: SUPPORTED_LANGUAGES[2],
+  currentLanguageOption: DEFAULT_LANGUAGE_OPTION,
   t: (key: string, fallback?: string) => fallback || key,
   translateAmenity: (name: string) => name,
   translateStyle: (name: string) => name,
@@ -4441,11 +4448,18 @@ const LanguageContext = createContext<LanguageContextType>({
 
 export const LanguageProvider = ({ children }: { children: ReactNode }) => {
   const [language, setLanguageState] = useState<Language>(() => {
-    const saved = localStorage.getItem('app_language') as Language;
-    if (saved && ['zh-TW', 'th', 'en', 'vi'].includes(saved)) {
-      return saved;
+    try {
+      const saved = localStorage.getItem('app_language') as Language;
+      if (saved && ['zh-TW', 'th', 'en', 'vi'].includes(saved)) {
+        return saved;
+      }
+    } catch {
+      // storage blocked (private mode / embedded webview) — fall through to the default
     }
-    return 'en'; // default to English or user's requested languages
+    // Vietnamese is the product's primary language: every t() fallback in the apps is
+    // written in Vietnamese, so any key missing from a dictionary renders Vietnamese
+    // anyway. Defaulting to anything else produced a half-translated screen.
+    return DEFAULT_LANGUAGE;
   });
 
   const [isLanguageModalOpen, setIsLanguageModalOpen] = useState<boolean>(false);
@@ -4456,7 +4470,7 @@ export const LanguageProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const currentLanguageOption = 
-    SUPPORTED_LANGUAGES.find(l => l.code === language) || SUPPORTED_LANGUAGES[2];
+    SUPPORTED_LANGUAGES.find(l => l.code === language) || DEFAULT_LANGUAGE_OPTION;
 
   const t = (key: string, fallback?: string): string => {
     const langDict = TRANSLATIONS[language];

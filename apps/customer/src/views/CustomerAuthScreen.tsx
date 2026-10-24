@@ -22,6 +22,33 @@ import { PHONE_REGEX, normalizePhone } from '@shared/booking';
 
 const BOBA = [1, 2, 3, 4, 5, 6, 7] as const;
 
+/**
+ * Defined at module scope on purpose — do NOT move this inside the component.
+ *
+ * A component declared in the render body gets a brand-new function identity on
+ * every render. React compares element types by identity, so it treats each render
+ * as a DIFFERENT component: it unmounts the old subtree and mounts a fresh one.
+ * The <input> inside is destroyed and recreated on every keystroke, which drops
+ * focus — the field then accepts exactly one character per click.
+ *
+ * (AuthModal declares its Field inside the component but invokes it as a plain
+ * call, `{Field({...})}`, which inlines the elements and creates no component
+ * boundary — that is why it never had this bug.)
+ */
+function Field({ label, icon, isLight, children }: {
+  label: string; icon: ReactNode; isLight: boolean; children: ReactNode;
+}) {
+  return (
+    <label className="block">
+      <span className={`mb-1.5 block text-xs font-bold ${isLight ? 'text-slate-700' : 'text-[#A48F7A]'}`}>{label}</span>
+      <div className="relative">
+        <span className={`pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 ${isLight ? 'text-slate-400' : 'text-[#7A6450]'}`}>{icon}</span>
+        {children}
+      </div>
+    </label>
+  );
+}
+
 export default function CustomerAuthScreen() {
   const { loginWithPassword, registerAccount } = useAuth();
   const { theme, toggleTheme } = useTheme();
@@ -95,18 +122,6 @@ export default function CustomerAuthScreen() {
       ? 'border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 focus:border-[#800020] focus:ring-[#800020]/15'
       : 'border-[#3E3023] bg-[#15110F] text-[#EBE3DB] placeholder:text-[#6B5848] focus:border-[#D4AF37] focus:ring-[#D4AF37]/20'
   }`;
-  const iconCls = `pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 ${isLight ? 'text-slate-400' : 'text-[#7A6450]'}`;
-
-  const Field = ({ label, icon, children }: { label: string; icon: ReactNode; children: ReactNode }) => (
-    <label className="block">
-      <span className={`mb-1.5 block text-xs font-bold ${isLight ? 'text-slate-700' : 'text-[#A48F7A]'}`}>{label}</span>
-      <div className="relative">
-        <span className={iconCls}>{icon}</span>
-        {children}
-      </div>
-    </label>
-  );
-
   const passwordToggle = (
     <button
       type="button"
@@ -223,10 +238,10 @@ export default function CustomerAuthScreen() {
                   {t('auth.customerOnlyHint', 'Tài khoản khách hàng. Chủ quán dùng ứng dụng Mobler Shop.')}
                 </p>
               </div>
-              <Field label={t('auth.identifierPlaceholder', 'Số điện thoại hoặc email')} icon={<Phone size={16} />}>
+              <Field label={t('auth.identifierPlaceholder', 'Số điện thoại hoặc email')} icon={<Phone size={16} />} isLight={isLight}>
                 <input type="text" autoComplete="username" value={identifier} onChange={e => setIdentifier(e.target.value)} placeholder="0908 123 789" className={inputCls} />
               </Field>
-              <Field label={t('auth.passwordPlaceholder', 'Mật khẩu')} icon={<Lock size={16} />}>
+              <Field label={t('auth.passwordPlaceholder', 'Mật khẩu')} icon={<Lock size={16} />} isLight={isLight}>
                 <input type={showPassword ? 'text' : 'password'} autoComplete="current-password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••" className={inputCls} />
                 {passwordToggle}
               </Field>
@@ -251,20 +266,20 @@ export default function CustomerAuthScreen() {
                   {t('auth.registerHint', 'Chỉ mất một phút để bắt đầu đặt bàn.')}
                 </p>
               </div>
-              <Field label={t('auth.fullNamePlaceholder', 'Họ và tên *')} icon={<User size={16} />}>
+              <Field label={t('auth.fullNamePlaceholder', 'Họ và tên *')} icon={<User size={16} />} isLight={isLight}>
                 <input type="text" autoComplete="name" value={fullName} onChange={e => setFullName(e.target.value)} placeholder={t('auth.namePlaceholder', 'Nguyễn Văn A')} className={inputCls} />
               </Field>
-              <Field label={t('auth.phonePlaceholder', 'Số điện thoại *')} icon={<Phone size={16} />}>
+              <Field label={t('auth.phonePlaceholder', 'Số điện thoại *')} icon={<Phone size={16} />} isLight={isLight}>
                 <input type="tel" autoComplete="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="0901 234 567" className={inputCls} />
               </Field>
-              <Field label={t('auth.emailPlaceholder', 'Email (không bắt buộc)')} icon={<Mail size={16} />}>
+              <Field label={t('auth.emailPlaceholder', 'Email (không bắt buộc)')} icon={<Mail size={16} />} isLight={isLight}>
                 <input type="email" autoComplete="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="ban@email.com" className={inputCls} />
               </Field>
-              <Field label={t('auth.passwordPlaceholder', 'Mật khẩu')} icon={<Lock size={16} />}>
+              <Field label={t('auth.passwordPlaceholder', 'Mật khẩu')} icon={<Lock size={16} />} isLight={isLight}>
                 <input type={showPassword ? 'text' : 'password'} autoComplete="new-password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••" className={inputCls} />
                 {passwordToggle}
               </Field>
-              <Field label={t('auth.confirmPasswordPlaceholder', 'Nhập lại mật khẩu')} icon={<Lock size={16} />}>
+              <Field label={t('auth.confirmPasswordPlaceholder', 'Nhập lại mật khẩu')} icon={<Lock size={16} />} isLight={isLight}>
                 <input type={showPassword ? 'text' : 'password'} autoComplete="new-password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="••••••" className={inputCls} />
               </Field>
               <button type="submit" disabled={busy} className={submitCls}>
