@@ -10,9 +10,12 @@ import os from 'os';
 import path from 'path';
 import { ACHIEVEMENTS } from '../../shared/achievements';
 import { bookingQrPayload } from '../../shared/booking';
+import { POINTS_PER_VISIT } from '../../shared/ranks';
 
 /** Point value a mission is really worth, read from the mission table itself. */
 const missionPoints = (id: string) => ACHIEVEMENTS.find(a => a.id === id)!.reward.points;
+/** Points = mission rewards + POINTS_PER_VISIT for each checked-in booking. */
+const visitPoints = (n: number) => n * POINTS_PER_VISIT;
 
 const PORT = 3997;
 const BASE = `http://127.0.0.1:${PORT}/api`;
@@ -174,13 +177,16 @@ async function main() {
     const a3 = await call('GET', '/me/achievements', undefined, T);
     check('Thợ Săn Bình Minh unlocked', dawn(a3).achieved && !!dawn(a3).unlocked_at, dawn(a3));
     const r1 = await call('GET', '/me/rewards', undefined, T);
-    const dawnPts = missionPoints('ach-4'); // explicit per-mission points; no per-booking points
-    check('mission points granted from its own point value', r1.data.points === dawnPts, { got: r1.data.points, expected: dawnPts });
+    // 3 dawn bookings were checked in to unlock ach-4, so the total is the mission
+    // reward plus those three visits.
+    const dawnPts = missionPoints('ach-4') + visitPoints(3);
+    check('mission reward + visit points', r1.data.points === dawnPts, { got: r1.data.points, expected: dawnPts });
     const dawnVoucher = r1.data.vouchers.find((v: any) => v.achievement_id === 'ach-4');
     check('personal BOGO voucher granted', dawnVoucher && dawnVoucher.status === 'active' && dawnVoucher.discount_type === 'bogo', r1.data.vouchers);
     await call('GET', '/me/achievements', undefined, T);
     const r2 = await call('GET', '/me/rewards', undefined, T);
     check('rewards are not granted twice', r2.data.points === dawnPts && r2.data.vouchers.length === 1, r2.data);
+    check('a reload does not add visit points either', r2.data.points === dawnPts, r2.data.points);
 
     console.log('\nReward vouchers are personal and single-use');
     const anon = await call('POST', '/vouchers/validate', { code: dawnVoucher.code, shop_id: shopId, order_value: 100000 });
@@ -217,8 +223,9 @@ async function main() {
     const n2 = await call('GET', '/me/achievements', undefined, T);
     check('Cú Đêm unlocked at the QR check-in', owl(n2).achieved, owl(n2));
     const r4 = await call('GET', '/me/rewards', undefined, T);
-    const expected4 = dawnPts + missionPoints('ach-8'); // ach-4 + ach-8, no booking points
-    check('points come only from completed missions', r4.data.points === expected4, { got: r4.data.points, expected: expected4 });
+    // + the night booking's own visit (4 checked-in visits in total by now)
+    const expected4 = dawnPts + missionPoints('ach-8') + visitPoints(1);
+    check('points = missions + one point award per visit', r4.data.points === expected4, { got: r4.data.points, expected: expected4 });
     await checkIn(S, nightId); // re-scan
     await call('PUT', `/merchant/bookings/${nightId}/status`, { status: 'completed' }, S);
     const r4b = await call('GET', '/me/rewards', undefined, T);

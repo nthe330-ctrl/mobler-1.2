@@ -35,7 +35,11 @@ export interface UserRecord {
   owned_shops: string[];
   staff_shops: { shop_id: string; permissions: string[] }[];
   badges: string[];
+  /** Total shown on the rank bar. DERIVED — recomputed by syncUserAchievements as
+   *  visits × POINTS_PER_VISIT + mission_points. Never add to it directly. */
   points: number;
+  /** Rewards banked from unlocked missions. The only half of `points` that accumulates. */
+  mission_points?: number;
   level: string;
   /** Personal achievements unlocked (id → ISO timestamp). Earned from real activity. */
   achievements?: { unlocked: Record<string, string>; updated_at: string };

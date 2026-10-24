@@ -5,6 +5,7 @@ import {
 } from '../../shared/achievements';
 import { ShopLoyalty, buildShopLoyalty } from '../../shared/shopLoyalty';
 import { CHECKED_IN_STATUSES as CHECKED_IN_BOOKING_STATUSES } from '../../shared/booking';
+import { POINTS_PER_VISIT } from '../../shared/ranks';
 
 /**
  * A booking counts from the moment the guest is really checked in — that is, when the shop
@@ -113,8 +114,19 @@ function getUnlocked(user: UserRecord): Record<string, string> {
   return (user as any).achievements?.unlocked || {};
 }
 
+/**
+ * Mission rewards accumulate into `mission_points`, NOT into `points`.
+ *
+ * `points` is recomputed from scratch on every sync (see syncUserAchievements) as
+ * visits × POINTS_PER_VISIT + mission_points. Keeping the two sources apart is what
+ * makes the total idempotent: if mission rewards were added straight onto `points`,
+ * the next recompute would overwrite them, and adding visit points onto the same
+ * running field would double-count on every re-scan or reload.
+ *
+ * Existing accounts are migrated once, in syncUserAchievements.
+ */
 function grantReward(user: UserRecord, def: AchievementDef, now: string): PersonalVoucher | null {
-  (user as any).points = (user.points || 0) + def.reward.points;
+  user.mission_points = (user.mission_points || 0) + def.reward.points;
   if (!def.reward.voucher) return null;
   const v = def.reward.voucher;
   const voucher: PersonalVoucher = {
@@ -153,6 +165,15 @@ export function syncUserAchievements(userId: string): SyncResult {
   const now = new Date().toISOString();
   const newlyUnlocked: SyncResult['newlyUnlocked'] = [];
 
+  /* One-time migration. Before visit points existed, mission rewards were added straight
+     onto `points`, so for an existing account that total IS its mission total. Seed
+     `mission_points` from it once; without this, the recompute below would wipe rewards
+     people had already earned. Guests who have earned nothing start at 0 either way. */
+  if (user.mission_points === undefined) {
+    user.mission_points = user.points || 0;
+  }
+  const pointsBefore = user.points || 0;
+
   for (const def of ACHIEVEMENTS) {
     if (unlocked[def.id]) continue;
     if ((stats[def.metric] ?? 0) >= def.target) {
@@ -163,10 +184,20 @@ export function syncUserAchievements(userId: string): SyncResult {
     }
   }
 
-  if (newlyUnlocked.length > 0 || !(user as any).achievements) {
+  /* Derive the total rather than adding to it. Both terms are recomputed from durable
+     facts — the bookings table and the unlocked-missions map — so calling this twice
+     yields the same number. A second QR scan, a page reload, or the shop pressing
+     "Hoàn tất" after check-in cannot inflate it. */
+  const visits = db.getBookingsByUserId(userId).filter(b => VISIT_STATUSES.includes(b.status)).length;
+  user.points = visits * POINTS_PER_VISIT + (user.mission_points || 0);
+
+  // Persist whenever the total moved, not only when a mission unlocked — otherwise the
+  // points earned by finishing a booking would be recomputed forever and never saved.
+  if (newlyUnlocked.length > 0 || !(user as any).achievements || user.points !== pointsBefore) {
     (user as any).achievements = { unlocked, updated_at: now };
     db.updateUser(user.id, {
       points: user.points,
+      mission_points: user.mission_points,
       badges: user.badges,
       achievements: (user as any).achievements,
       wallet_vouchers: (user as any).wallet_vouchers
