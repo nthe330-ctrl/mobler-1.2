@@ -74,29 +74,54 @@ html {
   pointer-events: none;
 }
 
+/* The still frame behind the video. It is the SAME frame the clip starts and ends on,
+   so there is no jump when the video takes over — and when the video never runs
+   (autoplay refused, data saver, reduced motion) this is simply the background. */
 .cauth-backdrop {
+  z-index: -3;
+  background-image: url('/mobler-login-bg.webp');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.cauth-video {
+  position: fixed;
+  inset: -2%;
   z-index: -2;
-  background-image: url('/mobler-boba-tile-light.webp');
-  background-size: 430px;
-  background-repeat: repeat;
-  background-position: center top;
-  animation: cauth-drift 38s ease-in-out infinite alternate;
-  transform-origin: center;
+  width: 104%;
+  height: 104%;
+  object-fit: cover;     /* portrait phones crop the sides; the cup is centred, so it stays */
+  object-position: center;
+  pointer-events: none;
+}
+
+/* The clip is bright cream, so dark mode dims it at the source as well as under the
+   shade — a shade alone would have to be near-opaque to carry white text, and that
+   would hide the video it is covering. */
+.dark-theme .cauth-video {
+  filter: brightness(.42) saturate(.85);
 }
 .dark-theme .cauth-backdrop {
-  background-image: url('/mobler-boba-tile-dark.webp');
+  filter: brightness(.42) saturate(.85);
 }
 
 /* The shade is what buys readability. Light mode keeps the brand red but lifts the
    centre so the card reads; dark mode leans brown and goes heavier, because white
    text on a lit pattern is the worst case. */
+/* The shade is what buys readability, and over footage it has a second job: stay out
+   of the picture. The old wine wash was tuned for a flat pattern and turned this
+   cream-and-gold scene dusty pink, so it is now a warm espresso brown — dark where the
+   white heading and the dock labels sit, nearly clear across the middle third where the
+   card covers the frame anyway. */
 .cauth-shade {
   z-index: -1;
   background: linear-gradient(180deg,
-    rgba(128, 0, 32, .52) 0%,
-    rgba(128, 0, 32, .34) 28%,
-    rgba(110, 10, 30, .18) 52%,
-    rgba(74, 14, 23, .44) 100%);
+    rgba(42, 25, 16, .80) 0%,
+    rgba(42, 25, 16, .60) 24%,
+    rgba(42, 25, 16, .16) 48%,
+    rgba(36, 21, 13, .58) 74%,
+    rgba(36, 21, 13, .88) 100%);
 }
 .dark-theme .cauth-shade {
   background: linear-gradient(180deg,
@@ -155,11 +180,6 @@ html {
   33%      { transform: translate3d(5px, -16px, 0) rotate(1.6deg); }
   66%      { transform: translate3d(-4px, -8px, 0) rotate(-1.2deg); }
 }
-@keyframes cauth-drift {
-  from { transform: scale(1.01); }
-  to   { transform: scale(1.05); }
-}
-
 .cboba-near { --d: 1;   opacity: .96; }
 .cboba-mid  { --d: .62; opacity: .88; }
 .cboba-far  { --d: .3;  opacity: .7; }
@@ -175,14 +195,12 @@ html {
 
 @media (max-width: 1100px) {
   .cboba-1, .cboba-2 { display: none; }
-  .cauth-backdrop { background-size: 390px; }
 }
 
 /* Phone: keep three small pieces in the header band, clear of the card and the
    submit button, and shrink the pattern so a cup keeps the share of the screen it
    has on desktop instead of being blown up. */
 @media (max-width: 680px) {
-  .cauth-backdrop { background-size: 300px; }
   .cboba-3, .cboba-4 { display: none; }
   .cboba-5 { top: 6%;  right: 5%; width: 62px; height: 64px; }
   .cboba-6 { top: 11%; left: 4%; right: auto; width: 80px; height: 53px; }
@@ -190,7 +208,9 @@ html {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .cauth-backdrop { animation: none; }
+  /* Someone who asked the system for less motion gets the still frame, not a loop
+     playing behind their password field. The poster is already there underneath. */
+  .cauth-video { display: none; }
   .cboba { transition: none; transform: none; }
   .cboba::before { animation: none; }
 }

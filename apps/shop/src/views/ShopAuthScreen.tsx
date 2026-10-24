@@ -16,7 +16,6 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
   );
 }
 
-const BOBA = [1, 2, 3, 4, 5, 6, 7, 8, 9] as const;
 
 export default function ShopAuthScreen() {
   const { login, register } = useShopAuth();
@@ -133,13 +132,33 @@ export default function ShopAuthScreen() {
        other visible, so the page scrolls normally. */
     <div ref={sceneRef} className="shop-auth-scene relative isolate min-h-[100dvh] overflow-x-clip text-white">
       <div className="shop-auth-backdrop" aria-hidden="true" />
+      {/*
+        Same moving background as the customer login, and the same reasons for every
+        attribute: `muted` + `playsinline` are what allow autoplay at all, `loop` is
+        seamless because the clip runs forward then backward, and `preload="metadata"`
+        keeps 700 KB off the critical path. Decoration only — aria-hidden, no controls,
+        and the poster frame beneath it carries the screen whenever the video cannot run.
+      */}
+      <video
+        className="shop-auth-video"
+        aria-hidden="true"
+        autoPlay
+        muted
+        loop
+        playsInline
+        preload="metadata"
+        poster="/mobler-login-bg.webp"
+      >
+        <source src="/mobler-login-bg.mp4" type="video/mp4" />
+      </video>
       <div className="shop-auth-shade" aria-hidden="true" />
-      {/* Real cut-outs lifted from the same illustration (see /boba), so these drift
-          independently while the untouched artwork stays behind them. Decorative only:
-          aria-hidden, pointer-events:none, and below the header/card/dock. */}
-      {BOBA.map(n => (
-        <span key={n} className={`boba boba-${n} ${n <= 2 ? 'boba-near' : n <= 5 ? 'boba-mid' : 'boba-far'}`} aria-hidden="true" />
-      ))}
+      {/*
+        The drifting boba cut-outs used to live here, over the flat illustration.
+        They are gone now that the background is footage: flat kawaii stickers on a
+        photographic scene read as two different products stacked on one screen, and
+        the clip already has a subject of its own. The CSS and the artwork stay in
+        place, so putting them back is this block plus the list of cut-out indices.
+      */}
 
       <header className="relative z-10 flex items-center justify-between px-5 py-5 sm:px-9 sm:py-7">
         <div className="flex items-center gap-3">

@@ -62,19 +62,39 @@ html {
   pointer-events: none;
 }
 
+/* The still frame behind the video — the same frame the clip starts and ends on, so
+   the handover is invisible, and the screen still looks finished if the video never
+   runs. The old boba artwork stays in /public: putting it back is one line. */
 .shop-auth-backdrop {
-  z-index: -2;
-  /* WebP: same artwork, 202 KB instead of 2.47 MB. The PNG stays in /public as a fallback. */
-  background-image: image-set(url('/mobler-boba-background.webp') type('image/webp'), url('/mobler-boba-background.png') type('image/png'));
-  background-position: center 48%;
+  z-index: -3;
+  background-image: url('/mobler-login-bg.webp');
+  background-position: center;
   background-size: cover;
-  animation: shop-bg-drift 34s ease-in-out infinite alternate;
-  transform-origin: center;
+  background-repeat: no-repeat;
 }
 
+.shop-auth-video {
+  position: fixed;
+  inset: -2%;
+  z-index: -2;
+  width: 104%;
+  height: 104%;
+  object-fit: cover;     /* portrait phones crop the sides; the cup is centred, so it stays */
+  object-position: center;
+  pointer-events: none;
+}
+
+/* Warm espresso rather than the old wine wash, which was tuned for the flat boba
+   artwork and turned this cream-and-gold footage dusty pink. Vertical, not diagonal:
+   the text that needs covering sits in a band at the top and another at the bottom. */
 .shop-auth-shade {
   z-index: -1;
-  background: linear-gradient(115deg, rgba(63, 19, 23, .37), rgba(61, 15, 29, .18) 50%, rgba(38, 14, 31, .38));
+  background: linear-gradient(180deg,
+    rgba(42, 25, 16, .80) 0%,
+    rgba(42, 25, 16, .60) 24%,
+    rgba(42, 25, 16, .16) 48%,
+    rgba(36, 21, 13, .58) 74%,
+    rgba(36, 21, 13, .88) 100%);
 }
 
 .shop-glass-card {
@@ -115,11 +135,6 @@ html {
   50% { transform: translate3d(0, -5px, 0); }
 }
 
-@keyframes shop-bg-drift {
-  from { transform: scale(1.02) translate3d(-.5%, 0, 0); }
-  to { transform: scale(1.08) translate3d(.5%, -1%, 0); }
-}
-
 /* Narrow screens: `cover` sizes the artwork by the viewport's HEIGHT once the viewport is
    taller than it is wide, so on a phone a single cup blows up to nearly half the screen.
    The artwork can't just be drawn smaller — its objects run off every edge, so repeating it
@@ -128,39 +143,12 @@ html {
    (rgb(198,77,41)), scattered with every stamp drawn at all nine wrapped offsets, so nothing
    is ever cut and the tile repeats with no seam. Being tileable, it can be drawn small
    enough that a cup keeps roughly the ~12% of screen width it has on desktop. */
-@media (max-width: 1100px) {
-  .shop-auth-backdrop {
-    background-image: url('/mobler-boba-tile.webp');
-    background-size: 450px;
-    background-position: center top;
-    background-repeat: repeat;
-  }
-}
-
-@media (max-width: 680px) {
-  .shop-auth-backdrop { background-size: 320px; }
-  /* The tiled pattern packs far more edges per square inch than the zoomed artwork did, and
-     the white heading and the dock labels sit straight on it. Darken the top and bottom
-     bands — where that text lives — and leave the middle lighter, since the card covers it.
-     Readability before transparency. */
-  .shop-auth-shade {
-    background: linear-gradient(180deg,
-      rgba(58,14,20,.64) 0%,
-      rgba(58,14,20,.46) 30%,
-      rgba(50,13,26,.26) 52%,
-      rgba(45,12,28,.50) 100%);
-  }
-  /* less zoom travel on a small screen, where the same percentage moves far more pattern */
-  .shop-auth-backdrop { animation-name: shop-bg-drift-sm; }
-}
-
-@keyframes shop-bg-drift-sm {
-  from { transform: scale(1.01); }
-  to   { transform: scale(1.04); }
-}
 
 @media (prefers-reduced-motion: reduce) {
-  .shop-auth-backdrop, .shop-orb, .shop-floating-dock { animation: none; }
+  .shop-orb, .shop-floating-dock { animation: none; }
+  /* Someone who asked the system for less motion gets the still frame, not a loop
+     playing behind their password field. The poster is already there underneath. */
+  .shop-auth-video { display: none; }
 }
 
 

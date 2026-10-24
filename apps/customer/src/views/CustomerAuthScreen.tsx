@@ -20,7 +20,6 @@ import { PHONE_REGEX, normalizePhone } from '@shared/booking';
  * Shop owners sign in through the separate Mobler Shop app.
  */
 
-const BOBA = [1, 2, 3, 4, 5, 6, 7] as const;
 
 /**
  * Defined at module scope on purpose — do NOT move this inside the component.
@@ -151,12 +150,39 @@ export default function CustomerAuthScreen() {
        the other free to scroll. */
     <div ref={sceneRef} className={`cauth-scene relative isolate min-h-[100dvh] overflow-x-clip ${isLight ? 'text-white' : 'text-[#EBE3DB]'}`}>
       <div className="cauth-backdrop" aria-hidden="true" />
+      {/*
+        The moving background. Everything about this tag is load-bearing:
+        `muted` + `playsinline` are what let a browser start it without a tap (an
+        unmuted video is blocked everywhere, and without playsinline iOS takes the
+        video fullscreen); `loop` is seamless because the clip plays forward then
+        backward, so its last frame is its first; `preload="metadata"` keeps the
+        700 KB off the critical path of a login screen.
+
+        It is decoration, so it carries aria-hidden and no controls. When it cannot
+        run — autoplay refused, data saver, low-power mode, or reduced-motion, where
+        the CSS hides it — the poster frame underneath (.cauth-backdrop) is already
+        painted and the screen simply looks still. Nothing here can block signing in.
+      */}
+      <video
+        className="cauth-video"
+        aria-hidden="true"
+        autoPlay
+        muted
+        loop
+        playsInline
+        preload="metadata"
+        poster="/mobler-login-bg.webp"
+      >
+        <source src="/mobler-login-bg.mp4" type="video/mp4" />
+      </video>
       <div className="cauth-shade" aria-hidden="true" />
-      {/* Decorative only: aria-hidden, pointer-events:none, and below the header,
-          card and bar — decoration can never swallow a click meant for the form. */}
-      {BOBA.map(n => (
-        <span key={n} className={`cboba cboba-${n} ${n <= 2 ? 'cboba-near' : n <= 4 ? 'cboba-mid' : 'cboba-far'}`} aria-hidden="true" />
-      ))}
+      {/*
+        The drifting boba cut-outs used to live here, over the flat tiled pattern.
+        They are gone now that the background is footage: flat kawaii stickers on a
+        photographic scene read as two different products stacked on one screen, and
+        the clip already has a subject of its own. The CSS and the artwork stay in
+        place, so putting them back is this block plus the list of cut-out indices.
+      */}
 
       <header className="relative z-10 flex items-center justify-between px-5 py-5 sm:px-9 sm:py-7">
         <div className="flex items-center gap-3">
