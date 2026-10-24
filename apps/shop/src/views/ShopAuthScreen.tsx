@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, FormEvent, ReactNode } from 'react';
 import { AlertCircle, CalendarCheck, Loader2, LogIn, Radio, Store, UserPlus, Bell, MapPin, CupSoda, Sparkles } from 'lucide-react';
 import { useShopAuth } from '../context/ShopAuthContext';
 import { PHONE_REGEX, normalizePhone } from '@shared/booking';
+import AuthBackdropVideo from '@shared/components/AuthBackdropVideo';
 
 const inputCls =
   'w-full px-3.5 py-2.5 rounded-xl border border-gray-300 bg-white text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-red-600 focus:ring-2 focus:ring-red-600/15 transition';
@@ -132,25 +133,9 @@ export default function ShopAuthScreen() {
        other visible, so the page scrolls normally. */
     <div ref={sceneRef} className="shop-auth-scene relative isolate min-h-[100dvh] overflow-x-clip text-white">
       <div className="shop-auth-backdrop" aria-hidden="true" />
-      {/*
-        Same moving background as the customer login, and the same reasons for every
-        attribute: `muted` + `playsinline` are what allow autoplay at all, `loop` is
-        seamless because the clip runs forward then backward, and `preload="metadata"`
-        keeps 700 KB off the critical path. Decoration only — aria-hidden, no controls,
-        and the poster frame beneath it carries the screen whenever the video cannot run.
-      */}
-      <video
-        className="shop-auth-video"
-        aria-hidden="true"
-        autoPlay
-        muted
-        loop
-        playsInline
-        preload="metadata"
-        poster="/mobler-login-bg.webp"
-      >
-        <source src="/mobler-login-bg.mp4" type="video/mp4" />
-      </video>
+      {/* Same moving background as the customer login, and the same component: it picks
+          the portrait or the landscape cut from the viewport's shape. */}
+      <AuthBackdropVideo className="shop-auth-video" />
       <div className="shop-auth-shade" aria-hidden="true" />
       {/*
         The drifting boba cut-outs used to live here, over the flat illustration.

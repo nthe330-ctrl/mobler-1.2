@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '@shared/context/ThemeContext';
 import { useLanguage } from '@shared/context/LanguageContext';
 import { PHONE_REGEX, normalizePhone } from '@shared/booking';
+import AuthBackdropVideo from '@shared/components/AuthBackdropVideo';
 
 /**
  * Customer sign-in gate.
@@ -150,31 +151,9 @@ export default function CustomerAuthScreen() {
        the other free to scroll. */
     <div ref={sceneRef} className={`cauth-scene relative isolate min-h-[100dvh] overflow-x-clip ${isLight ? 'text-white' : 'text-[#EBE3DB]'}`}>
       <div className="cauth-backdrop" aria-hidden="true" />
-      {/*
-        The moving background. Everything about this tag is load-bearing:
-        `muted` + `playsinline` are what let a browser start it without a tap (an
-        unmuted video is blocked everywhere, and without playsinline iOS takes the
-        video fullscreen); `loop` is seamless because the clip plays forward then
-        backward, so its last frame is its first; `preload="metadata"` keeps the
-        700 KB off the critical path of a login screen.
-
-        It is decoration, so it carries aria-hidden and no controls. When it cannot
-        run — autoplay refused, data saver, low-power mode, or reduced-motion, where
-        the CSS hides it — the poster frame underneath (.cauth-backdrop) is already
-        painted and the screen simply looks still. Nothing here can block signing in.
-      */}
-      <video
-        className="cauth-video"
-        aria-hidden="true"
-        autoPlay
-        muted
-        loop
-        playsInline
-        preload="metadata"
-        poster="/mobler-login-bg.webp"
-      >
-        <source src="/mobler-login-bg.mp4" type="video/mp4" />
-      </video>
+      {/* Picks the portrait or the landscape cut from the viewport's shape; see the
+          component for why the choice is made in JS rather than with <source media>. */}
+      <AuthBackdropVideo className="cauth-video" />
       <div className="cauth-shade" aria-hidden="true" />
       {/*
         The drifting boba cut-outs used to live here, over the flat tiled pattern.

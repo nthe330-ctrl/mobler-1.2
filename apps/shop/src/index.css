@@ -73,6 +73,12 @@ html {
   background-repeat: no-repeat;
 }
 
+/* The poster has to follow the video, or a phone paints the landscape still frame for
+   a moment and then cuts to the portrait clip. Same breakpoint as the component. */
+@media (max-aspect-ratio: 3/4) {
+  .shop-auth-backdrop { background-image: url('/mobler-login-bg-portrait.webp'); }
+}
+
 .shop-auth-video {
   position: fixed;
   inset: -2%;
