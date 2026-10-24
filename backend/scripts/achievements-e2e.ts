@@ -234,8 +234,15 @@ async function main() {
     check('the night visit is still counted once', n3b.data.stats.night_bookings === 1, n3b.data.stats);
 
     console.log('\nReviews and photos');
-    const rv = await call('POST', `/shops/${shopId}/reviews`, { content: 'Quán đẹp', images: ['https://example.com/1.jpg', 'https://example.com/2.jpg'] }, T);
+    /* Images must now be uploaded through /api/me/uploads first: the review route keeps
+       only URLs this server issued, so arbitrary off-site links no longer stick. */
+    const PNG = 'data:image/png;base64,' + Buffer.from('89504e470d0a1a0a0000000d49484452', 'hex').toString('base64');
+    const up1 = await call('POST', '/me/uploads', { dataUrl: PNG }, T);
+    const up2 = await call('POST', '/me/uploads', { dataUrl: PNG }, T);
+    check('guest can upload review photos', up1.status === 201 && up2.status === 201, [up1.status, up2.status]);
+    const rv = await call('POST', `/shops/${shopId}/reviews`, { content: 'Quán đẹp', images: [up1.data.url, up2.data.url] }, T);
     check('review accepted', rv.status === 201);
+    check('off-site image URLs are dropped', !JSON.stringify(rv.data.review?.images || []).includes('example.com'), rv.data.review?.images);
     const n3 = await call('GET', '/me/achievements', undefined, T);
     check('review-with-photo and photo counts update', n3.data.stats.reviews_with_photo === 1 && n3.data.stats.photos_posted === 2, n3.data.stats);
     const cancelled = await call('POST', '/bookings', { shop_id: shopId, date: isoInDays(4), time: '06:30', table_id: 't7', guests: 2 }, T);

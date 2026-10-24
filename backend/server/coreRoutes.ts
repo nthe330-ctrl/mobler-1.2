@@ -1,4 +1,5 @@
 import { Express, Request, Response } from 'express';
+import nodeCrypto from 'node:crypto';
 import { db, isSettledOrder, UserRecord, OrderRecord, BookingRecord, DEFAULT_SLOT_DURATION_MIN } from './db';
 import {
   AuthRequest,
@@ -14,6 +15,7 @@ import {
   rateLimit
 } from './auth';
 import { publish, topics, issueTicket, streamHandler, realtimeStats } from './realtime';
+import { storage, isOwnUploadUrl } from './storage';
 import { publicMenu, registerShopDataRoutes, shopVouchersAsRecords } from './shopData';
 import { getUserAchievements, syncUserAchievements, getShopLoyalty, expireAndListWalletVouchers, PersonalVoucher } from './achievements';
 import { getUserRank } from './ranks';
@@ -430,6 +432,10 @@ export function registerCoreRoutes(app: Express) {
   app.post('/api/shops/:id/reviews', authenticateToken, requireAccount('customer'), (req: AuthRequest, res: Response) => {
     const shopId = req.params.id;
     const { content, images = [], metrics } = req.body || {};
+    /* Only images this server stored. Without the filter, anything the client put in the
+       array ended up rendered on a public shop page. Silently dropping the rest keeps a
+       well-behaved client working while an abusive one gains nothing. */
+    const safeImages: string[] = (Array.isArray(images) ? images : []).filter(isOwnUploadUrl).slice(0, 6);
     const user = db.findUserById(req.user!.userId);
     if (!content) return res.status(400).json({ error: 'Vui lòng nhập nội dung đánh giá' });
     // Only a guest who really showed up may review, and only the shop they showed up at.
@@ -474,7 +480,7 @@ export function registerCoreRoutes(app: Express) {
       // Sortable timestamp behind the display string, so per-shop titles can tell when
       // a review requirement was actually met.
       created_at: new Date().toISOString(),
-      images,
+      images: safeImages,
       content,
       likes: 0,
       comments: 0,
@@ -504,6 +510,39 @@ export function registerCoreRoutes(app: Express) {
       rank: getUserRank(req.user!.userId)
     });
   });
+
+  /* Photo a guest attaches to a review. Mirrors the shop-side upload — same types, same
+     3 MB cap, same storage driver — but keyed to the signed-in customer, and rate limited
+     because this is the one write a logged-in guest can repeat freely. The response is a
+     URL; the review route then accepts only URLs this produced (isOwnUploadUrl). */
+  const CUSTOMER_IMAGE_TYPES: Record<string, string> =
+    { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
+  const MAX_REVIEW_IMAGE_BYTES = 3 * 1024 * 1024;
+
+  app.post(
+    '/api/me/uploads',
+    authenticateToken,
+    requireAccount('customer'),
+    rateLimit(20, 60_000),
+    (req: AuthRequest, res: Response) => {
+      const m = /^data:(image\/[a-z]+);base64,([A-Za-z0-9+/=]+)$/.exec(String(req.body?.dataUrl || ''));
+      if (!m || !CUSTOMER_IMAGE_TYPES[m[1]]) {
+        return res.status(400).json({ error: 'Chỉ nhận ảnh JPG, PNG hoặc WEBP', code: 'UPLOAD_BAD_TYPE' });
+      }
+      const buf = Buffer.from(m[2], 'base64');
+      if (buf.length > MAX_REVIEW_IMAGE_BYTES) {
+        return res.status(413).json({ error: 'Ảnh tối đa 3MB', code: 'UPLOAD_TOO_LARGE' });
+      }
+      const name = `review-${req.user!.userId.replace(/[^a-z0-9-]/gi, '')}-` +
+        `${nodeCrypto.randomBytes(8).toString('hex')}.${CUSTOMER_IMAGE_TYPES[m[1]]}`;
+      storage().put(name, buf, m[1])
+        .then(({ url }) => res.status(201).json({ url }))
+        .catch(err => {
+          console.error('[MOBLER API] review upload failed', err);
+          res.status(502).json({ error: 'Không lưu được ảnh, vui lòng thử lại', code: 'UPLOAD_FAILED' });
+        });
+    }
+  );
 
   app.post('/api/shops/:id/favorites', authenticateToken, requireAccount('customer'), (req: AuthRequest, res: Response) => {
     res.json(db.toggleFavorite(req.user!.userId, req.params.id));

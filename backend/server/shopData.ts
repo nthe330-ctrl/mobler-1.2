@@ -6,6 +6,7 @@ import { db, isSettledOrder, VoucherRecord } from './db';
 import { AuthRequest, authenticateToken, requireAccount, requireShopAccess } from './auth';
 import { publish, topics } from './realtime';
 import { isActiveBooking } from '../../shared/booking';
+import { storage } from './storage';
 
 /**
  * Data that belongs to one shop and is created by its owner in the shop app:
@@ -191,11 +192,15 @@ export function registerShopDataRoutes(app: Express) {
     if (!m || !IMAGE_TYPES[m[1]]) return res.status(400).json({ error: 'Chỉ nhận ảnh JPG, PNG, WEBP hoặc GIF' });
     const buf = Buffer.from(m[2], 'base64');
     if (buf.length > MAX_UPLOAD_BYTES) return res.status(413).json({ error: 'Ảnh tối đa 3MB' });
-    fs.mkdirSync(UPLOAD_DIR, { recursive: true });
     const name = `${req.params.id.replace(/[^a-z0-9-]/gi, '')}-${crypto.randomBytes(8).toString('hex')}.${IMAGE_TYPES[m[1]]}`;
-    fs.writeFileSync(path.join(UPLOAD_DIR, name), buf);
-    const base = (process.env.PUBLIC_API_URL || '').replace(/\/$/, '');
-    res.status(201).json({ url: `${base}/api/media/uploads/${name}` });
+    // Through the storage driver, so the same route works on local disk and on an
+    // S3-compatible bucket without the caller knowing which is active.
+    storage().put(name, buf, m[1])
+      .then(({ url }) => res.status(201).json({ url }))
+      .catch(err => {
+        console.error('[MOBLER API] upload failed', err);
+        res.status(502).json({ error: 'Không lưu được ảnh, vui lòng thử lại', code: 'UPLOAD_FAILED' });
+      });
   });
 
   app.get('/api/media/uploads/:file', (req: Request, res: Response) => {
