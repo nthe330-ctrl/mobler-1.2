@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import type { CurrencyCode } from '../../shared/currency';
 import bcrypt from 'bcryptjs';
 import { MOCK_SHOPS, MOCK_MENU, MOCK_TABLES } from '../../shared/data';
 import { CoffeeShop, MenuItem, Table, Review } from '../../shared/types';
@@ -12,7 +13,7 @@ import {
   slotsOverlap
 } from '../../shared/booking';
 
-export const SCHEMA_VERSION = 5;
+export const SCHEMA_VERSION = 6;
 export const DEFAULT_SLOT_DURATION_MIN = Number(process.env.BOOKING_SLOT_DURATION_MIN || 120);
 
 export interface UserRole {
@@ -61,6 +62,12 @@ export type BookingRecord = BookingDTO;
 
 export interface OrderRecord {
   id: string;
+  /**
+   * The currency this order was taken in, copied from the shop at the moment it was
+   * created. It is deliberately a copy and not a lookup: a shop that later switches
+   * currency must not rewrite what its past orders were worth.
+   */
+  currency_code?: CurrencyCode;
   order_code: string;
   shop_id: string;
   shop_name: string;
@@ -712,6 +719,13 @@ function migrateDatabase(data: any): { db: DatabaseSchema; changed: boolean } {
   );
   // v5: browsers can be pushed to even when no tab is open.
   data.push_subscriptions = data.push_subscriptions || [];
+  // v6: every shop now names the currency it prices in. Existing shops get VND because
+  // that is what their stored numbers always were — the old display code read
+  // `value.toLocaleString('vi-VN') + 'đ'`. A shop that somehow already carries a code
+  // keeps it; a migration must never overwrite a merchant's own setting.
+  data.shops = (data.shops || []).map((sh: any) =>
+    sh.currency_code ? sh : { ...sh, currency_code: 'VND' }
+  );
   data.schema_version = SCHEMA_VERSION;
   return { db: data as DatabaseSchema, changed: true };
 }

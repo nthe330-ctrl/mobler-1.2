@@ -1,3 +1,4 @@
+import type { CurrencyCode } from './currency';
 export type Mood = 'Làm việc / Học bài' | 'Hẹn hò' | 'Chụp ảnh / Check-in' | 'Tụ tập nhóm' | 'Thư giãn / Chill';
 
 export type Amenity = 
@@ -215,6 +216,12 @@ export interface CoffeeShop {
   district?: string;
   ownerId?: string;
   description?: string;
+  /**
+   * ISO 4217 code the shop prices in. Absent on shops created before the setting existed;
+   * `toCurrencyCode()` reads those as VND, which is what their numbers always meant.
+   * Changing this NEVER converts a stored amount — see shared/currency.ts.
+   */
+  currency_code?: CurrencyCode;
   bookingSettings?: {
     /** Confirm new bookings automatically instead of waiting for staff. */
     autoConfirm: boolean;

@@ -5,14 +5,16 @@ import {
 } from 'lucide-react';
 import { CoffeeShop } from '@shared/types';
 import {
-  AvailabilityResponse, BOOKING_STATUS_LABEL_VI, BookingDTO, BookingStatus, TableOperationalStatus,
-  formatDateVi, isActiveBooking, slotsOverlap, timeToMinutes, toIsoDate
+  AvailabilityResponse, BookingDTO, BookingStatus, TableOperationalStatus,
+  isActiveBooking, slotsOverlap, timeToMinutes, toIsoDate
 } from '@shared/booking';
 import { connectRealtime, RealtimeStatus } from '@shared/api/realtime';
 import { http, shopApi } from '../services/shopApi';
 import { useShopAuth } from '../context/ShopAuthContext';
 import IncomingOrderModal from '../components/dashboard/IncomingOrderModal';
 import QrScannerModal from '../components/dashboard/QrScannerModal';
+import { useMoney } from '../hooks/useMoney';
+import { useShopI18n } from '../i18n/useShopI18n';
 
 const STATUS_STYLE: Record<BookingStatus, string> = {
   pending: 'bg-amber-100 text-amber-800 border-amber-200',
@@ -30,11 +32,12 @@ const TABLE_STYLE: Record<string, string> = {
   occupied: 'border-sky-300 bg-sky-50 text-sky-900',
   locked: 'border-gray-300 bg-gray-100 text-gray-500'
 };
-const TABLE_LABEL: Record<string, string> = {
-  available: 'Trống',
-  reserved: 'Sắp có khách',
-  occupied: 'Đang có khách',
-  locked: 'Đã khóa'
+/** Dictionary keys, not labels: the words themselves depend on who is reading. */
+const TABLE_LABEL_KEY: Record<string, string> = {
+  available: 'shop.table.available',
+  reserved: 'shop.table.reserved',
+  occupied: 'shop.table.occupied',
+  locked: 'shop.table.locked'
 };
 
 function shiftDate(iso: string, days: number) {
@@ -70,6 +73,8 @@ interface Props {
 }
 
 export default function LiveBookingsView({ shop, onPendingCountChange }: Props) {
+  const { money } = useMoney();
+  const { t, tf, fmtDate, num, statusLabel } = useShopI18n();
   const { replaceShop } = useShopAuth();
   const [date, setDate] = useState<string>(toIsoDate(new Date()));
   const [clock, setClock] = useState<{ today: string; now: string } | null>(null);
@@ -92,7 +97,7 @@ export default function LiveBookingsView({ shop, onPendingCountChange }: Props) 
 
   const showToast = (text: string, tone: 'new' | 'info' | 'error' = 'info') => {
     setToast({ text, tone });
-    window.setTimeout(() => setToast(t => (t?.text === text ? null : t)), 6000);
+    window.setTimeout(() => setToast(prev => (prev?.text === text ? null : prev)), 6000);
   };
 
   const loadTables = useCallback(async () => {
@@ -106,17 +111,17 @@ export default function LiveBookingsView({ shop, onPendingCountChange }: Props) 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [b, t] = await Promise.all([shopApi.getBookings(shop.id, date), shopApi.getTables(shop.id, date)]);
+      const [b, board] = await Promise.all([shopApi.getBookings(shop.id, date), shopApi.getTables(shop.id, date)]);
       setBookings(b.bookings);
       setClock(b.clock);
-      setTables(t);
+      setTables(board);
       setError(null);
     } catch (err: any) {
-      setError(err?.message || 'Không tải được dữ liệu đặt bàn');
+      setError(err?.message || t('shop.live.loadFailed'));
     } finally {
       setLoading(false);
     }
-  }, [shop.id, date]);
+  }, [shop.id, date, t]);
 
   useEffect(() => {
     load();
@@ -140,8 +145,16 @@ export default function LiveBookingsView({ shop, onPendingCountChange }: Props) 
   }, [pendingAll.length]);
 
   // ----- Real-time subscription -----
+  // The subscription is keyed on shop.id alone: re-running this effect tears down the SSE
+  // connection and would drop events. So the language-dependent formatters used inside it
+  // are read through refs — a staff member switching language keeps their live feed, and
+  // the next toast is already in the new language.
   const handlers = useRef({ loadTables, loadPendingAll });
   handlers.current = { loadTables, loadPendingAll };
+  const tfRef = useRef(tf);
+  tfRef.current = tf;
+  const fmtDateRef = useRef(fmtDate);
+  fmtDateRef.current = fmtDate;
   useEffect(() => {
     return connectRealtime({
       http,
@@ -169,16 +182,26 @@ export default function LiveBookingsView({ shop, onPendingCountChange }: Props) 
             setFlashIds(prev => new Set(prev).add(b.id));
             window.setTimeout(() => setFlashIds(prev => { const n = new Set(prev); n.delete(b.id); return n; }), 8000);
             playChime();
-            showToast(`Đặt bàn mới: ${b.user_name} • ${b.guests} khách • ${b.time} ${formatDateVi(b.date)}`, 'new');
+            const when = { name: b.user_name, guests: b.guests, time: b.time, date: fmtDateRef.current(b.date) };
+            showToast(tfRef.current('shop.live.newBookingToast', when), 'new');
             if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
               try {
-                new Notification('Mobler Shop — Đặt bàn mới', { body: `${b.user_name}, ${b.guests} khách lúc ${b.time} ${formatDateVi(b.date)}` });
+                new Notification(tfRef.current('shop.live.notifyTitle'), {
+                  body: tfRef.current('shop.live.notifyBody', when)
+                });
               } catch {
                 // ignore
               }
             }
           } else if (b.status === 'cancelled' && b.status_history?.at(-1)?.by === 'customer') {
-            showToast(`${b.user_name} đã hủy lịch ${b.time} ${formatDateVi(b.date)}`, 'info');
+            showToast(
+              tfRef.current('shop.live.customerCancelled', {
+                name: b.user_name,
+                time: b.time,
+                date: fmtDateRef.current(b.date)
+              }),
+              'info'
+            );
           }
           handlers.current.loadTables();
         }
@@ -199,20 +222,20 @@ export default function LiveBookingsView({ shop, onPendingCountChange }: Props) 
     // browser prompt between that click and the API request: embedded browsers
     // can suppress prompts, leaving the pending order stuck in the modal.
     if (status === 'cancelled') {
-      const input = window.prompt('Lý do hủy (khách sẽ thấy):', 'Quán đã kín chỗ vào giờ này');
+      const input = window.prompt(t('shop.live.cancelReasonPrompt'), t('shop.live.cancelReasonDefault'));
       if (input === null) return;
-      note = input.trim() || 'Quán không thể nhận đặt bàn vào khung giờ này';
+      note = input.trim() || t('shop.live.cancelReasonFallback');
     } else if (status === 'rejected') {
-      note = 'Quán hiện không thể nhận đặt bàn vào khung giờ này';
+      note = t('shop.live.rejectNote');
     }
     setBusyId(b.id);
     try {
       const res = await shopApi.setBookingStatus(b.id, status, note);
       setBookings(prev => prev.map(x => (x.id === b.id ? res.booking : x)));
       setPendingAll(prev => prev.filter(x => x.id !== b.id || res.booking.status === 'pending'));
-      if (status === 'rejected') showToast('Đã từ chối đơn đặt bàn và gửi thông báo cho khách.', 'info');
+      if (status === 'rejected') showToast(t('shop.live.rejectedToast'), 'info');
     } catch (err: any) {
-      showToast(err?.message || 'Không cập nhật được', 'error');
+      showToast(err?.message || t('shop.live.updateFailed'), 'error');
       load();
     } finally {
       setBusyId(null);
@@ -224,7 +247,7 @@ export default function LiveBookingsView({ shop, onPendingCountChange }: Props) 
       await shopApi.setTableStatus(shop.id, code, status);
       loadTables();
     } catch (err: any) {
-      showToast(err?.message || 'Không cập nhật được bàn', 'error');
+      showToast(err?.message || t('shop.live.tableUpdateFailed'), 'error');
     }
   };
 
@@ -252,23 +275,23 @@ export default function LiveBookingsView({ shop, onPendingCountChange }: Props) 
         found = all.bookings.find(x => x.id.toUpperCase() === code);
       }
       if (!found) {
-        setScanError('Mã QR không hợp lệ hoặc không thuộc quán này.');
+        setScanError(t('shop.live.scanInvalid'));
         return;
       }
       if (scanner?.expectedId && found.id !== scanner.expectedId) {
-        setScanError(`Mã này không khớp với đơn đang chọn (${scanner.expectedId}).`);
+        setScanError(tf('shop.live.scanMismatch', { id: scanner.expectedId }));
         return;
       }
       if (found.status === 'pending') {
-        setScanError('Đơn này chưa được quán xác nhận, chưa thể nhận bàn.');
+        setScanError(t('shop.live.scanNotConfirmed'));
         return;
       }
       if (found.status === 'arrived') {
-        setScanError(`${found.user_name} đã được nhận bàn trước đó.`);
+        setScanError(tf('shop.live.scanAlreadyIn', { name: found.user_name }));
         return;
       }
       if (found.status !== 'confirmed') {
-        setScanError(`Đơn này đã "${BOOKING_STATUS_LABEL_VI[found.status]}", không thể nhận bàn.`);
+        setScanError(tf('shop.live.scanWrongStatus', { status: statusLabel(found.status) }));
         return;
       }
       // Quét mã thành công = mới tính là đã hoàn thành nhận bàn — không có đường tắt nào khác.
@@ -276,9 +299,9 @@ export default function LiveBookingsView({ shop, onPendingCountChange }: Props) 
       setBookings(prev => prev.map(x => (x.id === found!.id ? res.booking : x)));
       setPendingAll(prev => prev.filter(x => x.id !== found!.id));
       setScanner(null);
-      showToast(`✅ Quét mã thành công — đã nhận bàn cho ${found.user_name}`, 'new');
+      showToast(tf('shop.live.scanOk', { name: found.user_name }), 'new');
     } catch (err: any) {
-      setScanError(err?.message || 'Không xác nhận được, vui lòng thử lại.');
+      setScanError(err?.message || t('shop.live.scanRetry'));
     } finally {
       setScanBusy(false);
     }
@@ -290,7 +313,7 @@ export default function LiveBookingsView({ shop, onPendingCountChange }: Props) 
       const res = await shopApi.updateShop(shop.id, { bookingSettings: { ...current, [key]: !current[key] } });
       replaceShop(res.shop);
     } catch (err: any) {
-      showToast(err?.message || 'Không lưu được cài đặt', 'error');
+      showToast(err?.message || t('shop.live.settingSaveFailed'), 'error');
     }
   };
 
@@ -347,38 +370,45 @@ export default function LiveBookingsView({ shop, onPendingCountChange }: Props) 
                 <div className="flex flex-col sm:flex-row sm:items-start gap-3">
                   <div className="sm:w-20 shrink-0 flex sm:flex-col items-center sm:items-start gap-2 sm:gap-0">
                     <p className="text-xl font-black text-gray-900 tabular-nums">{b.time}</p>
-                    {b.date !== date && <p className="text-[11px] font-bold text-amber-700">{formatDateVi(b.date)}</p>}
+                    {b.date !== date && <p className="text-[11px] font-bold text-amber-700">{fmtDate(b.date)}</p>}
                     <p className="text-[11px] font-semibold text-gray-500">{b.table_id?.toUpperCase()}</p>
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="font-bold text-gray-900">{b.user_name}</p>
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${STATUS_STYLE[b.status]}`}>{BOOKING_STATUS_LABEL_VI[b.status]}</span>
-                      {isFlash && <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-500 text-white">MỚI</span>}
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${STATUS_STYLE[b.status]}`}>{statusLabel(b.status)}</span>
+                      {isFlash && <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-500 text-white">{t('shop.live.newBadge')}</span>}
                       <span className="text-[11px] font-mono text-gray-400">{b.id}</span>
                     </div>
                     <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-600">
-                      <span className="flex items-center gap-1"><Users size={13} /> {b.guests} khách</span>
+                      <span className="flex items-center gap-1"><Users size={13} /> {tf('shop.live.guestsCount', { count: b.guests })}</span>
                       <span className="flex items-center gap-1"><Armchair size={13} /> {b.table_name}</span>
                       <a href={`tel:${b.user_phone}`} className="flex items-center gap-1 text-red-700 font-semibold"><Phone size={13} /> {b.user_phone}</a>
                     </div>
                     {b.note && <p className="mt-2 text-xs text-gray-700 bg-gray-50 rounded-lg px-2.5 py-1.5 flex gap-1.5"><StickyNote size={13} className="shrink-0 mt-0.5 text-gray-400" /> {b.note}</p>}
                     {b.order?.items?.length ? (
                       <details className="mt-2 text-xs text-gray-700">
-                        <summary className="cursor-pointer font-semibold flex items-center gap-1.5"><Coffee size={13} className="text-amber-600" /> Gọi món trước: {b.order.items.reduce((s, i) => s + i.quantity, 0)} món • {(b.grand_total || b.order.total).toLocaleString('vi-VN')}đ</summary>
+                        <summary className="cursor-pointer font-semibold flex items-center gap-1.5">
+                          <Coffee size={13} className="text-amber-600" />
+                          {tf('shop.live.preorder', {
+                            count: b.order.items.reduce((s, i) => s + i.quantity, 0),
+                            // The booking's own currency, not today's setting: see BookingDTO.currency_code.
+                            total: money(b.grand_total || b.order.total, b.currency_code)
+                          })}
+                        </summary>
                         <ul className="mt-1.5 pl-5 list-disc space-y-0.5">
                           {b.order.items.map((i, idx) => <li key={idx}>{i.quantity}× {i.name} <span className="text-gray-400">{i.options}</span></li>)}
                         </ul>
                       </details>
                     ) : null}
-                    {b.shop_note && <p className="mt-2 text-[11px] text-gray-500">Ghi chú của quán: {b.shop_note}</p>}
+                    {b.shop_note && <p className="mt-2 text-[11px] text-gray-500">{tf('shop.live.shopNote', { note: b.shop_note })}</p>}
                   </div>
                   <div className="flex sm:flex-col gap-2 sm:w-36 shrink-0">
                     {b.status === 'pending' && (
                       // The call-style IncomingOrderModal below is the ONLY way to accept/reject —
                       // this just reflects that a decision is pending, it isn't a second path.
                       <span className="flex-1 px-3 py-2 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 text-[11px] font-bold flex items-center justify-center gap-1.5">
-                        <Phone size={13} className="animate-pulse" /> Đang chờ xác nhận
+                        <Phone size={13} className="animate-pulse" /> {t('shop.live.waitingConfirm')}
                       </span>
                     )}
                     {b.status === 'confirmed' && (
@@ -388,13 +418,13 @@ export default function LiveBookingsView({ shop, onPendingCountChange }: Props) 
                           onClick={() => { setScanner({ expectedId: b.id }); setScanError(null); }}
                           className="flex-1 px-3 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold flex items-center justify-center gap-1.5 disabled:opacity-50"
                         >
-                          <ScanLine size={14} /> Quét mã nhận bàn
+                          <ScanLine size={14} /> {t('shop.live.scanToCheckIn')}
                         </button>
-                        <button disabled={busy} onClick={() => changeStatus(b, 'cancelled')} className="flex-1 px-3 py-2 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 text-xs font-bold disabled:opacity-50">Hủy lịch</button>
+                        <button disabled={busy} onClick={() => changeStatus(b, 'cancelled')} className="flex-1 px-3 py-2 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 text-xs font-bold disabled:opacity-50">{t('shop.live.cancelBooking')}</button>
                       </>
                     )}
                     {b.status === 'arrived' && (
-                      <button disabled={busy} onClick={() => changeStatus(b, 'completed')} className="flex-1 px-3 py-2 rounded-xl bg-gray-900 hover:bg-black text-white text-xs font-bold flex items-center justify-center gap-1.5 disabled:opacity-50"><CheckCheck size={14} /> Hoàn tất</button>
+                      <button disabled={busy} onClick={() => changeStatus(b, 'completed')} className="flex-1 px-3 py-2 rounded-xl bg-gray-900 hover:bg-black text-white text-xs font-bold flex items-center justify-center gap-1.5 disabled:opacity-50"><CheckCheck size={14} /> {t('shop.live.complete')}</button>
                     )}
                   </div>
                 </div>
@@ -411,42 +441,42 @@ export default function LiveBookingsView({ shop, onPendingCountChange }: Props) 
       <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <h2 className="text-2xl font-black text-gray-900">Đặt bàn trực tiếp</h2>
+            <h2 className="text-2xl font-black text-gray-900">{t('shop.live.title')}</h2>
             <span className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2 py-0.5 rounded-full border ${
               live === 'live' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'
             }`}>
               <span className={`w-1.5 h-1.5 rounded-full ${live === 'live' ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
-              {live === 'live' ? 'LIVE' : 'Đang kết nối…'}
+              {live === 'live' ? 'LIVE' : t('shop.live.connecting')}
             </span>
           </div>
-          <p className="text-sm text-gray-500 mt-1">Yêu cầu từ ứng dụng khách hàng hiện ra ngay tại đây — không cần tải lại trang.</p>
+          <p className="text-sm text-gray-500 mt-1">{t('shop.live.subtitle')}</p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex items-center rounded-xl border border-gray-200 bg-white">
-            <button className="p-2 text-gray-600 hover:text-red-700" onClick={() => setDate(d => shiftDate(d, -1))} aria-label="Ngày trước"><ChevronLeft size={18} /></button>
+            <button className="p-2 text-gray-600 hover:text-red-700" onClick={() => setDate(d => shiftDate(d, -1))} aria-label={t('shop.live.prevDay')}><ChevronLeft size={18} /></button>
             <label className="flex items-center gap-1.5 px-2 text-sm font-bold text-gray-800">
               <CalendarDays size={15} className="text-red-600" />
               <input type="date" value={date} onChange={e => e.target.value && setDate(e.target.value)} className="bg-transparent focus:outline-none" />
             </label>
-            <button className="p-2 text-gray-600 hover:text-red-700" onClick={() => setDate(d => shiftDate(d, 1))} aria-label="Ngày sau"><ChevronRight size={18} /></button>
+            <button className="p-2 text-gray-600 hover:text-red-700" onClick={() => setDate(d => shiftDate(d, 1))} aria-label={t('shop.live.nextDay')}><ChevronRight size={18} /></button>
           </div>
           {date !== today && (
-            <button onClick={() => setDate(today)} className="px-3 py-2 rounded-xl text-sm font-bold bg-red-600 text-white">Hôm nay</button>
+            <button onClick={() => setDate(today)} className="px-3 py-2 rounded-xl text-sm font-bold bg-red-600 text-white">{t('shop.live.today')}</button>
           )}
-          <button onClick={() => { load(); loadPendingAll(); }} className="p-2.5 rounded-xl border border-gray-200 bg-white text-gray-600 hover:text-red-700" aria-label="Tải lại">
+          <button onClick={() => { load(); loadPendingAll(); }} className="p-2.5 rounded-xl border border-gray-200 bg-white text-gray-600 hover:text-red-700" aria-label={t('shop.live.reload')}>
             <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
           </button>
           {notifyPermission === 'default' && (
             <button onClick={enableNotifications} className="px-3 py-2 rounded-xl text-sm font-bold border border-gray-200 bg-white text-gray-700 flex items-center gap-1.5">
-              <Bell size={15} /> Bật âm báo
+              <Bell size={15} /> {t('shop.live.enableSound')}
             </button>
           )}
           <button
             onClick={() => { setScanner({}); setScanError(null); }}
             className="px-3 py-2 rounded-xl text-sm font-bold bg-gray-900 hover:bg-black text-white flex items-center gap-1.5"
           >
-            <ScanLine size={15} /> Quét mã QR nhận bàn
+            <ScanLine size={15} /> {t('shop.live.scanQrHeader')}
           </button>
         </div>
       </div>
@@ -459,7 +489,7 @@ export default function LiveBookingsView({ shop, onPendingCountChange }: Props) 
           <span className={`w-8 h-4 rounded-full relative transition ${accepting ? 'bg-emerald-500' : 'bg-gray-400'}`}>
             <span className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${accepting ? 'left-4' : 'left-0.5'}`} />
           </span>
-          {accepting ? 'Đang nhận đặt bàn online' : 'Tạm ngưng nhận đặt bàn'}
+          {accepting ? t('shop.live.acceptingOn') : t('shop.live.acceptingOff')}
         </button>
         <button onClick={() => toggleSetting('autoConfirm')} className={`px-3 py-2 rounded-xl text-xs font-bold border flex items-center gap-2 ${
           autoConfirm ? 'bg-sky-50 border-sky-200 text-sky-800' : 'bg-white border-gray-200 text-gray-700'
@@ -467,24 +497,29 @@ export default function LiveBookingsView({ shop, onPendingCountChange }: Props) 
           <span className={`w-8 h-4 rounded-full relative transition ${autoConfirm ? 'bg-sky-500' : 'bg-gray-300'}`}>
             <span className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${autoConfirm ? 'left-4' : 'left-0.5'}`} />
           </span>
-          Tự động xác nhận
+          {t('shop.live.autoConfirm')}
         </button>
         <span className="px-3 py-2 rounded-xl text-xs font-semibold bg-white border border-gray-200 text-gray-600 flex items-center gap-1.5">
-          <Clock size={13} /> Mỗi lượt giữ bàn {shop.bookingSettings?.slotDurationMin || 120} phút
+          <Clock size={13} /> {tf('shop.live.holdMinutes', { minutes: shop.bookingSettings?.slotDurationMin || 120 })}
         </span>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
-          { label: 'Chờ xác nhận', value: counts.pending, tone: 'text-amber-600' },
-          { label: 'Đã xác nhận', value: counts.confirmed, tone: 'text-emerald-600' },
-          { label: 'Đang phục vụ', value: counts.arrived, tone: 'text-sky-600' },
-          { label: `Khách ${date === today ? 'hôm nay' : formatDateVi(date)}`, value: counts.guests, tone: 'text-gray-900' }
+          { label: t('shop.live.statPending'), value: counts.pending, tone: 'text-amber-600' },
+          { label: t('shop.live.statConfirmed'), value: counts.confirmed, tone: 'text-emerald-600' },
+          { label: t('shop.live.statServing'), value: counts.arrived, tone: 'text-sky-600' },
+          {
+            label: date === today ? t('shop.live.statGuestsToday') : tf('shop.live.statGuestsOn', { date: fmtDate(date) }),
+            value: counts.guests,
+            tone: 'text-gray-900'
+          }
         ].map(s => (
           <div key={s.label} className="bg-white rounded-2xl border border-gray-200 p-4">
             <p className="text-xs font-semibold text-gray-500">{s.label}</p>
-            <p className={`text-2xl font-black mt-1 tabular-nums ${s.tone}`}>{s.value}</p>
+            {/* num(), not money(): a head count is not an amount and must never pick up a currency symbol. */}
+            <p className={`text-2xl font-black mt-1 tabular-nums ${s.tone}`}>{num(s.value)}</p>
           </div>
         ))}
       </div>
@@ -492,7 +527,7 @@ export default function LiveBookingsView({ shop, onPendingCountChange }: Props) 
       {error && (
         <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 flex items-center justify-between">
           <span>{error}</span>
-          <button onClick={load} className="font-bold underline">Thử lại</button>
+          <button onClick={load} className="font-bold underline">{t('shop.live.retry')}</button>
         </div>
       )}
 
@@ -503,24 +538,26 @@ export default function LiveBookingsView({ shop, onPendingCountChange }: Props) 
             <div className="space-y-3 pb-3">
               <h3 className="font-black text-gray-900 flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-                Yêu cầu chờ xác nhận ({pendingSorted.length})
+                {tf('shop.live.pendingHeading', { count: pendingSorted.length })}
               </h3>
               {pendingSorted.map(renderCard)}
             </div>
           )}
           <div className="flex items-center justify-between">
-            <h3 className="font-black text-gray-900">Lịch đặt {date === today ? 'hôm nay' : `ngày ${formatDateVi(date)}`}</h3>
+            <h3 className="font-black text-gray-900">
+              {date === today ? t('shop.live.scheduleToday') : tf('shop.live.scheduleOn', { date: fmtDate(date) })}
+            </h3>
             <label className="flex items-center gap-2 text-xs font-semibold text-gray-600 cursor-pointer">
               <input type="checkbox" checked={showClosed} onChange={e => setShowClosed(e.target.checked)} className="accent-red-600" />
-              Hiện cả lịch đã xong / đã hủy
+              {t('shop.live.showClosed')}
             </label>
           </div>
 
           {!loading && dayBookings.length === 0 && pendingSorted.length === 0 && (
             <div className="bg-white rounded-2xl border border-dashed border-gray-300 p-10 text-center text-gray-500">
               <CalendarDays size={36} className="mx-auto mb-3 text-gray-300" />
-              <p className="font-semibold text-gray-700">Chưa có lịch đặt bàn</p>
-              <p className="text-sm mt-1">Khi khách đặt bàn trên ứng dụng Mobler, yêu cầu sẽ hiện ra ở đây ngay lập tức.</p>
+              <p className="font-semibold text-gray-700">{t('shop.live.emptyTitle')}</p>
+              <p className="text-sm mt-1">{t('shop.live.emptyBody')}</p>
             </div>
           )}
 
@@ -530,41 +567,52 @@ export default function LiveBookingsView({ shop, onPendingCountChange }: Props) 
         {/* Table board */}
         <section className="space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="font-black text-gray-900">Sơ đồ bàn {date === today ? `lúc ${boardTime}` : `ngày ${formatDateVi(date)}`}</h3>
+            <h3 className="font-black text-gray-900">
+              {date === today
+                ? tf('shop.live.boardAt', { time: boardTime })
+                : tf('shop.live.boardOn', { date: fmtDate(date) })}
+            </h3>
           </div>
           <div className="grid grid-cols-2 gap-2.5">
-            {tableBoard.map(t => (
-              <div key={t.id} className={`rounded-2xl border p-3 ${TABLE_STYLE[t.state] || TABLE_STYLE.available}`}>
+            {tableBoard.map(tbl => (
+              <div key={tbl.id} className={`rounded-2xl border p-3 ${TABLE_STYLE[tbl.state] || TABLE_STYLE.available}`}>
                 <div className="flex items-start justify-between">
                   <div>
-                    <p className="font-black text-sm">{t.id.toUpperCase()}</p>
-                    <p className="text-[11px] opacity-80">{t.seats} chỗ • {t.id <= 't4' ? 'Tầng 1' : 'Tầng 2'}</p>
+                    <p className="font-black text-sm">{tbl.id.toUpperCase()}</p>
+                    <p className="text-[11px] opacity-80">
+                      {tf('shop.live.seatsFloor', {
+                        seats: tbl.seats,
+                        floor: t(tbl.id <= 't4' ? 'shop.live.floor1' : 'shop.live.floor2')
+                      })}
+                    </p>
                   </div>
                   <button
-                    onClick={() => setTableStatus(t.id, t.operational_status === 'locked' ? 'available' : 'locked')}
+                    onClick={() => setTableStatus(tbl.id, tbl.operational_status === 'locked' ? 'available' : 'locked')}
                     className="p-1.5 rounded-lg hover:bg-black/5"
-                    title={t.operational_status === 'locked' ? 'Mở khóa bàn' : 'Khóa bàn (không nhận đặt)'}
-                    aria-label={t.operational_status === 'locked' ? 'Mở khóa bàn' : 'Khóa bàn'}
+                    title={t(tbl.operational_status === 'locked' ? 'shop.live.unlockTable' : 'shop.live.lockTableTitle')}
+                    aria-label={t(tbl.operational_status === 'locked' ? 'shop.live.unlockTable' : 'shop.live.lockTable')}
                   >
-                    {t.operational_status === 'locked' ? <LockOpen size={14} /> : <Lock size={14} />}
+                    {tbl.operational_status === 'locked' ? <LockOpen size={14} /> : <Lock size={14} />}
                   </button>
                 </div>
-                <p className="text-[11px] font-bold mt-2">{TABLE_LABEL[t.state]}</p>
-                {t.upcoming.length > 0 && (
-                  <p className="text-[11px] mt-0.5 opacity-80">Đặt: {t.upcoming.map(r => r.time).join(', ')}</p>
+                <p className="text-[11px] font-bold mt-2">{t(TABLE_LABEL_KEY[tbl.state] || TABLE_LABEL_KEY.available)}</p>
+                {tbl.upcoming.length > 0 && (
+                  <p className="text-[11px] mt-0.5 opacity-80">
+                    {tf('shop.live.tableUpcoming', { times: tbl.upcoming.map(r => r.time).join(', ') })}
+                  </p>
                 )}
-                {date === today && t.operational_status !== 'locked' && (
+                {date === today && tbl.operational_status !== 'locked' && (
                   <button
-                    onClick={() => setTableStatus(t.id, t.operational_status === 'occupied' ? 'available' : 'occupied')}
+                    onClick={() => setTableStatus(tbl.id, tbl.operational_status === 'occupied' ? 'available' : 'occupied')}
                     className="mt-2 w-full text-[11px] font-bold py-1.5 rounded-lg bg-white/70 hover:bg-white border border-black/5"
                   >
-                    {t.operational_status === 'occupied' ? 'Bàn đã trống' : 'Khách vãng lai ngồi'}
+                    {t(tbl.operational_status === 'occupied' ? 'shop.live.tableFreeNow' : 'shop.live.tableWalkIn')}
                   </button>
                 )}
               </div>
             ))}
           </div>
-          <p className="text-[11px] text-gray-500">Khóa bàn hoặc đánh dấu có khách vãng lai sẽ cập nhật ngay trên màn hình đặt bàn của khách.</p>
+          <p className="text-[11px] text-gray-500">{t('shop.live.boardHint')}</p>
         </section>
       </div>
 
@@ -574,7 +622,7 @@ export default function LiveBookingsView({ shop, onPendingCountChange }: Props) 
         }`}>
           {toast.tone === 'new' ? <BellRing size={18} className="shrink-0" /> : <Bell size={18} className="shrink-0" />}
           <span className="flex-1">{toast.text}</span>
-          <button onClick={() => setToast(null)} aria-label="Đóng"><X size={16} /></button>
+          <button onClick={() => setToast(null)} aria-label={t('shop.live.close')}><X size={16} /></button>
         </div>
       )}
 
@@ -596,8 +644,12 @@ export default function LiveBookingsView({ shop, onPendingCountChange }: Props) 
           booking becomes "arrived" — see handleScanDecode. */}
       <QrScannerModal
         open={!!scanner}
-        title={scanner?.expectedId ? 'Quét mã QR nhận bàn' : 'Quét mã QR nhận bàn (mọi đơn)'}
-        subtitle={scanner?.expectedId ? `Chỉ nhận cho đơn ${scanner.expectedId}` : 'Quét mã khách đưa ra để xác nhận nhận bàn'}
+        title={scanner?.expectedId ? t('shop.live.scanQrHeader') : t('shop.live.scanTitleAny')}
+        subtitle={
+          scanner?.expectedId
+            ? tf('shop.live.scanSubOne', { id: scanner.expectedId })
+            : t('shop.live.scanSubAny')
+        }
         errorMessage={scanError}
         busy={scanBusy}
         onDecode={handleScanDecode}

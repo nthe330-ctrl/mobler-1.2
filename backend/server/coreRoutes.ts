@@ -17,6 +17,7 @@ import {
 import { publish, topics, issueTicket, streamHandler, realtimeStats } from './realtime';
 import { storage, isOwnUploadUrl } from './storage';
 import { isSafeImage, publicMenu, registerShopDataRoutes, shopVouchersAsRecords } from './shopData';
+import { DEFAULT_CURRENCY, isCurrencyCode, toCurrencyCode } from '../../shared/currency';
 import { getUserAchievements, syncUserAchievements, getShopLoyalty, expireAndListWalletVouchers, PersonalVoucher } from './achievements';
 import { getUserRank } from './ranks';
 import { ACHIEVEMENTS } from '../../shared/achievements';
@@ -283,6 +284,9 @@ export function registerCoreRoutes(app: Express) {
             : undefined,
         isPartner: true,
         ownerId: userId,
+        // A new shop starts in the platform's default currency and changes it in
+        // Regional Preferences; it is never left unset, so no price is ever unlabelled.
+        currency_code: DEFAULT_CURRENCY,
         bookingSettings: { autoConfirm: false, slotDurationMin: DEFAULT_SLOT_DURATION_MIN, acceptingBookings: true }
       };
 
@@ -789,6 +793,9 @@ export function registerCoreRoutes(app: Express) {
         time,
         guests,
         status,
+        // Same rule as the order below: the currency is fixed at the moment the amounts
+        // are agreed, so a later change to the shop's setting cannot restate them.
+        currency_code: toCurrencyCode(shop.currency_code),
         note: note ? String(note).slice(0, 500) : undefined,
         order: order && Array.isArray(order.items) && order.items.length > 0 ? order : undefined,
         voucher_applied,
@@ -812,6 +819,9 @@ export function registerCoreRoutes(app: Express) {
       if (booking.order) {
         const newOrder: OrderRecord = {
           id: `ord-${Date.now()}`,
+          // Stamped at creation, never looked up later: this is what keeps a shop's
+          // currency change from silently restating the value of past orders.
+          currency_code: toCurrencyCode(shop.currency_code),
           order_code: `MOBLER-ORD-${Math.floor(1000 + Math.random() * 9000)}`,
           shop_id: shop.id,
           shop_name: shop.name,
@@ -997,6 +1007,9 @@ export function registerCoreRoutes(app: Express) {
 
     const newOrder: OrderRecord = {
       id: `ord-${Date.now()}`,
+      // Stamped at creation, never looked up later: this is what keeps a shop's currency
+      // change from silently restating the value of past orders.
+      currency_code: toCurrencyCode(shop.currency_code),
       order_code: `MOBLER-ORD-${Math.floor(1000 + Math.random() * 9000)}`,
       shop_id,
       shop_name: shop.name,
@@ -1066,6 +1079,13 @@ export function registerCoreRoutes(app: Express) {
       const cover = String(updates.coverImage ?? '').trim();
       if (cover && isSafeImage(cover)) updates.coverImage = cover;
       else delete (updates as any).coverImage;
+    }
+    // ISO 4217, and only the four the product supports. An unknown code would be stored
+    // and then read back by every price on the dashboard, so it is refused here rather
+    // than defaulted — a shop that sends nonsense keeps the currency it had.
+    if ('currency_code' in (req.body || {})) {
+      if (isCurrencyCode(req.body.currency_code)) (updates as any).currency_code = req.body.currency_code;
+      else return res.status(400).json({ error: 'Mã tiền tệ không hợp lệ', code: 'BAD_CURRENCY' });
     }
     if ('images' in updates) {
       updates.images = (Array.isArray(updates.images) ? updates.images : [])

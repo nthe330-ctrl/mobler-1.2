@@ -179,6 +179,15 @@ export interface BookingDTO {
   deposit_fee?: number;
   discount_amount?: number;
   grand_total?: number;
+  /**
+   * ISO 4217 code the amounts on this booking were agreed in, stamped when the booking is
+   * created and never recomputed. A booking carries real money — a deposit, a pre-order
+   * total, a discount — so if the shop later switches from VND to TWD, reading these
+   * numbers in the shop's *current* currency would restate a 450,000₫ pre-order as
+   * NT$450,000. Absent on bookings made before the field existed; `toCurrencyCode`
+   * resolves those to VND, which is what they were actually taken in.
+   */
+  currency_code?: string;
   /** Minutes the customer pushed the hold out with "I'm on my way". Granted once. */
   late_extension_min?: number;
   /** When the hold was released as a no-show, so the shop's undo window can be checked. */

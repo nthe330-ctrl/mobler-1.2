@@ -28,8 +28,10 @@ import { http } from '../../services/shopApi';
 import { useShopAuth } from '../../context/ShopAuthContext';
 import { Customer } from '../../types/dashboard';
 import CustomerAvatar from './CustomerAvatar';
+import { useMoney } from '../../hooks/useMoney';
 
 export default function CustomerInsightsView() {
+  const { money } = useMoney();
   // Built only from this shop's real bookings & orders — empty for a new shop.
   const { activeShop } = useShopAuth();
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -299,7 +301,7 @@ export default function CustomerInsightsView() {
                   </td>
 
                   <td className="py-4 font-bold text-gray-900">
-                    <span className="text-emerald-700">{customer.totalSpent.toLocaleString()}đ</span>
+                    <span className="text-emerald-700">{money(customer.totalSpent)}</span>
                   </td>
 
                   <td className="py-4 font-bold text-purple-700">

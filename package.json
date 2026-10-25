@@ -43,7 +43,9 @@
     "test:storage": "cd backend && tsx scripts/storage-e2e.ts",
     "test:social": "cd backend && tsx scripts/review-social-e2e.ts",
     "test:sweeper": "cd backend && tsx scripts/sweeper-e2e.ts",
-    "test:photos": "cd backend && tsx scripts/shop-photos-e2e.ts"
+    "test:photos": "cd backend && tsx scripts/shop-photos-e2e.ts",
+    "test:currency": "cd backend && tsx scripts/currency-e2e.ts",
+    "test:i18n": "cd backend && tsx scripts/i18n-test.ts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

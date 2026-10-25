@@ -44,6 +44,7 @@ import {
 } from 'lucide-react';
 import { useShopCollection, uploadShopImage } from '../../hooks/useShopCollection';
 import { Voucher, DiscountType, VoucherStatus, TargetAudience, CustomerSegmentKey } from '../../types/dashboard';
+import { useMoney } from '../../hooks/useMoney';
 
 const PRESET_VOUCHER_IMAGES = [
   { label: 'Cà phê Phin & Sữa', url: 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=600&q=80' },
@@ -171,6 +172,7 @@ export const getVoucherAudiences = (voucher: Voucher): CustomerSegmentKey[] => {
 };
 
 export default function PromotionsVoucherView() {
+  const { money } = useMoney();
   // Vouchers are created by this shop and stored on the server; a new shop has none.
   const { items: rawVouchers, setItems: setVouchers, loading: vouchersLoading, error: vouchersError, shopId } = useShopCollection<Voucher>('vouchers');
   const vouchers = rawVouchers.map(v => ({
@@ -540,7 +542,7 @@ export default function PromotionsVoucherView() {
         isValid: false,
         discount: 0,
         finalTotal: testOrderAmount,
-        reason: `Đơn hàng tối thiểu phải từ ${currentSimVoucher.minOrderValue.toLocaleString()}đ (thiếu ${(currentSimVoucher.minOrderValue - testOrderAmount).toLocaleString()}đ)`
+        reason: `Đơn hàng tối thiểu phải từ ${money(currentSimVoucher.minOrderValue)} (thiếu ${money((currentSimVoucher.minOrderValue - testOrderAmount))})`
       };
     }
 
@@ -945,7 +947,7 @@ export default function PromotionsVoucherView() {
                       <div>
                         <span className="text-gray-400 block text-[11px]">Đơn tối thiểu</span>
                         <span className="font-bold text-gray-800">
-                          {vc.minOrderValue > 0 ? `${vc.minOrderValue.toLocaleString()}đ` : 'Không yêu cầu'}
+                          {vc.minOrderValue > 0 ? `${money(vc.minOrderValue)}` : 'Không yêu cầu'}
                         </span>
                       </div>
 
@@ -1145,7 +1147,7 @@ export default function PromotionsVoucherView() {
                           {formData.discountType === 'percent' ? 'Mức giảm (%)' : 'Giá trị giảm (VNĐ)'} <span className="text-red-500">*</span>
                         </span>
                         <span className="text-[11px] text-red-600 font-extrabold">
-                          {formData.discountType === 'percent' ? `${formData.discountValue}%` : `${Number(formData.discountValue).toLocaleString()}đ`}
+                          {formData.discountType === 'percent' ? `${formData.discountValue}%` : `${money(Number(formData.discountValue))}`}
                         </span>
                       </label>
                       <input 
@@ -1163,7 +1165,7 @@ export default function PromotionsVoucherView() {
                       <label className="block text-xs font-bold text-gray-700 mb-1.5 flex justify-between">
                         <span>Giảm tối đa (VNĐ)</span>
                         {formData.discountType === 'percent' && (
-                          <span className="text-[11px] text-gray-500">{Number(formData.maxDiscountAmount).toLocaleString()}đ</span>
+                          <span className="text-[11px] text-gray-500">{money(Number(formData.maxDiscountAmount))}</span>
                         )}
                       </label>
                       <input 
@@ -1182,7 +1184,7 @@ export default function PromotionsVoucherView() {
                   <div>
                     <label className="block text-xs font-bold text-gray-700 mb-1.5 flex justify-between">
                       <span>Đơn hàng tối thiểu (VNĐ)</span>
-                      <span className="text-[11px] text-gray-500">{Number(formData.minOrderValue).toLocaleString()}đ</span>
+                      <span className="text-[11px] text-gray-500">{money(Number(formData.minOrderValue))}</span>
                     </label>
                     <input 
                       type="number"
@@ -1825,7 +1827,7 @@ export default function PromotionsVoucherView() {
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1 flex justify-between">
                   <span>Giá trị hóa đơn tạm tính (VNĐ):</span>
-                  <span className="text-red-600 font-extrabold">{testOrderAmount.toLocaleString()}đ</span>
+                  <span className="text-red-600 font-extrabold">{money(testOrderAmount)}</span>
                 </label>
                 <div className="flex gap-2">
                   {[50000, 100000, 150000, 250000].map(val => (
@@ -1872,11 +1874,11 @@ export default function PromotionsVoucherView() {
                 <div className="pt-2 border-t border-emerald-200/60 grid grid-cols-2 gap-2 text-xs">
                   <div>
                     <span className="text-gray-500 block text-[10px]">Số tiền được giảm:</span>
-                    <span className="font-black text-emerald-600 text-sm">-{simResult.discount.toLocaleString()}đ</span>
+                    <span className="font-black text-emerald-600 text-sm">-{money(simResult.discount)}</span>
                   </div>
                   <div>
                     <span className="text-gray-500 block text-[10px]">Khách cần thanh toán:</span>
-                    <span className="font-black text-gray-900 text-sm">{simResult.finalTotal.toLocaleString()}đ</span>
+                    <span className="font-black text-gray-900 text-sm">{money(simResult.finalTotal)}</span>
                   </div>
                 </div>
               )}

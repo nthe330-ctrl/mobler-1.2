@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { CalendarDays, Coffee, StickyNote, Users, Armchair, Check, X, CreditCard } from 'lucide-react';
 import { BookingDTO, formatDateVi } from '@shared/booking';
+import { useMoney } from '../../hooks/useMoney';
 
 interface Props {
   booking: BookingDTO;
@@ -40,6 +41,7 @@ function ringOnce() {
  * which renders this whenever pendingSorted.length > 0).
  */
 export default function IncomingOrderModal({ booking: b, queueCount, busy, onAccept, onReject }: Props) {
+  const { money } = useMoney();
   // Ring repeatedly until the shop acts on this request.
   useEffect(() => {
     ringOnce();
@@ -114,7 +116,7 @@ export default function IncomingOrderModal({ booking: b, queueCount, busy, onAcc
           {typeof total === 'number' && (
             <div className="flex items-center justify-between text-sm pt-1 border-t border-gray-100">
               <span className="flex items-center gap-1.5 text-gray-500"><CreditCard size={14} /> {['paid', 'paid_at_store', 'paid_online'].includes(b.payment_status || '') ? 'Đã thanh toán' : b.payment_method === 'at_store' ? 'Thanh toán tại quán (chưa thu)' : 'Chờ quán xác nhận thanh toán'}</span>
-              <span className="font-black text-gray-900">{total.toLocaleString('vi-VN')}đ</span>
+              <span className="font-black text-gray-900">{money(total)}</span>
             </div>
           )}
         </div>

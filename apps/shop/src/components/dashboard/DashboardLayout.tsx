@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { LayoutGrid, Coffee, BarChart3, Star, Store, Menu as MenuIcon, X, Users, Ticket, LogOut, CalendarCheck } from 'lucide-react';
 import { CoffeeShop } from '@shared/types';
+import { useShopI18n } from '../../i18n/useShopI18n';
+import ShopLanguagePicker from './ShopLanguagePicker';
 
 export type DashboardView = 'bookings' | 'overview' | 'menu' | 'vouchers' | 'analytics' | 'customers' | 'reviews' | 'profile';
 
@@ -21,16 +23,19 @@ interface DashboardLayoutProps {
 
 export default function DashboardLayout({ currentView, onNavigate, shop, shops, onSwitchShop, ownerName, pendingCount = 0, onLogout, children }: DashboardLayoutProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const { t, tf } = useShopI18n();
 
+  // Rebuilt on each render so the labels follow the language without a reload — the ids
+  // are what the app routes on, and those never change.
   const navItems = [
-    { id: 'bookings', icon: <CalendarCheck size={20} />, label: 'Đặt bàn trực tiếp' },
-    { id: 'overview', icon: <LayoutGrid size={20} />, label: 'Tổng quan' },
-    { id: 'menu', icon: <Coffee size={20} />, label: 'Quản lý Menu' },
-    { id: 'vouchers', icon: <Ticket size={20} />, label: 'Khuyến mãi & Voucher' },
-    { id: 'analytics', icon: <BarChart3 size={20} />, label: 'Thống kê' },
-    { id: 'customers', icon: <Users size={20} />, label: 'Khách hàng' },
-    { id: 'reviews', icon: <Star size={20} />, label: 'Đánh giá' },
-    { id: 'profile', icon: <Store size={20} />, label: 'Hồ sơ Quán' },
+    { id: 'bookings', icon: <CalendarCheck size={20} />, label: t('shop.nav.live') },
+    { id: 'overview', icon: <LayoutGrid size={20} />, label: t('shop.nav.overview') },
+    { id: 'menu', icon: <Coffee size={20} />, label: t('shop.nav.menu') },
+    { id: 'vouchers', icon: <Ticket size={20} />, label: t('shop.nav.vouchers') },
+    { id: 'analytics', icon: <BarChart3 size={20} />, label: t('shop.nav.analytics') },
+    { id: 'customers', icon: <Users size={20} />, label: t('shop.nav.customers') },
+    { id: 'reviews', icon: <Star size={20} />, label: t('shop.nav.reviews') },
+    { id: 'profile', icon: <Store size={20} />, label: t('shop.nav.profile') },
   ] as const;
 
   return (
@@ -83,7 +88,7 @@ export default function DashboardLayout({ currentView, onNavigate, shop, shops, 
 
             {shops.length > 1 && (
               <div className="px-4 pt-3">
-                <label className="block text-[10px] font-bold text-gray-500 mb-1 px-1">Đang quản lý</label>
+                <label className="block text-[10px] font-bold text-gray-500 mb-1 px-1">{t('shop.nav.managing')}</label>
                 <select
                   value={shop.id}
                   onChange={e => onSwitchShop(e.target.value)}
@@ -132,10 +137,13 @@ export default function DashboardLayout({ currentView, onNavigate, shop, shops, 
                 <p className="text-xs font-bold text-gray-900 truncate">{ownerName}</p>
                 <p className={`text-[10px] font-semibold flex items-center gap-1 ${shop.bookingSettings?.acceptingBookings === false ? 'text-gray-500' : 'text-emerald-600'}`}>
                   <span className={`w-1.5 h-1.5 rounded-full ${shop.bookingSettings?.acceptingBookings === false ? 'bg-gray-400' : 'bg-emerald-500 animate-pulse'}`}></span>
-                  {shop.bookingSettings?.acceptingBookings === false ? 'Tạm ngưng đặt bàn' : 'Đang nhận đặt bàn'}
+                  {shop.bookingSettings?.acceptingBookings === false ? t('shop.nav.pausedBookings') : t('shop.nav.acceptingBookings')}
                 </p>
               </div>
-              <button onClick={onLogout} className="p-2 rounded-lg text-gray-500 hover:text-red-700 hover:bg-red-50" title="Đăng xuất" aria-label="Đăng xuất">
+              {/* The language switch lives beside sign-out: both are "about me", not about
+                  the shop. The shop-wide currency belongs in Regional Preferences instead. */}
+              <ShopLanguagePicker compact />
+              <button onClick={onLogout} className="p-2 rounded-lg text-gray-500 hover:text-red-700 hover:bg-red-50" title={t('shop.nav.logout')} aria-label={t('shop.nav.logout')}>
                 <LogOut size={16} />
               </button>
             </div>
@@ -153,7 +161,7 @@ export default function DashboardLayout({ currentView, onNavigate, shop, shops, 
             </h1>
             {pendingCount > 0 && currentView !== 'bookings' && (
               <button onClick={() => onNavigate('bookings')} className="ml-1 px-2 py-0.5 rounded-full bg-amber-500 text-white text-[11px] font-black">
-                {pendingCount} chờ
+                {tf('shop.nav.pendingBadge', { count: pendingCount })}
               </button>
             )}
           </div>

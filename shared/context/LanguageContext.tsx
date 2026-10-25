@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { CoffeeShop, MenuItem, Mood, SpecialModel, ShopStyle } from '../types';
+import { SHOP_UI_TRANSLATIONS } from './shopTranslations';
 import { SHOP_TRANSLATIONS, MENU_TRANSLATIONS, MOOD_TRANSLATIONS, CITY_TRANSLATIONS } from '../data/translations';
 
 export type Language = 'zh-TW' | 'th' | 'en' | 'vi';
@@ -4410,6 +4411,17 @@ export const SPECIAL_MODEL_TRANSLATIONS: Record<Language, Record<string, string>
   }
 };
 
+/**
+ * The dashboard's strings, merged in once at module load rather than spread into every
+ * lookup. `t()` runs on each render of every label; rebuilding a merged object there
+ * would allocate thousands of times a second for no gain.
+ *
+ * Shop keys all start with `shop.`, so they cannot collide with the customer app's.
+ */
+for (const lang of Object.keys(SHOP_UI_TRANSLATIONS) as Language[]) {
+  Object.assign(TRANSLATIONS[lang], SHOP_UI_TRANSLATIONS[lang]);
+}
+
 interface LanguageContextType {
   language: Language;
   setLanguage: (lang: Language) => void;
@@ -4446,10 +4458,26 @@ const LanguageContext = createContext<LanguageContextType>({
   closeLanguageModal: () => {},
 });
 
-export const LanguageProvider = ({ children }: { children: ReactNode }) => {
+/**
+ * `storageKey` is what keeps two apps on one browser from sharing a language.
+ *
+ * In production the customer app and the shop dashboard are served from the SAME origin
+ * (`/` and `/shop`), so they share one localStorage. Writing both preferences to
+ * `app_language` meant a barista switching the dashboard to Thai also switched the
+ * customer-facing app for whoever next opened it on that machine. Each app now names its
+ * own key; the default keeps the customer app exactly where it was.
+ *
+ * This is per browser, which is the scope a preference like this can have without an
+ * account setting behind it: two staff on two devices already have their own, two staff
+ * sharing one browser also share the login session, so they share the language too.
+ */
+export const LanguageProvider = ({
+  children,
+  storageKey = 'app_language'
+}: { children: ReactNode; storageKey?: string }) => {
   const [language, setLanguageState] = useState<Language>(() => {
     try {
-      const saved = localStorage.getItem('app_language') as Language;
+      const saved = localStorage.getItem(storageKey) as Language;
       if (saved && ['zh-TW', 'th', 'en', 'vi'].includes(saved)) {
         return saved;
       }
@@ -4466,7 +4494,12 @@ export const LanguageProvider = ({ children }: { children: ReactNode }) => {
 
   const setLanguage = (lang: Language) => {
     setLanguageState(lang);
-    localStorage.setItem('app_language', lang);
+    try {
+      localStorage.setItem(storageKey, lang);
+    } catch {
+      // storage blocked (private mode / embedded webview): the choice still applies to
+      // this session, it simply will not be remembered. Never let it throw mid-render.
+    }
   };
 
   const currentLanguageOption = 

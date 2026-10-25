@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { useShopCollection, uploadShopImage } from '../../hooks/useShopCollection';
 import { MenuItem, MenuItemSizeOption } from '../../types/dashboard';
+import { useMoney } from '../../hooks/useMoney';
 
 const PRESET_SAMPLE_IMAGES = [
   { label: 'Cà phê Sữa Đá', category: 'Cà phê', url: 'https://images.unsplash.com/photo-1610889556528-9a770e32642f?w=600&q=80' },
@@ -130,6 +131,7 @@ const SIZE_PRESETS: SizePreset[] = [
 ];
 
 export default function MenuManagerView() {
+  const { money } = useMoney();
   // Menu lives on the server and belongs to this shop; a new shop starts with no items.
   const { items: menu, setItems: setMenu, loading: menuLoading, error: menuError, saving: menuSaving, shopId } = useShopCollection<MenuItem>('menu');
   const [uploading, setUploading] = useState(false);
@@ -197,11 +199,11 @@ export default function MenuManagerView() {
       const minP = Math.min(...prices);
       const maxP = Math.max(...prices);
       if (minP === maxP) {
-        return `${minP.toLocaleString()}đ`;
+        return `${money(minP)}`;
       }
-      return `${minP.toLocaleString()}đ - ${maxP.toLocaleString()}đ`;
+      return `${money(minP)} - ${money(maxP)}`;
     }
-    return `${item.price.toLocaleString()}đ`;
+    return `${money(item.price)}`;
   };
 
   const handleOpenAddModal = () => {
@@ -863,7 +865,7 @@ export default function MenuManagerView() {
                                   ? 'bg-purple-100 text-purple-900 border-purple-300 ring-1 ring-purple-400/50' 
                                   : 'bg-gray-100 text-gray-700 border-gray-200'
                               }`}
-                              title={`${sz.name}: ${sz.price.toLocaleString()}đ`}
+                              title={`${sz.name}: ${money(sz.price)}`}
                             >
                               <span>{sz.sizeCode}</span>
                               <span className="opacity-70 font-normal">({(sz.price / 1000)}k)</span>
@@ -1149,7 +1151,7 @@ export default function MenuManagerView() {
                       <div>
                         <label className="block text-xs font-bold text-gray-700 mb-1.5 flex items-center justify-between">
                           <span>Giá bán cơ sở (VNĐ) <span className="text-red-500">*</span></span>
-                          <span className="text-[11px] text-red-600 font-extrabold">{Number(formData.price || 0).toLocaleString()}đ</span>
+                          <span className="text-[11px] text-red-600 font-extrabold">{money(Number(formData.price || 0))}</span>
                         </label>
                         <div className="relative">
                           <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
@@ -1419,7 +1421,7 @@ export default function MenuManagerView() {
                       </div>
                     ) : (
                       <p className="text-xs text-gray-500 italic bg-white p-3 rounded-xl border border-gray-200">
-                        Món này chỉ có 1 kích cỡ cố định với giá niêm yết: <strong>{Number(formData.price || 0).toLocaleString()}đ</strong>.
+                        Món này chỉ có 1 kích cỡ cố định với giá niêm yết: <strong>{money(Number(formData.price || 0))}</strong>.
                       </p>
                     )}
                   </div>
@@ -1714,7 +1716,7 @@ export default function MenuManagerView() {
                           <p className="text-[11px] text-gray-500 line-clamp-1">{formData.description || 'Hương vị thơm ngon tuyệt hảo...'}</p>
                           <div className="flex justify-between items-center mt-1">
                             <span className="text-red-600 font-extrabold text-sm">
-                              {getLivePreviewPrice().toLocaleString()}đ
+                              {money(getLivePreviewPrice())}
                             </span>
                             <span className="text-[10px] text-gray-400 font-medium">Kho: {formData.stock}</span>
                           </div>
@@ -1875,7 +1877,7 @@ export default function MenuManagerView() {
                     {(() => {
                       if (viewDetailItem.allowSizeCustomization && viewDetailItem.sizeOptions && viewDetailItem.sizeOptions.length > 0) {
                         const sel = viewDetailItem.sizeOptions.find(s => s.sizeCode === detailSelectedSize);
-                        if (sel) return `${sel.price.toLocaleString()}đ`;
+                        if (sel) return `${money(sel.price)}`;
                       }
                       return getItemPriceDisplay(viewDetailItem);
                     })()}
@@ -1939,7 +1941,7 @@ export default function MenuManagerView() {
                             )}
                           </div>
                           <span className={`font-extrabold text-xs ${isSelected ? 'text-white' : 'text-red-600'}`}>
-                            {sz.price.toLocaleString()}đ
+                            {money(sz.price)}
                           </span>
                         </div>
                       );
