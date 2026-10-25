@@ -21,6 +21,9 @@ const REPO = fileURLToPath(new URL('../../', import.meta.url));
 import { SHOP_UI_TRANSLATIONS, SHOP_TRANSLATION_KEYS } from '../../shared/context/shopTranslations';
 import { SUPPORTED_LANGUAGES } from '../../shared/context/LanguageContext';
 
+let passed = 0;
+let failed = 0;
+
 /** Every file under `dir` matching `pattern`, recursively. */
 function listFiles(dir: string, pattern: RegExp): string[] {
   const out: string[] = [];
@@ -44,8 +47,42 @@ function stripComments(text: string): string {
     .replace(/^(.*?)\/\/.*$/gm, (_m, head: string) => head);
 }
 
-let passed = 0;
-let failed = 0;
+/**
+ * Blank out regions a file marks as deliberately canonical Vietnamese.
+ *
+ * Not every Vietnamese string in a screen is a missed translation. A menu item's stored
+ * sugar level IS the Vietnamese text `'70% (Chuẩn)'` — that is its identity, matched by
+ * string equality in the API and sent verbatim to the customer app, and `menuOptionLabel`
+ * translates only how it is written on screen. Rewriting the stored value would break the
+ * default and give one shop two names for the same thing.
+ *
+ * So a file wraps such a region in
+ *
+ *   // i18n-exempt-start: <why>
+ *   …
+ *   // i18n-exempt-end
+ *
+ * and the reason is right there next to the data for whoever reads it next. An unclosed
+ * marker is reported rather than silently swallowing the rest of the file.
+ *
+ * This runs BEFORE comments are blanked, because the markers are comments themselves.
+ */
+function stripExemptRegions(text: string, rel: string): string {
+  const lines = text.split('\n');
+  let inside = false;
+  let openedAt = 0;
+  const out = lines.map((line, i) => {
+    if (/i18n-exempt-start/.test(line)) { inside = true; openedAt = i + 1; return ''; }
+    if (/i18n-exempt-end/.test(line)) { inside = false; return ''; }
+    return inside ? '' : line;
+  });
+  if (inside) {
+    console.log(`  ✗ ${rel}: i18n-exempt-start at line ${openedAt} is never closed`);
+    failed++;
+  }
+  return out.join('\n');
+}
+
 function check(name: string, cond: unknown, extra?: unknown) {
   if (cond) {
     passed++;
@@ -184,11 +221,12 @@ console.log('\nLocalized screens keep no Vietnamese text in code');
     'apps/shop/src/views/ShopAuthScreen.tsx',
     'apps/shop/src/views/ShopProfileView.tsx',
     'apps/shop/src/components/dashboard/DashboardLayout.tsx',
-    'apps/shop/src/components/dashboard/ShopLanguagePicker.tsx'
+    'apps/shop/src/components/dashboard/ShopLanguagePicker.tsx',
+    'apps/shop/src/components/dashboard/MenuManagerView.tsx'
   ];
   const DIACRITIC = /[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/i;
   for (const rel of DONE) {
-    const offenders = stripComments(readFileSync(join(REPO, rel), 'utf8'))
+    const offenders = stripComments(stripExemptRegions(readFileSync(join(REPO, rel), 'utf8'), rel))
       .split('\n')
       .map((line, i) => [i + 1, line] as const)
       .filter(([, line]) => DIACRITIC.test(line));

@@ -40,6 +40,23 @@ export interface CurrencyMeta {
   decimals: number;
   /** The locale whose conventions suit this currency when the UI language gives no better hint. */
   nativeLocale: string;
+  /**
+   * How much a price input moves per arrow-key press, and the two one-tap bumps the size
+   * editor offers.
+   *
+   * These were hard-coded as 1000 and "+5k / +7k", which is right for the dong and absurd
+   * for anything else: a shop pricing in dollars does not raise a size by $5,000, and a
+   * $0.0125 step is not a step. The magnitudes differ by a factor of a thousand between
+   * these four currencies, so the increment belongs to the currency, not to the screen.
+   */
+  priceStep: number;
+  quickAdjust: [number, number];
+  /**
+   * The lowest price the size templates will produce. It replaces a hard-coded floor of
+   * 10,000 — a sane minimum in dong and a nonsensical one in dollars. Templates express
+   * their differences as multiples of `priceStep` for the same reason.
+   */
+  minPrice: number;
 }
 
 export const CURRENCIES: Record<CurrencyCode, CurrencyMeta> = {
@@ -48,14 +65,20 @@ export const CURRENCIES: Record<CurrencyCode, CurrencyMeta> = {
     label: { vi: 'Việt Nam đồng', en: 'Vietnamese Dong', 'zh-TW': '越南盾', th: 'ดองเวียดนาม' },
     symbol: '₫',
     decimals: 0,          // the dong has no subunit in practice
-    nativeLocale: 'vi-VN'
+    nativeLocale: 'vi-VN',
+    priceStep: 1000,
+    quickAdjust: [5000, 7000],
+    minPrice: 10000
   },
   USD: {
     code: 'USD',
     label: { vi: 'Đô la Mỹ', en: 'US Dollar', 'zh-TW': '美元', th: 'ดอลลาร์สหรัฐ' },
     symbol: '$',
     decimals: 2,
-    nativeLocale: 'en-US'
+    nativeLocale: 'en-US',
+    priceStep: 0.5,
+    quickAdjust: [0.5, 1],
+    minPrice: 1
   },
   TWD: {
     code: 'TWD',
@@ -64,14 +87,20 @@ export const CURRENCIES: Record<CurrencyCode, CurrencyMeta> = {
     label: { vi: 'Đài tệ (NTD)', en: 'New Taiwan Dollar (NTD)', 'zh-TW': '新台幣', th: 'ดอลลาร์ไต้หวันใหม่' },
     symbol: 'NT$',
     decimals: 0,          // priced in whole dollars in everyday use
-    nativeLocale: 'zh-TW'
+    nativeLocale: 'zh-TW',
+    priceStep: 5,
+    quickAdjust: [5, 10],
+    minPrice: 20
   },
   THB: {
     code: 'THB',
     label: { vi: 'Baht Thái', en: 'Thai Baht', 'zh-TW': '泰銖', th: 'บาทไทย' },
     symbol: '฿',
     decimals: 0,          // cafés price in whole baht
-    nativeLocale: 'th-TH'
+    nativeLocale: 'th-TH',
+    priceStep: 5,
+    quickAdjust: [5, 10],
+    minPrice: 20
   }
 };
 

@@ -30,108 +30,84 @@ import {
 import { useShopCollection, uploadShopImage } from '../../hooks/useShopCollection';
 import { MenuItem, MenuItemSizeOption } from '../../types/dashboard';
 import { useMoney } from '../../hooks/useMoney';
+import { useShopI18n } from '../../i18n/useShopI18n';
+import {
+  AVAILABLE_TAGS, DEFAULT_CATEGORIES, PRESET_SAMPLE_IMAGES, SEEDED_DEFAULTS,
+  STANDARD_ICE_LEVELS, STANDARD_SUGAR_LEVELS, menuOptionLabel
+} from '@shared/menuOptions';
+import { CURRENCIES } from '@shared/currency';
 
-const PRESET_SAMPLE_IMAGES = [
-  { label: 'Cà phê Sữa Đá', category: 'Cà phê', url: 'https://images.unsplash.com/photo-1610889556528-9a770e32642f?w=600&q=80' },
-  { label: 'Bạc Xỉu Nghệ Thuật', category: 'Cà phê', url: 'https://images.unsplash.com/photo-1578314675249-a6910f80cc4e?w=600&q=80' },
-  { label: 'Cold Brew Đậm Vị', category: 'Cà phê', url: 'https://images.unsplash.com/photo-1461023058943-07cb1ce8db15?w=600&q=80' },
-  { label: 'Espresso / Americano', category: 'Cà phê', url: 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=600&q=80' },
-  { label: 'Trà Đào Cam Sả', category: 'Trà & Trà sữa', url: 'https://images.unsplash.com/photo-1556679343-c7306c1976bc?w=600&q=80' },
-  { label: 'Trà Sữa Trân Châu', category: 'Trà & Trà sữa', url: 'https://images.unsplash.com/photo-1558857563-b37cf5c911b3?w=600&q=80' },
-  { label: 'Matcha Latte Đá', category: 'Trà & Trà sữa', url: 'https://images.unsplash.com/photo-1536256263959-770b48d82b0a?w=600&q=80' },
-  { label: 'Nước Ép Dưa Hấu', category: 'Nước ép & Sinh tố', url: 'https://images.unsplash.com/photo-1589733955941-5eeaf752f6dd?w=600&q=80' },
-  { label: 'Nước Cam Tươi', category: 'Nước ép & Sinh tố', url: 'https://images.unsplash.com/photo-1613478223719-2ab802602423?w=600&q=80' },
-  { label: 'Sinh Tố Bơ Béo', category: 'Nước ép & Sinh tố', url: 'https://images.unsplash.com/photo-1546173159-315724a31696?w=600&q=80' },
-  { label: 'Bánh Croissant Bơ Pháp', category: 'Bánh ngọt & Ăn kèm', url: 'https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=600&q=80' },
-  { label: 'Bánh Tiramisu', category: 'Bánh ngọt & Ăn kèm', url: 'https://images.unsplash.com/photo-1571877227200-a0d98ea607e9?w=600&q=80' },
-];
 
-const STANDARD_SUGAR_LEVELS = [
-  '0% (Không đường)',
-  '30% (Ít ngọt)',
-  '50% (Ngọt vừa)',
-  '70% (Chuẩn)',
-  '100% (Đậm vị)'
-];
-
-const STANDARD_ICE_LEVELS = [
-  'Nóng / Không đá (0%)',
-  'Ít đá (30%)',
-  'Vừa đá (50%)',
-  'Đá chuẩn (70%)',
-  'Đầy đá (100%)'
-];
-
-const AVAILABLE_TAGS = ['Best Seller', 'Signature', 'Mới', 'Hot', 'Healthy', 'Truyền thống', 'Ít ngọt'];
-
-const DEFAULT_CATEGORIES = [
-  'Cà phê',
-  'Trà & Trà sữa',
-  'Nước ép & Sinh tố',
-  'Đá xay & Frappe',
-  'Bánh ngọt & Ăn kèm',
-  'Đồ ăn vặt'
-];
+/**
+ * A ready-made set of sizes the shop can drop onto an item.
+ *
+ * `generate` takes the shop's currency scale and the staff member's translator rather than
+ * hard-coding either. Two things used to be baked in: a floor of 10,000 and steps of
+ * +7,000 / +14,000, which are reasonable in dong and meaningless in dollars; and
+ * Vietnamese size names, which would be written into the item and then shown to a guest.
+ * Names are generated in the language the staff member is working in, because applying a
+ * template CREATES content — it does not translate existing content. After that the names
+ * are the shop's own data and are displayed exactly as stored.
+ */
+interface PresetContext {
+  t: (key: string) => string;
+  /** The currency's increment; template differences are multiples of it. */
+  step: number;
+  /** The lowest price a template may produce in this currency. */
+  floor: number;
+}
 
 interface SizePreset {
+  /** Also the dictionary key stem: shop.preset.<id>.{name,badge,desc}. */
   id: string;
-  name: string;
-  badge: string;
-  desc: string;
-  generate: (basePrice: number) => MenuItemSizeOption[];
+  generate: (basePrice: number, ctx: PresetContext) => MenuItemSizeOption[];
   defaultCode: string;
 }
 
 const SIZE_PRESETS: SizePreset[] = [
   {
     id: 'sml',
-    name: '3 Size Chuẩn (S • M • L)',
-    badge: '3 Size',
-    desc: 'Phù hợp Cà phê, Trà & Trà sữa',
-    generate: (base) => [
-      { id: 'sz-s', sizeCode: 'S', name: 'Size S (Nhỏ - 350ml)', price: Math.max(10000, base) },
-      { id: 'sz-m', sizeCode: 'M', name: 'Size M (Vừa - 500ml)', price: Math.max(10000, base + 7000), isDefault: true },
-      { id: 'sz-l', sizeCode: 'L', name: 'Size L (Lớn - 700ml)', price: Math.max(10000, base + 14000) },
+    generate: (base, { t, step, floor }) => [
+      { id: 'sz-s', sizeCode: 'S', name: t('shop.size.s350'), price: Math.max(floor, base) },
+      { id: 'sz-m', sizeCode: 'M', name: t('shop.size.m500'), price: Math.max(floor, base + 7 * step), isDefault: true },
+      { id: 'sz-l', sizeCode: 'L', name: t('shop.size.l700'), price: Math.max(floor, base + 14 * step) },
     ],
     defaultCode: 'M'
   },
   {
     id: 'ml',
-    name: '2 Size Phổ Biến (M • L)',
-    badge: '2 Size',
-    desc: 'Phù hợp Trà trái cây, Nước ép & Sinh tố',
-    generate: (base) => [
-      { id: 'sz-m', sizeCode: 'M', name: 'Size M (Vừa - 500ml)', price: Math.max(10000, base), isDefault: true },
-      { id: 'sz-l', sizeCode: 'L', name: 'Size L (Lớn - 700ml)', price: Math.max(10000, base + 8000) },
+    generate: (base, { t, step, floor }) => [
+      { id: 'sz-m', sizeCode: 'M', name: t('shop.size.m500'), price: Math.max(floor, base), isDefault: true },
+      { id: 'sz-l', sizeCode: 'L', name: t('shop.size.l700'), price: Math.max(floor, base + 8 * step) },
     ],
     defaultCode: 'M'
   },
   {
     id: 'bottle',
-    name: 'Ly & Chai Mang Về',
-    badge: 'Ly / Chai',
-    desc: 'Cold Brew & Cà phê chai ủ lạnh',
-    generate: (base) => [
-      { id: 'sz-cup', sizeCode: 'Ly', name: 'Ly Uống Tại Chỗ (350ml)', price: Math.max(10000, base), isDefault: true },
-      { id: 'sz-bot', sizeCode: 'Chai', name: 'Chai Thủy Tinh (500ml)', price: Math.max(10000, base + 20000) },
+    generate: (base, { t, step, floor }) => [
+      { id: 'sz-cup', sizeCode: t('shop.size.codeCup'), name: t('shop.size.cupIn'), price: Math.max(floor, base), isDefault: true },
+      { id: 'sz-bot', sizeCode: t('shop.size.codeBottle'), name: t('shop.size.bottle500'), price: Math.max(floor, base + 20 * step) },
     ],
-    defaultCode: 'Ly'
+    // Resolved against the generated codes at apply time, since the code is translated too.
+    defaultCode: 'shop.size.codeCup'
   },
   {
     id: 'bakery',
-    name: 'Cái Lẻ & Set Tiết Kiệm',
-    badge: 'Set bánh',
-    desc: 'Bánh ngọt, Croissant & Đồ ăn kèm',
-    generate: (base) => [
-      { id: 'sz-1', sizeCode: '1 cái', name: 'Cái lẻ (1 phần)', price: Math.max(10000, base), isDefault: true },
-      { id: 'sz-set2', sizeCode: 'Set 2', name: 'Set đôi (2 cái - Tiết kiệm)', price: Math.max(10000, base * 2 - 6000) },
+    generate: (base, { t, step, floor }) => [
+      { id: 'sz-1', sizeCode: t('shop.size.codeSingle'), name: t('shop.size.single'), price: Math.max(floor, base), isDefault: true },
+      { id: 'sz-set2', sizeCode: t('shop.size.codeSet2'), name: t('shop.size.set2'), price: Math.max(floor, base * 2 - 6 * step) },
     ],
-    defaultCode: '1 cái'
+    defaultCode: 'shop.size.codeSingle'
   }
 ];
 
 export default function MenuManagerView() {
-  const { money } = useMoney();
+  const { money, currency } = useMoney();
+  const { t, tf, language } = useShopI18n();
+  // Price inputs step by the currency's own increment: 1000 for dong, 0.5 for dollars.
+  const priceStep = CURRENCIES[currency].priceStep;
+  const minPrice = CURRENCIES[currency].minPrice;
+  const [bumpA, bumpB] = CURRENCIES[currency].quickAdjust;
   // Menu lives on the server and belongs to this shop; a new shop starts with no items.
   const { items: menu, setItems: setMenu, loading: menuLoading, error: menuError, saving: menuSaving, shopId } = useShopCollection<MenuItem>('menu');
   const [uploading, setUploading] = useState(false);
@@ -148,25 +124,25 @@ export default function MenuManagerView() {
     name: '',
     price: 35000,
     stock: 50,
-    category: 'Cà phê',
+    category: SEEDED_DEFAULTS.category,
     customCategory: '',
     isAvailable: true,
     image: 'https://images.unsplash.com/photo-1610889556528-9a770e32642f?w=600&q=80',
     description: '',
     allowSizeCustomization: true,
     sizeOptions: [
-      { id: 'sz-1', sizeCode: 'S', name: 'Size S (Nhỏ - 350ml)', price: 35000 },
-      { id: 'sz-2', sizeCode: 'M', name: 'Size M (Vừa - 500ml)', price: 42000, isDefault: true },
-      { id: 'sz-3', sizeCode: 'L', name: 'Size L (Lớn - 700ml)', price: 49000 }
+      { id: 'sz-1', sizeCode: 'S', name: 'Size S', price: 35000 },
+      { id: 'sz-2', sizeCode: 'M', name: 'Size M', price: 42000, isDefault: true },
+      { id: 'sz-3', sizeCode: 'L', name: 'Size L', price: 49000 }
     ] as MenuItemSizeOption[],
     defaultSize: 'M',
     allowSugarCustomization: true,
     sugarOptions: [...STANDARD_SUGAR_LEVELS],
-    defaultSugar: '70% (Chuẩn)',
+    defaultSugar: SEEDED_DEFAULTS.sugar,
     allowIceCustomization: true,
     iceOptions: [...STANDARD_ICE_LEVELS],
-    defaultIce: 'Đá chuẩn (70%)',
-    tags: ['Mới'] as string[],
+    defaultIce: SEEDED_DEFAULTS.ice,
+    tags: [SEEDED_DEFAULTS.tag] as string[],
     newTagInput: ''
   });
 
@@ -175,8 +151,8 @@ export default function MenuManagerView() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [previewSelectedSize, setPreviewSelectedSize] = useState<string>('M');
-  const [previewSelectedSugar, setPreviewSelectedSugar] = useState<string>('70% (Chuẩn)');
-  const [previewSelectedIce, setPreviewSelectedIce] = useState<string>('Đá chuẩn (70%)');
+  const [previewSelectedSugar, setPreviewSelectedSugar] = useState<string>(SEEDED_DEFAULTS.sugar);
+  const [previewSelectedIce, setPreviewSelectedIce] = useState<string>(SEEDED_DEFAULTS.ice);
   const [detailSelectedSize, setDetailSelectedSize] = useState<string>('');
 
   useEffect(() => {
@@ -210,16 +186,16 @@ export default function MenuManagerView() {
     setEditingItem(null);
     const initialPrice = 35000;
     const initialSizes = [
-      { id: 'sz-1', sizeCode: 'S', name: 'Size S (Nhỏ - 350ml)', price: 35000 },
-      { id: 'sz-2', sizeCode: 'M', name: 'Size M (Vừa - 500ml)', price: 42000, isDefault: true },
-      { id: 'sz-3', sizeCode: 'L', name: 'Size L (Lớn - 700ml)', price: 49000 }
+      { id: 'sz-1', sizeCode: 'S', name: 'Size S', price: 35000 },
+      { id: 'sz-2', sizeCode: 'M', name: 'Size M', price: 42000, isDefault: true },
+      { id: 'sz-3', sizeCode: 'L', name: 'Size L', price: 49000 }
     ];
 
     setFormData({
       name: '',
       price: initialPrice,
       stock: 50,
-      category: 'Cà phê',
+      category: SEEDED_DEFAULTS.category,
       customCategory: '',
       isAvailable: true,
       image: 'https://images.unsplash.com/photo-1558857563-b37cf5c911b3?w=600&q=80',
@@ -229,18 +205,18 @@ export default function MenuManagerView() {
       defaultSize: 'M',
       allowSugarCustomization: true,
       sugarOptions: [...STANDARD_SUGAR_LEVELS],
-      defaultSugar: '70% (Chuẩn)',
+      defaultSugar: SEEDED_DEFAULTS.sugar,
       allowIceCustomization: true,
       iceOptions: [...STANDARD_ICE_LEVELS],
-      defaultIce: 'Đá chuẩn (70%)',
-      tags: ['Mới'],
+      defaultIce: SEEDED_DEFAULTS.ice,
+      tags: [SEEDED_DEFAULTS.tag],
       newTagInput: ''
     });
     setUploadFileName('');
     setImageTab('presets');
     setPreviewSelectedSize('M');
-    setPreviewSelectedSugar('70% (Chuẩn)');
-    setPreviewSelectedIce('Đá chuẩn (70%)');
+    setPreviewSelectedSugar(SEEDED_DEFAULTS.sugar);
+    setPreviewSelectedIce(SEEDED_DEFAULTS.ice);
     setIsModalOpen(true);
   };
 
@@ -253,9 +229,9 @@ export default function MenuManagerView() {
       itemSizes = item.sizeOptions.map(s => ({ ...s }));
     } else {
       itemSizes = [
-        { id: 'sz-1', sizeCode: 'S', name: 'Size S (Nhỏ)', price: item.price },
-        { id: 'sz-2', sizeCode: 'M', name: 'Size M (Vừa)', price: item.price + 7000, isDefault: true },
-        { id: 'sz-3', sizeCode: 'L', name: 'Size L (Lớn)', price: item.price + 14000 }
+        { id: 'sz-1', sizeCode: 'S', name: 'Size S', price: item.price },
+        { id: 'sz-2', sizeCode: 'M', name: 'Size M', price: item.price + 7 * priceStep, isDefault: true },
+        { id: 'sz-3', sizeCode: 'L', name: 'Size L', price: item.price + 14 * priceStep }
       ];
     }
 
@@ -275,18 +251,18 @@ export default function MenuManagerView() {
       defaultSize: defSize,
       allowSugarCustomization: item.allowSugarCustomization ?? true,
       sugarOptions: item.sugarOptions && item.sugarOptions.length > 0 ? [...item.sugarOptions] : [...STANDARD_SUGAR_LEVELS],
-      defaultSugar: item.defaultSugar || '70% (Chuẩn)',
+      defaultSugar: item.defaultSugar || SEEDED_DEFAULTS.sugar,
       allowIceCustomization: item.allowIceCustomization ?? true,
       iceOptions: item.iceOptions && item.iceOptions.length > 0 ? [...item.iceOptions] : [...STANDARD_ICE_LEVELS],
-      defaultIce: item.defaultIce || 'Đá chuẩn (70%)',
+      defaultIce: item.defaultIce || SEEDED_DEFAULTS.ice,
       tags: item.tags ? [...item.tags] : [],
       newTagInput: ''
     });
     setUploadFileName('');
     setImageTab('url');
     setPreviewSelectedSize(defSize);
-    setPreviewSelectedSugar(item.defaultSugar || '70% (Chuẩn)');
-    setPreviewSelectedIce(item.defaultIce || 'Đá chuẩn (70%)');
+    setPreviewSelectedSugar(item.defaultSugar || SEEDED_DEFAULTS.sugar);
+    setPreviewSelectedIce(item.defaultIce || SEEDED_DEFAULTS.ice);
     setIsModalOpen(true);
   };
 
@@ -300,7 +276,7 @@ export default function MenuManagerView() {
     const file = e.target.files?.[0];
     if (!file || !shopId) return;
     if (file.size > 3 * 1024 * 1024) {
-      alert('Dung lượng ảnh vượt quá 3MB. Vui lòng chọn ảnh nhỏ hơn.');
+      alert(t('shop.menu.imgTooBig'));
       return;
     }
     setUploadFileName(file.name);
@@ -309,22 +285,27 @@ export default function MenuManagerView() {
       const url = await uploadShopImage(shopId, file);
       setFormData(prev => ({ ...prev, image: url }));
     } catch (err: any) {
-      alert(err?.message || 'Tải ảnh lên thất bại');
+      alert(err?.message || t('shop.menu.uploadFailed'));
     } finally {
       setUploading(false);
     }
   };
 
   const handleApplySizePreset = (preset: SizePreset) => {
-    const generated = preset.generate(formData.price);
+    const generated = preset.generate(formData.price, { t, step: priceStep, floor: minPrice });
+    // Two of the templates name their sizes in words ("Cup", "Bottle"), so the default has
+    // to be read back from what was generated rather than from a fixed string.
+    const defaultCode = preset.defaultCode.startsWith('shop.')
+      ? t(preset.defaultCode)
+      : preset.defaultCode;
     setFormData(prev => ({
       ...prev,
       allowSizeCustomization: true,
       sizeOptions: generated,
-      defaultSize: preset.defaultCode
+      defaultSize: defaultCode
     }));
-    setPreviewSelectedSize(preset.defaultCode);
-    triggerToast(`Đã áp dụng mẫu: ${preset.name}`);
+    setPreviewSelectedSize(defaultCode);
+    triggerToast(tf('shop.menu.presetApplied', { name: t(`shop.preset.${preset.id}.name`) }));
   };
 
   const handleAddCustomSizeRow = () => {
@@ -334,7 +315,7 @@ export default function MenuManagerView() {
     const newOption: MenuItemSizeOption = {
       id: `sz-${Date.now()}`,
       sizeCode: newCode,
-      name: `Size ${newCode} (Tùy chỉnh)`,
+      name: tf('shop.menu.sizeCustomSuffix', { code: newCode }),
       price: base + (formData.sizeOptions.length * 5000)
     };
 
@@ -346,7 +327,7 @@ export default function MenuManagerView() {
 
   const handleRemoveSizeRow = (idx: number) => {
     if (formData.sizeOptions.length <= 1) {
-      alert('Phải giữ lại ít nhất 1 kích cỡ. Nếu không muốn chia size, bạn có thể tắt tùy chọn kích thước.');
+      alert(t('shop.menu.needOneSize'));
       return;
     }
     const removedCode = formData.sizeOptions[idx].sizeCode;
@@ -428,11 +409,11 @@ export default function MenuManagerView() {
   const handleSaveItem = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name.trim()) {
-      alert('Vui lòng nhập tên món!');
+      alert(t('shop.menu.needName'));
       return;
     }
     if (formData.price < 0) {
-      alert('Giá món không thể nhỏ hơn 0!');
+      alert(t('shop.menu.priceNegative'));
       return;
     }
 
@@ -441,16 +422,16 @@ export default function MenuManagerView() {
 
     if (formData.allowSizeCustomization) {
       if (formData.sizeOptions.length === 0) {
-        alert('Vui lòng thêm ít nhất 1 tùy chọn Size hoặc tắt tùy chọn kích thước.');
+        alert(t('shop.menu.needOneSizeOrOff'));
         return;
       }
       for (const sz of formData.sizeOptions) {
         if (!sz.name.trim() || !sz.sizeCode.trim()) {
-          alert('Vui lòng điền đầy đủ Mã Size và Tên hiển thị kích cỡ.');
+          alert(t('shop.menu.needSizeFields'));
           return;
         }
         if (sz.price < 0) {
-          alert('Giá của kích cỡ không thể nhỏ hơn 0!');
+          alert(t('shop.menu.sizePriceNegative'));
           return;
         }
       }
@@ -465,7 +446,7 @@ export default function MenuManagerView() {
       }
     }
 
-    const finalCategory = formData.category === 'other' ? (formData.customCategory.trim() || 'Khác') : formData.category;
+    const finalCategory = formData.category === 'other' ? (formData.customCategory.trim() || SEEDED_DEFAULTS.otherCategory) : formData.category;
 
     if (editingItem) {
       setMenu(prev => prev.map(item => {
@@ -493,7 +474,7 @@ export default function MenuManagerView() {
         }
         return item;
       }));
-      triggerToast(`Đã cập nhật món "${formData.name}" thành công!`);
+      triggerToast(tf('shop.menu.updated', { name: formData.name }));
     } else {
       const newItem: MenuItem = {
         id: `m-${Date.now()}`,
@@ -516,7 +497,7 @@ export default function MenuManagerView() {
         tags: formData.tags
       };
       setMenu(prev => [newItem, ...prev]);
-      triggerToast(`Đã thêm món mới "${formData.name}" vào Menu thành công!`);
+      triggerToast(tf('shop.menu.added', { name: formData.name }));
     }
 
     setIsModalOpen(false);
@@ -526,7 +507,7 @@ export default function MenuManagerView() {
     setMenu(prev => prev.map(item => {
       if (item.id === id) {
         const nextState = !item.isAvailable;
-        triggerToast(`Món "${item.name}" đã ${nextState ? 'mở bán lại' : 'tạm ngưng bán'}.`);
+        triggerToast(tf(nextState ? 'shop.menu.reopened' : 'shop.menu.paused', { name: item.name }));
         return { ...item, isAvailable: nextState };
       }
       return item;
@@ -540,9 +521,9 @@ export default function MenuManagerView() {
   };
 
   const handleDeleteItem = (id: string, name: string) => {
-    if (window.confirm(`Bạn có chắc chắn muốn xóa món "${name}" khỏi thực đơn?`)) {
+    if (window.confirm(tf('shop.menu.confirmDelete', { name }))) {
       setMenu(prev => prev.filter(item => item.id !== id));
-      triggerToast(`Đã xóa món "${name}" khỏi thực đơn.`);
+      triggerToast(tf('shop.menu.deleted', { name }));
       if (viewDetailItem && viewDetailItem.id === id) {
         setViewDetailItem(null);
       }
@@ -588,16 +569,14 @@ export default function MenuManagerView() {
       <div className="bg-white p-6 rounded-2xl border border-gray-200/80 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center space-x-3">
-            <h2 className="text-2xl font-extrabold text-gray-900">Quản lý Thực đơn & Menu</h2>
+            <h2 className="text-2xl font-extrabold text-gray-900">{t('shop.menu.title')}</h2>
             <span className="bg-red-50 text-red-700 text-xs font-bold px-3 py-1 rounded-full border border-red-200 flex items-center gap-1.5">
               <Coffee size={14} />
-              <span>{menu.length} món</span>
+              <span>{tf('shop.menu.itemCount', { count: menu.length })}</span>
             </span>
-            {menuSaving && <span className="text-xs text-gray-500">Đang lưu…</span>}
+            {menuSaving && <span className="text-xs text-gray-500">{t('shop.menu.saving')}</span>}
           </div>
-          <p className="text-gray-500 text-sm mt-1">
-            Thêm món mới vào menu, thiết lập <strong>chọn size (S, M, L, XL, Chai)</strong> với giá từng kích cỡ, hình ảnh, mô tả và tùy chỉnh Đường & Đá chi tiết.
-          </p>
+          <p className="text-gray-500 text-sm mt-1">{t('shop.menu.subtitle')}</p>
         </div>
 
         <div className="flex items-center space-x-3 shrink-0">
@@ -606,7 +585,7 @@ export default function MenuManagerView() {
             className="flex items-center space-x-2 bg-gradient-to-r from-red-600 to-rose-600 text-white px-5 py-2.5 rounded-xl hover:from-red-700 hover:to-rose-700 transition-all font-bold shadow-md shadow-red-600/25 hover:shadow-lg text-sm cursor-pointer"
           >
             <Plus size={19} />
-            <span>Thêm Món Mới Vào Menu</span>
+            <span>{t('shop.menu.addItem')}</span>
           </button>
         </div>
       </div>
@@ -618,8 +597,8 @@ export default function MenuManagerView() {
             <CheckCircle2 size={22} />
           </div>
           <div>
-            <p className="text-xs text-gray-500 font-medium">Đang phục vụ</p>
-            <p className="text-lg font-bold text-gray-900">{availableCount} món</p>
+            <p className="text-xs text-gray-500 font-medium">{t('shop.menu.statServing')}</p>
+            <p className="text-lg font-bold text-gray-900">{tf('shop.menu.itemCount', { count: availableCount })}</p>
           </div>
         </div>
 
@@ -628,8 +607,8 @@ export default function MenuManagerView() {
             <Scale size={22} />
           </div>
           <div>
-            <p className="text-xs text-gray-500 font-medium">Món có chọn Size</p>
-            <p className="text-lg font-bold text-gray-900">{multiSizeCount} món</p>
+            <p className="text-xs text-gray-500 font-medium">{t('shop.menu.statMultiSize')}</p>
+            <p className="text-lg font-bold text-gray-900">{tf('shop.menu.itemCount', { count: multiSizeCount })}</p>
           </div>
         </div>
 
@@ -638,9 +617,9 @@ export default function MenuManagerView() {
             <Sliders size={22} />
           </div>
           <div>
-            <p className="text-xs text-gray-500 font-medium">Tùy biến Đường / Đá</p>
+            <p className="text-xs text-gray-500 font-medium">{t('shop.menu.statCustom')}</p>
             <p className="text-lg font-bold text-gray-900">
-              {menu.filter(m => m.allowSugarCustomization || m.allowIceCustomization).length} món
+              {tf('shop.menu.itemCount', { count: menu.filter(m => m.allowSugarCustomization || m.allowIceCustomization).length })}
             </p>
           </div>
         </div>
@@ -650,8 +629,8 @@ export default function MenuManagerView() {
             <AlertCircle size={22} />
           </div>
           <div>
-            <p className="text-xs text-gray-500 font-medium">Tạm ngưng / Hết tồn</p>
-            <p className="text-lg font-bold text-gray-900">{outOfStockCount} món</p>
+            <p className="text-xs text-gray-500 font-medium">{t('shop.menu.statPaused')}</p>
+            <p className="text-lg font-bold text-gray-900">{tf('shop.menu.itemCount', { count: outOfStockCount })}</p>
           </div>
         </div>
       </div>
@@ -663,7 +642,7 @@ export default function MenuManagerView() {
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
             <input 
               type="text" 
-              placeholder="Tìm theo tên món, size, danh mục, mô tả..."
+              placeholder={t('shop.menu.searchPh')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-600 focus:bg-white text-sm transition-all"
@@ -679,34 +658,34 @@ export default function MenuManagerView() {
           </div>
 
           <div className="flex items-center space-x-2 shrink-0">
-            <span className="text-xs text-gray-500 font-medium hidden sm:inline">Kiểu hiển thị:</span>
+            <span className="text-xs text-gray-500 font-medium hidden sm:inline">{t('shop.menu.viewModeLabel')}</span>
             <div className="flex bg-gray-100 p-1 rounded-xl border border-gray-200">
               <button
                 onClick={() => setViewMode('grid')}
                 className={`p-2 rounded-lg text-xs font-bold flex items-center space-x-1.5 transition-all cursor-pointer ${
                   viewMode === 'grid' ? 'bg-white text-red-600 shadow-sm' : 'text-gray-600 hover:text-gray-900'
                 }`}
-                title="Dạng lưới thẻ có ảnh"
+                title={t('shop.menu.viewGridTitle')}
               >
                 <LayoutGrid size={16} />
-                <span className="hidden md:inline">Lưới thẻ</span>
+                <span className="hidden md:inline">{t('shop.menu.viewGrid')}</span>
               </button>
               <button
                 onClick={() => setViewMode('table')}
                 className={`p-2 rounded-lg text-xs font-bold flex items-center space-x-1.5 transition-all cursor-pointer ${
                   viewMode === 'table' ? 'bg-white text-red-600 shadow-sm' : 'text-gray-600 hover:text-gray-900'
                 }`}
-                title="Dạng bảng chi tiết"
+                title={t('shop.menu.viewTableTitle')}
               >
                 <List size={16} />
-                <span className="hidden md:inline">Bảng dữ liệu</span>
+                <span className="hidden md:inline">{t('shop.menu.viewTable')}</span>
               </button>
             </div>
           </div>
         </div>
 
         <div className="flex items-center gap-2 overflow-x-auto pb-1 pt-1 scrollbar-none text-xs">
-          <span className="text-gray-400 font-semibold shrink-0 mr-1">Danh mục:</span>
+          <span className="text-gray-400 font-semibold shrink-0 mr-1">{t('shop.menu.categoryLabel')}</span>
           {categoriesList.map(cat => {
             const isActive = selectedCategory === cat;
             const count = cat === 'all' ? menu.length : menu.filter(m => m.category === cat).length;
@@ -720,7 +699,7 @@ export default function MenuManagerView() {
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900'
                 }`}
               >
-                <span>{cat === 'all' ? 'Tất cả món' : cat}</span>
+                <span>{cat === 'all' ? t('shop.menu.allItems') : menuOptionLabel(cat, language)}</span>
                 <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
                   isActive ? 'bg-white/20 text-white' : 'bg-gray-200 text-gray-700'
                 }`}>
@@ -737,18 +716,16 @@ export default function MenuManagerView() {
       )}
 
       {menuLoading ? (
-        <div className="bg-white p-12 rounded-2xl border border-gray-200 text-center text-sm text-gray-500">Đang tải thực đơn…</div>
+        <div className="bg-white p-12 rounded-2xl border border-gray-200 text-center text-sm text-gray-500">{t('shop.menu.loading')}</div>
       ) : menu.length === 0 ? (
         <div className="bg-white p-12 rounded-2xl border border-dashed border-gray-300 text-center space-y-3">
           <div className="w-16 h-16 rounded-full bg-red-50 text-red-600 flex items-center justify-center mx-auto">
             <Coffee size={28} />
           </div>
-          <h3 className="font-bold text-gray-900 text-base">Thực đơn đang trống</h3>
-          <p className="text-gray-500 text-sm max-w-md mx-auto">
-            Thêm món đầu tiên của quán. Món bạn tạo sẽ hiện cho khách khi đặt bàn và gọi món trước.
-          </p>
+          <h3 className="font-bold text-gray-900 text-base">{t('shop.menu.emptyTitle')}</h3>
+          <p className="text-gray-500 text-sm max-w-md mx-auto">{t('shop.menu.emptyBody')}</p>
           <button onClick={handleOpenAddModal} className="inline-flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm">
-            <Plus size={18} /> Thêm món đầu tiên
+            <Plus size={18} /> {t('shop.menu.addFirst')}
           </button>
         </div>
       ) : filteredMenu.length === 0 ? (
@@ -756,15 +733,13 @@ export default function MenuManagerView() {
           <div className="w-16 h-16 rounded-full bg-gray-100 text-gray-400 flex items-center justify-center mx-auto">
             <Search size={28} />
           </div>
-          <h3 className="font-bold text-gray-800 text-base">Không tìm thấy món ăn nào</h3>
-          <p className="text-gray-500 text-xs max-w-sm mx-auto">
-            Không có món nào khớp với từ khóa tìm kiếm "{searchTerm}" hoặc danh mục đã chọn.
-          </p>
+          <h3 className="font-bold text-gray-800 text-base">{t('shop.menu.noMatchTitle')}</h3>
+          <p className="text-gray-500 text-xs max-w-sm mx-auto">{tf('shop.menu.noMatchBody', { term: searchTerm })}</p>
           <button
             onClick={() => { setSearchTerm(''); setSelectedCategory('all'); }}
             className="text-xs text-red-600 font-bold hover:underline cursor-pointer"
           >
-            Xóa bộ lọc & Xem tất cả
+            {t('shop.menu.clearFilters')}
           </button>
         </div>
       ) : viewMode === 'grid' ? (
@@ -790,7 +765,7 @@ export default function MenuManagerView() {
                   />
                   
                   <span className="absolute top-3 left-3 bg-black/60 backdrop-blur-md text-white text-[11px] font-bold px-2.5 py-1 rounded-lg">
-                    {item.category}
+                    {menuOptionLabel(item.category, language)}
                   </span>
 
                   <span className={`absolute top-3 right-3 text-[11px] font-bold px-2.5 py-1 rounded-lg backdrop-blur-md shadow-sm ${
@@ -798,14 +773,14 @@ export default function MenuManagerView() {
                       ? 'bg-emerald-500/90 text-white' 
                       : 'bg-gray-800/90 text-gray-200'
                   }`}>
-                    {item.isAvailable ? 'Đang bán' : 'Tạm đóng'}
+                    {item.isAvailable ? t('shop.menu.onSale') : t('shop.menu.pausedShort')}
                   </span>
 
                   {item.tags && item.tags.length > 0 && (
                     <div className="absolute bottom-2.5 left-2.5 flex flex-wrap gap-1">
-                      {item.tags.map((t, idx) => (
+                      {item.tags.map((tag, idx) => (
                         <span key={idx} className="bg-amber-400 text-slate-950 font-extrabold text-[10px] px-2 py-0.5 rounded shadow-sm">
-                          {t}
+                          {menuOptionLabel(tag, language)}
                         </span>
                       ))}
                     </div>
@@ -814,7 +789,7 @@ export default function MenuManagerView() {
                   {hasSizes && (
                     <div className="absolute bottom-2.5 right-2.5 bg-slate-900/85 backdrop-blur-md text-amber-300 text-[10px] font-black px-2 py-0.5 rounded-md border border-amber-400/30 flex items-center space-x-1">
                       <Scale size={11} />
-                      <span>{item.sizeOptions!.length} Size</span>
+                      <span>{tf('shop.menu.sizeCountBadge', { count: item.sizeOptions!.length })}</span>
                     </div>
                   )}
                 </div>
@@ -836,13 +811,13 @@ export default function MenuManagerView() {
                       </span>
                       {hasSizes && (
                         <span className="text-[10px] text-gray-400 font-medium">
-                          Mặc định: {item.defaultSize || item.sizeOptions![0]?.sizeCode}
+                          {tf('shop.menu.defaultSizeIs', { code: item.defaultSize || item.sizeOptions![0]?.sizeCode })}
                         </span>
                       )}
                     </div>
 
                     <p className="text-xs text-gray-500 line-clamp-2 mt-1.5 leading-relaxed">
-                      {item.description || 'Chưa có mô tả chi tiết cho món ăn này.'}
+                      {item.description || t('shop.menu.noDescription')}
                     </p>
                   </div>
 
@@ -851,7 +826,7 @@ export default function MenuManagerView() {
                       <div className="flex items-center justify-between text-[11px] mb-1">
                         <span className="font-bold text-purple-800 flex items-center space-x-1">
                           <CupSoda size={12} className="text-purple-600" />
-                          <span>Tùy chọn Size:</span>
+                          <span>{t('shop.menu.sizeOptionsLabel')}</span>
                         </span>
                       </div>
                       <div className="flex flex-wrap gap-1">
@@ -868,7 +843,7 @@ export default function MenuManagerView() {
                               title={`${sz.name}: ${money(sz.price)}`}
                             >
                               <span>{sz.sizeCode}</span>
-                              <span className="opacity-70 font-normal">({(sz.price / 1000)}k)</span>
+                              <span className="opacity-70 font-normal">{money(sz.price)}</span>
                             </span>
                           );
                         })}
@@ -880,10 +855,10 @@ export default function MenuManagerView() {
                     {item.allowSugarCustomization && (
                       <div className="flex items-center gap-1 text-gray-600">
                         <span className="font-semibold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 shrink-0 text-[10px]">
-                          Đường
+                          {t('shop.menu.sugarShort')}
                         </span>
                         <span className="text-gray-500 truncate text-[10px]">
-                          {item.sugarOptions?.map(s => s.split(' ')[0]).join(' / ') || 'Tùy chọn'}
+                          {item.sugarOptions?.map(s => s.split(' ')[0]).join(' / ') || t('shop.menu.optional')}
                         </span>
                       </div>
                     )}
@@ -891,10 +866,10 @@ export default function MenuManagerView() {
                     {item.allowIceCustomization && (
                       <div className="flex items-center gap-1 text-gray-600">
                         <span className="font-semibold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200 shrink-0 text-[10px]">
-                          Đá
+                          {t('shop.menu.iceShort')}
                         </span>
                         <span className="text-gray-500 truncate text-[10px]">
-                          {item.iceOptions?.map(i => i.split(' ')[0]).join(' / ') || 'Tùy chọn'}
+                          {item.iceOptions?.map(i => i.split(' ')[0]).join(' / ') || t('shop.menu.optional')}
                         </span>
                       </div>
                     )}
@@ -902,7 +877,7 @@ export default function MenuManagerView() {
 
                   <div className="pt-3 border-t border-gray-100 flex items-center justify-between">
                     <div className="flex items-center space-x-1.5">
-                      <span className="text-xs text-gray-400 font-medium">Tồn:</span>
+                      <span className="text-xs text-gray-400 font-medium">{t('shop.menu.stockLabel')}</span>
                       <input 
                         type="number"
                         value={item.stock}
@@ -915,14 +890,14 @@ export default function MenuManagerView() {
                       <button
                         onClick={() => handleOpenDetailModal(item)}
                         className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
-                        title="Xem chi tiết món & các size"
+                        title={t('shop.menu.viewDetailTitle')}
                       >
                         <Eye size={16} />
                       </button>
                       <button
                         onClick={() => handleOpenEditModal(item)}
                         className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
-                        title="Chỉnh sửa món & size"
+                        title={t('shop.menu.editTitle')}
                       >
                         <Edit2 size={16} />
                       </button>
@@ -933,7 +908,7 @@ export default function MenuManagerView() {
                             ? 'text-red-500 hover:bg-red-50' 
                             : 'text-emerald-600 hover:bg-emerald-50'
                         }`}
-                        title={item.isAvailable ? 'Tạm ngưng bán' : 'Mở bán lại'}
+                        title={t(item.isAvailable ? 'shop.menu.pauseTitle' : 'shop.menu.resumeTitle')}
                       >
                         <Power size={16} />
                       </button>
@@ -950,14 +925,14 @@ export default function MenuManagerView() {
             <table className="w-full text-left border-collapse min-w-[850px]">
               <thead>
                 <tr className="bg-gray-50/80 border-b border-gray-200 text-gray-500 font-bold text-xs">
-                  <th className="py-3.5 pl-4">Hình ảnh & Tên món</th>
-                  <th className="py-3.5">Phân loại</th>
-                  <th className="py-3.5">Giá bán</th>
-                  <th className="py-3.5">Tùy chọn Size (Kích cỡ)</th>
-                  <th className="py-3.5">Đường & Đá</th>
-                  <th className="py-3.5">Số lượng tồn</th>
-                  <th className="py-3.5 text-center">Trạng thái</th>
-                  <th className="py-3.5 text-right pr-4">Thao tác</th>
+                  <th className="py-3.5 pl-4">{t('shop.menu.colItem')}</th>
+                  <th className="py-3.5">{t('shop.menu.colCategory')}</th>
+                  <th className="py-3.5">{t('shop.menu.colPrice')}</th>
+                  <th className="py-3.5">{t('shop.menu.colSizes')}</th>
+                  <th className="py-3.5">{t('shop.menu.colSugarIce')}</th>
+                  <th className="py-3.5">{t('shop.menu.colStock')}</th>
+                  <th className="py-3.5 text-center">{t('shop.menu.colStatus')}</th>
+                  <th className="py-3.5 text-right pr-4">{t('shop.menu.colActions')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 text-sm">
@@ -989,7 +964,7 @@ export default function MenuManagerView() {
 
                       <td className="py-3.5">
                         <span className="bg-gray-100 text-gray-700 text-xs font-semibold px-2.5 py-1 rounded-lg border border-gray-200">
-                          {item.category}
+                          {menuOptionLabel(item.category, language)}
                         </span>
                       </td>
 
@@ -1009,30 +984,30 @@ export default function MenuManagerView() {
                                     : 'bg-gray-100 text-gray-700 border-gray-200'
                                 }`}
                               >
-                                {s.sizeCode}: {(s.price / 1000)}k
+                                {s.sizeCode}: {money(s.price)}
                               </span>
                             ))}
                           </div>
                         ) : (
-                          <span className="text-gray-400 italic text-[11px]">1 Size duy nhất</span>
+                          <span className="text-gray-400 italic text-[11px]">{t('shop.menu.singleSize')}</span>
                         )}
                       </td>
 
                       <td className="py-3.5 text-xs text-gray-600 space-y-1">
                         {item.allowSugarCustomization ? (
                           <span className="inline-block bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 rounded text-[10px] font-medium mr-1">
-                            Đường ({item.sugarOptions?.length || 5})
+                            {tf('shop.menu.sugarCount', { count: item.sugarOptions?.length || 5 })}
                           </span>
                         ) : (
-                          <span className="inline-block text-gray-400 italic text-[10px] mr-1">Đường cố định</span>
+                          <span className="inline-block text-gray-400 italic text-[10px] mr-1">{t('shop.menu.sugarFixed')}</span>
                         )}
 
                         {item.allowIceCustomization ? (
                           <span className="inline-block bg-blue-50 text-blue-800 border border-blue-200 px-2 py-0.5 rounded text-[10px] font-medium">
-                            Đá ({item.iceOptions?.length || 5})
+                            {tf('shop.menu.iceCount', { count: item.iceOptions?.length || 5 })}
                           </span>
                         ) : (
-                          <span className="inline-block text-gray-400 italic text-[10px]">Đá cố định</span>
+                          <span className="inline-block text-gray-400 italic text-[10px]">{t('shop.menu.iceFixed')}</span>
                         )}
                       </td>
 
@@ -1050,7 +1025,7 @@ export default function MenuManagerView() {
                           item.isAvailable ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-200 text-gray-600'
                         }`}>
                           <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${item.isAvailable ? 'bg-emerald-500' : 'bg-gray-400'}`}></span>
-                          {item.isAvailable ? 'Đang bán' : 'Tạm ngưng'}
+                          {item.isAvailable ? t('shop.menu.onSale') : t('shop.menu.pausedStatus')}
                         </span>
                       </td>
 
@@ -1059,14 +1034,14 @@ export default function MenuManagerView() {
                           <button 
                             onClick={() => handleOpenDetailModal(item)}
                             className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
-                            title="Xem chi tiết"
+                            title={t('shop.menu.viewShort')}
                           >
                             <Eye size={17} />
                           </button>
                           <button 
                             onClick={() => handleOpenEditModal(item)}
                             className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
-                            title="Chỉnh sửa"
+                            title={t('shop.menu.editShort')}
                           >
                             <Edit2 size={17} />
                           </button>
@@ -1075,14 +1050,14 @@ export default function MenuManagerView() {
                             className={`p-2 rounded-lg transition-colors cursor-pointer ${
                               item.isAvailable ? 'text-red-500 hover:bg-red-50' : 'text-emerald-600 hover:bg-emerald-50'
                             }`}
-                            title={item.isAvailable ? "Tạm ngưng bán" : "Mở bán lại"}
+                            title={t(item.isAvailable ? 'shop.menu.pauseTitle' : 'shop.menu.resumeTitle')}
                           >
                             <Power size={17} />
                           </button>
                           <button
                             onClick={() => handleDeleteItem(item.id, item.name)}
                             className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
-                            title="Xóa món"
+                            title={t('shop.menu.deleteShort')}
                           >
                             <Trash2 size={17} />
                           </button>
@@ -1111,14 +1086,14 @@ export default function MenuManagerView() {
 
               <div className="flex items-center space-x-2 text-xs font-mono bg-white/20 text-white px-3 py-1 rounded-full w-fit mb-2">
                 <Sparkles size={14} />
-                <span>{editingItem ? 'Chỉnh sửa món & Chọn Size' : 'Thêm Món Mới Vào Menu'}</span>
+                <span>{t(editingItem ? 'shop.menu.modalTagEdit' : 'shop.menu.addItem')}</span>
               </div>
 
               <h3 className="text-2xl font-extrabold">
-                {editingItem ? `Chỉnh sửa món: ${editingItem.name}` : 'Thêm Món Mới Vào Menu'}
+                {editingItem ? tf('shop.menu.modalTitleEdit', { name: editingItem.name }) : t('shop.menu.addItem')}
               </h3>
               <p className="text-white/80 text-xs mt-1">
-                Thiết lập đầy đủ tên món, danh mục, hình ảnh, <strong>chọn size (S, M, L, XL, Chai)</strong> với giá từng kích cỡ và tùy chọn lượng đường, đá.
+                {t('shop.menu.modalSubtitle')}
               </p>
             </div>
 
@@ -1130,17 +1105,17 @@ export default function MenuManagerView() {
                   <div className="space-y-4">
                     <div className="flex items-center space-x-2 text-gray-900 font-bold text-sm border-b pb-2 border-gray-100">
                       <FileText size={17} className="text-red-600" />
-                      <span>1. Thông tin cơ bản của món</span>
+                      <span>{t('shop.menu.sec1')}</span>
                     </div>
 
                     <div>
                       <label className="block text-xs font-bold text-gray-700 mb-1.5">
-                        Tên món ăn / Đồ uống <span className="text-red-500">*</span>
+                        {t('shop.menu.nameLabel')} <span className="text-red-500" aria-label={t('shop.menu.required')}>*</span>
                       </label>
                       <input 
                         type="text"
                         required
-                        placeholder="Ví dụ: Trà Sữa Oolong Nướng Kem Cheese, Cà Phê Muối..."
+                        placeholder={t('shop.menu.namePh')}
                         value={formData.name}
                         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                         className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-600 focus:bg-white text-sm font-semibold"
@@ -1150,7 +1125,7 @@ export default function MenuManagerView() {
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="block text-xs font-bold text-gray-700 mb-1.5 flex items-center justify-between">
-                          <span>Giá bán cơ sở (VNĐ) <span className="text-red-500">*</span></span>
+                          <span>{tf('shop.menu.basePriceLabel', { currency })} <span className="text-red-500" aria-label={t('shop.menu.required')}>*</span></span>
                           <span className="text-[11px] text-red-600 font-extrabold">{money(Number(formData.price || 0))}</span>
                         </label>
                         <div className="relative">
@@ -1159,7 +1134,7 @@ export default function MenuManagerView() {
                             type="number"
                             required
                             min={0}
-                            step={1000}
+                            step={priceStep}
                             value={formData.price}
                             onChange={(e) => setFormData({ ...formData, price: parseInt(e.target.value) || 0 })}
                             className="w-full pl-9 pr-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-600 focus:bg-white text-sm font-bold"
@@ -1169,7 +1144,7 @@ export default function MenuManagerView() {
 
                       <div>
                         <label className="block text-xs font-bold text-gray-700 mb-1.5">
-                          Số lượng sẵn có (Tồn kho)
+                          {t('shop.menu.stockFieldLabel')}
                         </label>
                         <div className="relative">
                           <Package className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
@@ -1186,7 +1161,7 @@ export default function MenuManagerView() {
 
                     <div className="space-y-2">
                       <label className="block text-xs font-bold text-gray-700">
-                        Danh mục sản phẩm <span className="text-red-500">*</span>
+                        {t('shop.menu.categoryFieldLabel')} <span className="text-red-500" aria-label={t('shop.menu.required')}>*</span>
                       </label>
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                         {DEFAULT_CATEGORIES.map(cat => (
@@ -1200,7 +1175,7 @@ export default function MenuManagerView() {
                                 : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100'
                             }`}
                           >
-                            {cat}
+                            {menuOptionLabel(cat, language)}
                           </button>
                         ))}
                         <button
@@ -1212,14 +1187,14 @@ export default function MenuManagerView() {
                               : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100'
                           }`}
                         >
-                          + Danh mục khác
+                          {t('shop.menu.otherCategory')}
                         </button>
                       </div>
 
                       {formData.category === 'other' && (
                         <input 
                           type="text"
-                          placeholder="Nhập tên danh mục mới..."
+                          placeholder={t('shop.menu.customCategoryPh')}
                           value={formData.customCategory}
                           onChange={(e) => setFormData({ ...formData, customCategory: e.target.value })}
                           className="w-full mt-2 px-3.5 py-2 bg-white border border-red-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-600 text-sm font-semibold"
@@ -1229,11 +1204,11 @@ export default function MenuManagerView() {
 
                     <div>
                       <label className="block text-xs font-bold text-gray-700 mb-1.5">
-                        Mô tả chi tiết / Hương vị đặc trưng
+                        {t('shop.menu.descLabel')}
                       </label>
                       <textarea 
                         rows={2}
-                        placeholder="Mô tả hương vị đặc trưng, thành phần nguyên liệu..."
+                        placeholder={t('shop.menu.descPh')}
                         value={formData.description}
                         onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                         className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-600 focus:bg-white text-xs leading-relaxed"
@@ -1250,13 +1225,13 @@ export default function MenuManagerView() {
                         </div>
                         <div>
                           <h4 className="font-extrabold text-sm text-purple-950 flex items-center gap-1.5">
-                            <span>2. Tùy Chọn Kích Thước (Chọn Size)</span>
+                            <span>{t('shop.menu.sec2')}</span>
                             <span className="text-[10px] bg-purple-200 text-purple-900 font-black px-2 py-0.5 rounded-full">
-                              Mới
+                              {t('shop.menu.newBadge')}
                             </span>
                           </h4>
                           <p className="text-[11px] text-purple-700">
-                            Cấu hình các kích cỡ (S, M, L, XL, Chai...) và giá tiền riêng cho từng size.
+                            {t('shop.menu.sec2Help')}
                           </p>
                         </div>
                       </div>
@@ -1276,7 +1251,7 @@ export default function MenuManagerView() {
                       <div className="space-y-4">
                         <div>
                           <label className="block text-xs font-bold text-purple-900 mb-1.5">
-                            Áp dụng nhanh mẫu kích thước có sẵn:
+                            {t('shop.menu.presetLabel')}
                           </label>
                           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                             {SIZE_PRESETS.map((preset) => (
@@ -1288,11 +1263,11 @@ export default function MenuManagerView() {
                               >
                                 <div className="flex items-center justify-between">
                                   <span className="text-[11px] font-black text-purple-900 group-hover:text-purple-700">
-                                    {preset.badge}
+                                    {t(`shop.preset.${preset.id}.badge`)}
                                   </span>
                                   <Sparkles size={11} className="text-purple-400 group-hover:text-purple-600" />
                                 </div>
-                                <p className="text-[10px] text-gray-500 line-clamp-1 mt-0.5">{preset.desc}</p>
+                                <p className="text-[10px] text-gray-500 line-clamp-1 mt-0.5">{t(`shop.preset.${preset.id}.desc`)}</p>
                               </button>
                             ))}
                           </div>
@@ -1300,18 +1275,18 @@ export default function MenuManagerView() {
 
                         <div className="space-y-2">
                           <div className="flex items-center justify-between">
-                            <span className="text-xs font-bold text-gray-700">Danh sách các kích cỡ áp dụng:</span>
+                            <span className="text-xs font-bold text-gray-700">{t('shop.menu.sizeListLabel')}</span>
                             <span className="text-[11px] text-purple-700 font-semibold">
-                              (Đang có {formData.sizeOptions.length} kích cỡ)
+                              {tf('shop.menu.sizeListCount', { count: formData.sizeOptions.length })}
                             </span>
                           </div>
 
                           <div className="space-y-2 bg-white p-3 rounded-xl border border-purple-200 shadow-xs">
                             <div className="grid grid-cols-12 gap-2 text-[11px] font-bold text-gray-500 pb-1 border-b border-gray-100 px-1">
-                              <span className="col-span-2">Mã Size</span>
-                              <span className="col-span-4">Tên hiển thị (Dung tích)</span>
-                              <span className="col-span-4">Giá bán (VNĐ)</span>
-                              <span className="col-span-2 text-center">Mặc định</span>
+                              <span className="col-span-2">{t('shop.menu.colSizeCode')}</span>
+                              <span className="col-span-4">{t('shop.menu.colSizeName')}</span>
+                              <span className="col-span-4">{tf('shop.menu.colSizePrice', { currency })}</span>
+                              <span className="col-span-2 text-center">{t('shop.menu.colSizeDefault')}</span>
                             </div>
 
                             {formData.sizeOptions.map((sz, idx) => {
@@ -1338,7 +1313,7 @@ export default function MenuManagerView() {
                                       type="text"
                                       value={sz.name}
                                       onChange={(e) => handleUpdateSizeRow(idx, 'name', e.target.value)}
-                                      placeholder="vd: Size M (Vừa - 500ml)"
+                                      placeholder={t('shop.menu.sizeNamePh')}
                                       className="w-full px-2 py-1 bg-white border border-gray-300 rounded-lg text-xs font-semibold text-gray-800 focus:outline-none focus:ring-1 focus:ring-purple-500"
                                     />
                                   </div>
@@ -1346,7 +1321,7 @@ export default function MenuManagerView() {
                                   <div className="col-span-4 flex items-center space-x-1">
                                     <input 
                                       type="number"
-                                      step={1000}
+                                      step={priceStep}
                                       min={0}
                                       value={sz.price}
                                       onChange={(e) => handleUpdateSizeRow(idx, 'price', parseInt(e.target.value) || 0)}
@@ -1355,19 +1330,19 @@ export default function MenuManagerView() {
                                     <div className="flex flex-col gap-0.5 shrink-0">
                                       <button
                                         type="button"
-                                        onClick={() => handleQuickAdjustSizePrice(idx, 5000)}
+                                        onClick={() => handleQuickAdjustSizePrice(idx, bumpA)}
                                         className="text-[9px] font-bold bg-gray-200 hover:bg-purple-200 text-gray-700 px-1 rounded transition-colors cursor-pointer"
-                                        title="+5.000đ"
+                                        title={tf('shop.menu.bumpTitle', { amount: money(bumpA) })}
                                       >
-                                        +5k
+                                        +{money(bumpA)}
                                       </button>
                                       <button
                                         type="button"
-                                        onClick={() => handleQuickAdjustSizePrice(idx, 7000)}
+                                        onClick={() => handleQuickAdjustSizePrice(idx, bumpB)}
                                         className="text-[9px] font-bold bg-gray-200 hover:bg-purple-200 text-gray-700 px-1 rounded transition-colors cursor-pointer"
-                                        title="+7.000đ"
+                                        title={tf('shop.menu.bumpTitle', { amount: money(bumpB) })}
                                       >
-                                        +7k
+                                        +{money(bumpB)}
                                       </button>
                                     </div>
                                   </div>
@@ -1381,9 +1356,9 @@ export default function MenuManagerView() {
                                           ? 'bg-purple-600 text-white shadow-xs' 
                                           : 'bg-gray-100 text-gray-500 hover:bg-purple-100 hover:text-purple-700'
                                       }`}
-                                      title={isDef ? 'Kích cỡ mặc định' : 'Chọn làm kích cỡ mặc định'}
+                                      title={t(isDef ? 'shop.menu.isDefaultSize' : 'shop.menu.setDefaultSize')}
                                     >
-                                      {isDef ? '✓ Mặc định' : 'Chọn'}
+                                      {t(isDef ? 'shop.menu.defaultMark' : 'shop.menu.chooseMark')}
                                     </button>
 
                                     {formData.sizeOptions.length > 1 && (
@@ -1391,7 +1366,7 @@ export default function MenuManagerView() {
                                         type="button"
                                         onClick={() => handleRemoveSizeRow(idx)}
                                         className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors cursor-pointer"
-                                        title="Xóa kích cỡ này"
+                                        title={t('shop.menu.removeSize')}
                                       >
                                         <Trash2 size={13} />
                                       </button>
@@ -1407,21 +1382,19 @@ export default function MenuManagerView() {
                               className="w-full py-2 border-2 border-dashed border-purple-300 hover:border-purple-500 bg-purple-50/50 hover:bg-purple-50 text-purple-700 rounded-xl text-xs font-bold transition-all flex items-center justify-center space-x-1.5 mt-2 cursor-pointer"
                             >
                               <PlusCircle size={15} />
-                              <span>Thêm kích cỡ mới (+ Size)</span>
+                              <span>{t('shop.menu.addSizeRow')}</span>
                             </button>
                           </div>
                         </div>
 
                         <div className="p-2.5 rounded-xl bg-purple-100/60 border border-purple-200 text-[11px] text-purple-900 flex items-start space-x-2">
                           <Info size={14} className="text-purple-700 shrink-0 mt-0.5" />
-                          <span>
-                            💡 Khi khách đặt món qua menu hoặc gọi món tại bàn, hệ thống sẽ hiển thị các lựa chọn Size kèm đơn giá tương ứng để tính tiền chính xác.
-                          </span>
+                          <span>{t('shop.menu.sizeInfo')}</span>
                         </div>
                       </div>
                     ) : (
                       <p className="text-xs text-gray-500 italic bg-white p-3 rounded-xl border border-gray-200">
-                        Món này chỉ có 1 kích cỡ cố định với giá niêm yết: <strong>{money(Number(formData.price || 0))}</strong>.
+                        {tf('shop.menu.singleSizeNote', { price: money(Number(formData.price || 0)) })}
                       </p>
                     )}
                   </div>
@@ -1431,9 +1404,9 @@ export default function MenuManagerView() {
                     <div className="flex items-center justify-between border-b pb-2 border-gray-100">
                       <div className="flex items-center space-x-2 text-gray-900 font-bold text-sm">
                         <ImageIcon size={17} className="text-red-600" />
-                        <span>3. Hình ảnh món ăn / đồ uống</span>
+                        <span>{t('shop.menu.sec3')}</span>
                       </div>
-                      <span className="text-[11px] text-gray-400">Hỗ trợ tải file / URL / Chọn mẫu</span>
+                      <span className="text-[11px] text-gray-400">{t('shop.menu.sec3Hint')}</span>
                     </div>
 
                     <div className="flex bg-gray-100 p-1 rounded-xl border border-gray-200 text-xs font-bold">
@@ -1445,7 +1418,7 @@ export default function MenuManagerView() {
                         }`}
                       >
                         <Upload size={14} />
-                        <span>Tải ảnh từ máy</span>
+                        <span>{t('shop.menu.tabFile')}</span>
                       </button>
                       <button
                         type="button"
@@ -1455,7 +1428,7 @@ export default function MenuManagerView() {
                         }`}
                       >
                         <LinkIcon size={14} />
-                        <span>Nhập Link ảnh</span>
+                        <span>{t('shop.menu.tabUrl')}</span>
                       </button>
                       <button
                         type="button"
@@ -1465,7 +1438,7 @@ export default function MenuManagerView() {
                         }`}
                       >
                         <Sparkles size={14} />
-                        <span>Chọn ảnh mẫu</span>
+                        <span>{t('shop.menu.tabPresets')}</span>
                       </button>
                     </div>
 
@@ -1487,9 +1460,9 @@ export default function MenuManagerView() {
                           </div>
                           <div>
                             <p className="text-xs font-bold text-gray-800">
-                              {uploading ? 'Đang tải ảnh lên…' : uploadFileName ? `Đã tải lên: ${uploadFileName}` : 'Nhấn để chọn ảnh (tối đa 3MB)'}
+                              {uploading ? t('shop.menu.uploadingImg') : uploadFileName ? tf('shop.menu.uploadedName', { name: uploadFileName }) : t('shop.menu.uploadPrompt')}
                             </p>
-                            <p className="text-[11px] text-gray-500 mt-0.5">Hỗ trợ định dạng PNG, JPG, WEBP (tối đa 5MB)</p>
+                            <p className="text-[11px] text-gray-500 mt-0.5">{t('shop.menu.uploadFormats')}</p>
                           </div>
                         </div>
                       </div>
@@ -1499,7 +1472,7 @@ export default function MenuManagerView() {
                       <div>
                         <input 
                           type="url"
-                          placeholder="Dán đường dẫn ảnh trực tiếp (https://...)"
+                          placeholder={t('shop.menu.urlPh')}
                           value={formData.image}
                           onChange={(e) => setFormData({ ...formData, image: e.target.value })}
                           className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-600 focus:bg-white text-xs font-mono"
@@ -1517,7 +1490,7 @@ export default function MenuManagerView() {
                               formData.image === preset.url ? 'border-red-600 ring-2 ring-red-300 scale-95' : 'border-transparent hover:opacity-80'
                             }`}
                           >
-                            <img src={preset.url} alt={preset.label} referrerPolicy="no-referrer" className="w-full h-full object-cover" />
+                            <img src={preset.url} alt={t(preset.labelKey)} referrerPolicy="no-referrer" className="w-full h-full object-cover" />
                             {formData.image === preset.url && (
                               <div className="absolute inset-0 bg-red-600/40 flex items-center justify-center text-white">
                                 <Check size={16} className="font-bold" />
@@ -1533,23 +1506,23 @@ export default function MenuManagerView() {
                   <div className="space-y-2 pt-2">
                     <label className="block text-xs font-bold text-gray-700 flex items-center gap-1.5">
                       <Tag size={15} className="text-amber-600" />
-                      <span>Nhãn nổi bật (Tags / Badges)</span>
+                      <span>{t('shop.menu.tagsLabel')}</span>
                     </label>
                     <div className="flex flex-wrap gap-1.5">
-                      {AVAILABLE_TAGS.map(t => {
-                        const isSelected = formData.tags.includes(t);
+                      {AVAILABLE_TAGS.map(tag => {
+                        const isSelected = formData.tags.includes(tag);
                         return (
                           <button
-                            key={t}
+                            key={tag}
                             type="button"
-                            onClick={() => toggleTag(t)}
+                            onClick={() => toggleTag(tag)}
                             className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                               isSelected
                                 ? 'bg-amber-400 text-slate-950 shadow-sm'
                                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                             }`}
                           >
-                            {isSelected ? `✓ ${t}` : `+ ${t}`}
+                            {isSelected ? `✓ ${menuOptionLabel(tag, language)}` : `+ ${menuOptionLabel(tag, language)}`}
                           </button>
                         );
                       })}
@@ -1561,14 +1534,14 @@ export default function MenuManagerView() {
                 <div className="lg:col-span-5 space-y-5 bg-gray-50/80 p-5 rounded-2xl border border-gray-200">
                   <div className="flex items-center space-x-2 text-gray-900 font-bold text-sm border-b pb-2 border-gray-200">
                     <Sliders size={17} className="text-red-600" />
-                    <span>4. Tùy chọn Lượng Đường & Đá</span>
+                    <span>{t('shop.menu.sec4')}</span>
                   </div>
 
                   <div className="bg-white p-4 rounded-xl border border-gray-200 space-y-3 shadow-sm">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2">
                         <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
-                        <h4 className="font-bold text-xs text-gray-900">Tùy chỉnh Lượng Đường</h4>
+                        <h4 className="font-bold text-xs text-gray-900">{t('shop.menu.sugarTitle')}</h4>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer">
                         <input 
@@ -1583,7 +1556,7 @@ export default function MenuManagerView() {
 
                     {formData.allowSugarCustomization ? (
                       <div className="space-y-2.5">
-                        <p className="text-[11px] text-gray-500">Chọn các mức đường khả dụng cho khách hàng:</p>
+                        <p className="text-[11px] text-gray-500">{t('shop.menu.sugarPick')}</p>
                         <div className="grid grid-cols-1 gap-1.5">
                           {STANDARD_SUGAR_LEVELS.map(level => {
                             const isChecked = formData.sugarOptions.includes(level);
@@ -1603,7 +1576,7 @@ export default function MenuManagerView() {
                                     onChange={() => {}}
                                     className="rounded text-amber-600 focus:ring-amber-500"
                                   />
-                                  <span className="font-semibold text-gray-800">{level}</span>
+                                  <span className="font-semibold text-gray-800">{menuOptionLabel(level, language)}</span>
                                 </div>
                                 {isChecked && (
                                   <button
@@ -1616,7 +1589,7 @@ export default function MenuManagerView() {
                                       isDefault ? 'bg-amber-500 text-white' : 'bg-gray-200 text-gray-700 hover:bg-amber-200'
                                     }`}
                                   >
-                                    {isDefault ? 'Mặc định' : 'Đặt mặc định'}
+                                    {t(isDefault ? 'shop.menu.isDefault' : 'shop.menu.setDefault')}
                                   </button>
                                 )}
                               </div>
@@ -1625,7 +1598,7 @@ export default function MenuManagerView() {
                         </div>
                       </div>
                     ) : (
-                      <p className="text-[11px] text-gray-400 italic">Món này có độ ngọt cố định, khách không thể tùy chọn lượng đường.</p>
+                      <p className="text-[11px] text-gray-400 italic">{t('shop.menu.sugarFixedNote')}</p>
                     )}
                   </div>
 
@@ -1633,7 +1606,7 @@ export default function MenuManagerView() {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2">
                         <span className="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
-                        <h4 className="font-bold text-xs text-gray-900">Tùy chỉnh Lượng Đá / Nhiệt độ</h4>
+                        <h4 className="font-bold text-xs text-gray-900">{t('shop.menu.iceTitle')}</h4>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer">
                         <input 
@@ -1648,7 +1621,7 @@ export default function MenuManagerView() {
 
                     {formData.allowIceCustomization ? (
                       <div className="space-y-2.5">
-                        <p className="text-[11px] text-gray-500">Chọn các mức đá / nhiệt khả dụng cho khách hàng:</p>
+                        <p className="text-[11px] text-gray-500">{t('shop.menu.icePick')}</p>
                         <div className="grid grid-cols-1 gap-1.5">
                           {STANDARD_ICE_LEVELS.map(level => {
                             const isChecked = formData.iceOptions.includes(level);
@@ -1668,7 +1641,7 @@ export default function MenuManagerView() {
                                     onChange={() => {}}
                                     className="rounded text-blue-600 focus:ring-blue-500"
                                   />
-                                  <span className="font-semibold text-gray-800">{level}</span>
+                                  <span className="font-semibold text-gray-800">{menuOptionLabel(level, language)}</span>
                                 </div>
                                 {isChecked && (
                                   <button
@@ -1681,7 +1654,7 @@ export default function MenuManagerView() {
                                       isDefault ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700 hover:bg-blue-200'
                                     }`}
                                   >
-                                    {isDefault ? 'Mặc định' : 'Đặt mặc định'}
+                                    {t(isDefault ? 'shop.menu.isDefault' : 'shop.menu.setDefault')}
                                   </button>
                                 )}
                               </div>
@@ -1690,13 +1663,13 @@ export default function MenuManagerView() {
                         </div>
                       </div>
                     ) : (
-                      <p className="text-[11px] text-gray-400 italic">Món này có nhiệt độ / lượng đá cố định.</p>
+                      <p className="text-[11px] text-gray-400 italic">{t('shop.menu.iceFixedNote')}</p>
                     )}
                   </div>
 
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Xem trước hiển thị đặt món:</span>
+                      <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">{t('shop.menu.previewLabel')}</span>
                       <span className="text-[10px] bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-bold">Live Preview</span>
                     </div>
 
@@ -1712,13 +1685,13 @@ export default function MenuManagerView() {
                           }}
                         />
                         <div className="flex-1 min-w-0">
-                          <h5 className="font-bold text-gray-900 text-sm truncate">{formData.name || 'Tên món ăn mới'}</h5>
-                          <p className="text-[11px] text-gray-500 line-clamp-1">{formData.description || 'Hương vị thơm ngon tuyệt hảo...'}</p>
+                          <h5 className="font-bold text-gray-900 text-sm truncate">{formData.name || t('shop.menu.previewName')}</h5>
+                          <p className="text-[11px] text-gray-500 line-clamp-1">{formData.description || t('shop.menu.previewDesc')}</p>
                           <div className="flex justify-between items-center mt-1">
                             <span className="text-red-600 font-extrabold text-sm">
                               {money(getLivePreviewPrice())}
                             </span>
-                            <span className="text-[10px] text-gray-400 font-medium">Kho: {formData.stock}</span>
+                            <span className="text-[10px] text-gray-400 font-medium">{tf('shop.menu.previewStock', { count: formData.stock })}</span>
                           </div>
                         </div>
                       </div>
@@ -1726,8 +1699,8 @@ export default function MenuManagerView() {
                       {formData.allowSizeCustomization && formData.sizeOptions.length > 0 && (
                         <div className="space-y-1 pt-2 border-t border-gray-100">
                           <div className="flex justify-between items-center text-[10px]">
-                            <span className="font-bold text-purple-900">Chọn Size (Xem giá thay đổi):</span>
-                            <span className="text-purple-600 font-semibold">Đang chọn: Size {previewSelectedSize}</span>
+                            <span className="font-bold text-purple-900">{t('shop.menu.previewPickSize')}</span>
+                            <span className="text-purple-600 font-semibold">{tf('shop.menu.previewChosen', { code: previewSelectedSize })}</span>
                           </div>
                           <div className="flex flex-wrap gap-1">
                             {formData.sizeOptions.map(sz => (
@@ -1751,7 +1724,7 @@ export default function MenuManagerView() {
 
                       {formData.allowSugarCustomization && formData.sugarOptions.length > 0 && (
                         <div className="space-y-1 pt-1.5 border-t border-gray-100">
-                          <span className="text-[10px] font-bold text-gray-600 block">Chọn lượng đường:</span>
+                          <span className="text-[10px] font-bold text-gray-600 block">{t('shop.menu.previewPickSugar')}</span>
                           <div className="flex flex-wrap gap-1">
                             {formData.sugarOptions.map(opt => (
                               <button
@@ -1764,7 +1737,7 @@ export default function MenuManagerView() {
                                     : 'bg-gray-100 text-gray-600 border-gray-200 hover:bg-gray-200'
                                 }`}
                               >
-                                {opt.split(' ')[0]}
+                                {menuOptionLabel(opt, language).split(' ')[0]}
                               </button>
                             ))}
                           </div>
@@ -1773,7 +1746,7 @@ export default function MenuManagerView() {
 
                       {formData.allowIceCustomization && formData.iceOptions.length > 0 && (
                         <div className="space-y-1 pt-1.5 border-t border-gray-100">
-                          <span className="text-[10px] font-bold text-gray-600 block">Chọn lượng đá:</span>
+                          <span className="text-[10px] font-bold text-gray-600 block">{t('shop.menu.previewPickIce')}</span>
                           <div className="flex flex-wrap gap-1">
                             {formData.iceOptions.map(opt => (
                               <button
@@ -1786,7 +1759,7 @@ export default function MenuManagerView() {
                                     : 'bg-gray-100 text-gray-600 border-gray-200 hover:bg-gray-200'
                                 }`}
                               >
-                                {opt.split(' ')[0]}
+                                {menuOptionLabel(opt, language).split(' ')[0]}
                               </button>
                             ))}
                           </div>
@@ -1807,7 +1780,7 @@ export default function MenuManagerView() {
                     className="rounded text-red-600 focus:ring-red-500 h-4 w-4"
                   />
                   <label htmlFor="isAvailableCheck" className="text-xs font-bold text-gray-700 cursor-pointer">
-                    Mở bán ngay sau khi lưu
+                    {t('shop.menu.openOnSave')}
                   </label>
                 </div>
 
@@ -1817,14 +1790,14 @@ export default function MenuManagerView() {
                     onClick={() => setIsModalOpen(false)}
                     className="px-5 py-2.5 border border-gray-300 text-gray-700 font-bold rounded-xl hover:bg-gray-100 transition-colors text-sm cursor-pointer"
                   >
-                    Hủy bỏ
+                    {t('shop.menu.cancel')}
                   </button>
                   <button
                     type="submit"
                     className="px-6 py-2.5 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-bold rounded-xl shadow-md shadow-red-600/25 transition-all text-sm flex items-center space-x-2 cursor-pointer"
                   >
                     <Check size={18} />
-                    <span>{editingItem ? 'Lưu thay đổi món' : 'Thêm vào Menu'}</span>
+                    <span>{t(editingItem ? 'shop.menu.saveEdit' : 'shop.menu.saveNew')}</span>
                   </button>
                 </div>
               </div>
@@ -1870,7 +1843,7 @@ export default function MenuManagerView() {
               <div className="flex justify-between items-start">
                 <div>
                   <h3 className="text-2xl font-extrabold text-gray-900">{viewDetailItem.name}</h3>
-                  <p className="text-xs text-gray-500 mt-0.5">Mã món: <span className="font-mono">{viewDetailItem.id}</span></p>
+                  <p className="text-xs text-gray-500 mt-0.5">{tf('shop.menu.itemCode', { id: viewDetailItem.id })}</p>
                 </div>
                 <div className="text-right">
                   <span className="text-2xl font-extrabold text-red-600 block">
@@ -1883,21 +1856,21 @@ export default function MenuManagerView() {
                     })()}
                   </span>
                   {viewDetailItem.allowSizeCustomization && (
-                    <span className="text-[10px] text-gray-400">Giá theo size đã chọn</span>
+                    <span className="text-[10px] text-gray-400">{t('shop.menu.priceForSize')}</span>
                   )}
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3 bg-gray-50 p-3.5 rounded-2xl border border-gray-200 text-xs">
                 <div>
-                  <span className="text-gray-400 block font-medium">Trạng thái bán:</span>
+                  <span className="text-gray-400 block font-medium">{t('shop.menu.detailStatus')}</span>
                   <span className={`font-bold inline-block mt-0.5 ${viewDetailItem.isAvailable ? 'text-emerald-700' : 'text-rose-600'}`}>
-                    {viewDetailItem.isAvailable ? '● Đang phục vụ' : '○ Tạm ngưng bán'}
+                    {t(viewDetailItem.isAvailable ? 'shop.menu.detailServing' : 'shop.menu.detailPaused')}
                   </span>
                 </div>
                 <div>
-                  <span className="text-gray-400 block font-medium">Số lượng tồn kho:</span>
-                  <span className="font-bold text-gray-900 inline-block mt-0.5">{viewDetailItem.stock} phần</span>
+                  <span className="text-gray-400 block font-medium">{t('shop.menu.detailStock')}</span>
+                  <span className="font-bold text-gray-900 inline-block mt-0.5">{tf('shop.menu.detailPortions', { count: viewDetailItem.stock })}</span>
                 </div>
               </div>
 
@@ -1906,9 +1879,9 @@ export default function MenuManagerView() {
                   <div className="flex items-center justify-between">
                     <h4 className="font-bold text-xs text-purple-950 uppercase tracking-wider flex items-center gap-1.5">
                       <Scale size={15} className="text-purple-600" />
-                      <span>Kích Thước Khả Dụng ({viewDetailItem.sizeOptions.length} Sizes):</span>
+                      <span>{tf('shop.menu.detailSizes', { count: viewDetailItem.sizeOptions.length })}</span>
                     </h4>
-                    <span className="text-[11px] text-purple-700 font-bold">Nhấn để xem giá</span>
+                    <span className="text-[11px] text-purple-700 font-bold">{t('shop.menu.detailTapPrice')}</span>
                   </div>
 
                   <div className="grid grid-cols-1 gap-1.5">
@@ -1936,7 +1909,7 @@ export default function MenuManagerView() {
                               <span className={`text-[10px] px-1.5 py-0.2 rounded font-bold ${
                                 isSelected ? 'bg-white/20 text-white' : 'bg-purple-200 text-purple-800'
                               }`}>
-                                Mặc định
+                                {t('shop.menu.isDefault')}
                               </span>
                             )}
                           </div>
@@ -1951,45 +1924,45 @@ export default function MenuManagerView() {
               )}
 
               <div>
-                <h4 className="font-bold text-xs text-gray-700 uppercase tracking-wider mb-1.5">Mô tả sản phẩm:</h4>
+                <h4 className="font-bold text-xs text-gray-700 uppercase tracking-wider mb-1.5">{t('shop.menu.detailDesc')}</h4>
                 <p className="text-sm text-gray-600 leading-relaxed bg-amber-50/40 p-3.5 rounded-xl border border-amber-200/60">
-                  {viewDetailItem.description || 'Chưa có mô tả chi tiết cho sản phẩm này.'}
+                  {viewDetailItem.description || t('shop.menu.noDescription')}
                 </p>
               </div>
 
               <div>
                 <h4 className="font-bold text-xs text-gray-700 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
                   <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-                  <span>Tùy chọn Lượng Đường:</span>
+                  <span>{t('shop.menu.detailSugar')}</span>
                 </h4>
                 {viewDetailItem.allowSugarCustomization && viewDetailItem.sugarOptions && viewDetailItem.sugarOptions.length > 0 ? (
                   <div className="flex flex-wrap gap-1.5">
                     {viewDetailItem.sugarOptions.map(s => (
                       <span key={s} className="bg-amber-100 text-amber-900 border border-amber-300 text-xs font-semibold px-2.5 py-1 rounded-lg">
-                        {s}
+                        {menuOptionLabel(s, language)}
                       </span>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-xs text-gray-400 italic">Độ ngọt chuẩn cố định (Không tùy chọn).</p>
+                  <p className="text-xs text-gray-400 italic">{t('shop.menu.detailSugarFixed')}</p>
                 )}
               </div>
 
               <div>
                 <h4 className="font-bold text-xs text-gray-700 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
                   <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-                  <span>Tùy chọn Lượng Đá / Nhiệt độ:</span>
+                  <span>{t('shop.menu.detailIce')}</span>
                 </h4>
                 {viewDetailItem.allowIceCustomization && viewDetailItem.iceOptions && viewDetailItem.iceOptions.length > 0 ? (
                   <div className="flex flex-wrap gap-1.5">
                     {viewDetailItem.iceOptions.map(i => (
                       <span key={i} className="bg-blue-100 text-blue-900 border border-blue-300 text-xs font-semibold px-2.5 py-1 rounded-lg">
-                        {i}
+                        {menuOptionLabel(i, language)}
                       </span>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-xs text-gray-400 italic">Nhiệt độ / Đá chuẩn cố định (Không tùy chọn).</p>
+                  <p className="text-xs text-gray-400 italic">{t('shop.menu.detailIceFixed')}</p>
                 )}
               </div>
 
@@ -2003,13 +1976,13 @@ export default function MenuManagerView() {
                   className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-2.5 rounded-xl transition-colors text-sm flex items-center justify-center space-x-2 shadow-md shadow-red-600/20 cursor-pointer"
                 >
                   <Edit2 size={16} />
-                  <span>Chỉnh sửa món & size</span>
+                  <span>{t('shop.menu.editTitle')}</span>
                 </button>
                 <button
                   onClick={() => setViewDetailItem(null)}
                   className="px-5 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2.5 rounded-xl transition-colors text-sm cursor-pointer"
                 >
-                  Đóng
+                  {t('shop.menu.close')}
                 </button>
               </div>
             </div>
