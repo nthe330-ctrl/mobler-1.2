@@ -188,6 +188,29 @@ async function main() {
       check('and that order carries a currency too', !!fromBooking?.currency_code, fromBooking?.currency_code);
       check('namely the shop’s currency at the time it was taken',
         fromBooking?.currency_code === 'TWD', fromBooking?.currency_code);
+
+      // The BOOKING itself carries money too — a deposit, a pre-order total, a discount —
+      // so it needs its own stamp for the same reason the order does. Reading those amounts
+      // in the shop's current currency would restate a 45,000₫ pre-order as NT$45,000 the
+      // moment the shop switched.
+      const bookingRow = booked.data.booking;
+      check('the booking itself is stamped as well', !!bookingRow?.currency_code, bookingRow?.currency_code);
+      check('with the currency in force when it was made',
+        bookingRow?.currency_code === 'TWD', bookingRow?.currency_code);
+
+      // And the stamp must survive the shop changing its mind afterwards.
+      await call('PUT', `/merchant/shops/${shopId}`, { currency_code: 'THB' }, shopToken);
+      const afterSwitch = await call('GET', `/me/bookings`, undefined, custToken);
+      const stillThere = (afterSwitch.data.bookings || []).find((b: any) => b.id === bookingRow?.id);
+      check('changing the shop currency does not restate an existing booking',
+        stillThere?.currency_code === 'TWD', stillThere?.currency_code);
+      // The pre-order total is where the money actually sits on this booking: grand_total
+      // is derived from order.subtotal, which this request did not send, so it is 0 here.
+      // (The dashboard already reads `grand_total || order.total` for that reason.)
+      check('its amounts are the same numbers as before',
+        stillThere?.order?.total === 45000, stillThere?.order?.total);
+      // Put the shop back where the rest of the suite expects it.
+      await call('PUT', `/merchant/shops/${shopId}`, { currency_code: 'TWD' }, shopToken);
     }
 
     console.log('\nThe setting lives in the database, not the browser');

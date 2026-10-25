@@ -673,7 +673,7 @@ export default function PromotionsVoucherView() {
           </div>
           <div>
             <p className="text-xs text-gray-500 font-medium">{t('shop.promo.statRunning')}</p>
-            <p className="text-xl font-black text-gray-900">{activeCount} voucher</p>
+            <p className="text-xl font-black text-gray-900">{tf('shop.promo.voucherCount', { count: num(activeCount) })}</p>
           </div>
         </div>
 

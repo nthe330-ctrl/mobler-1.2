@@ -2,6 +2,26 @@ import { useEffect, useRef, useState, FormEvent } from 'react';
 import { Check, ImagePlus, Loader2, Star, Store, Trash2 } from 'lucide-react';
 import { Amenity, CoffeeShop } from '@shared/types';
 import { AMENITIES_CONFIG } from '@shared/data';
+
+/**
+ * Amenity ids are stored values (and some of them are Vietnamese words, e.g. "Chỗ sạc"),
+ * so they stay exactly as they are and only the label is translated — the same rule as
+ * menu options. A key stem per id keeps the mapping in one readable place.
+ */
+// i18n-exempt-start: these are stored amenity ids, not display text.
+const AMENITY_KEY: Record<string, string> = {
+  'Wi-Fi': 'wifi',
+  'Chỗ sạc': 'power',
+  WC: 'wc',
+  Parking: 'parking',
+  Indoor: 'indoor',
+  Outdoor: 'outdoor',
+  Private: 'private',
+  Shared: 'shared',
+  'Table Service': 'tableService',
+  'Self Service': 'selfService'
+};
+// i18n-exempt-end
 import {
   NO_SHOW_GRACE_MAX_BOUND, NO_SHOW_GRACE_MIN_BOUND, NO_SHOW_GRACE_DEFAULT_MIN, NO_SHOW_GRACE_PEAK_MIN
 } from '@shared/booking';
@@ -307,8 +327,10 @@ export default function ShopProfileView({ shop }: { shop: CoffeeShop }) {
                     : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
                 }`}
               >
-                <span className="mr-1.5">{a.icon}</span>{a.name}
-                <span className="block text-[11px] font-normal text-gray-500 mt-0.5">{a.description}</span>
+                <span className="mr-1.5">{a.icon}</span>{t(`shop.amenity.${AMENITY_KEY[a.id] || a.id}.name`)}
+                <span className="block text-[11px] font-normal text-gray-500 mt-0.5">
+                  {t(`shop.amenity.${AMENITY_KEY[a.id] || a.id}.desc`)}
+                </span>
               </button>
             );
           })}

@@ -795,6 +795,8 @@ export function registerCoreRoutes(app: Express) {
         status,
         // Same rule as the order below: the currency is fixed at the moment the amounts
         // are agreed, so a later change to the shop's setting cannot restate them.
+        // Same rule as the order below: the currency is fixed at the moment the amounts
+        // are agreed, so a later change to the shop's setting cannot restate them.
         currency_code: toCurrencyCode(shop.currency_code),
         note: note ? String(note).slice(0, 500) : undefined,
         order: order && Array.isArray(order.items) && order.items.length > 0 ? order : undefined,
