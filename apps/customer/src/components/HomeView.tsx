@@ -846,7 +846,7 @@ export default function HomeView({
   ];
 
   return (
-    <div className={`flex flex-col min-h-full transition-colors duration-300 ${isLight ? 'bg-[#F0F3F7]' : 'bg-transparent'}`}>
+    <div className={`flex flex-col min-h-full transition-colors duration-300`}>
       {/* Top Greeting & User Bar (Flows naturally with the page) */}
       <div className={`pt-5 md:pt-4 pb-3 px-4 md:px-8 border-b ${
         isLight 

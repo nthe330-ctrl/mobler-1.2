@@ -36,7 +36,7 @@ export default function ProfileView({ onNavigate }: Props) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   return (
-    <div className={`flex flex-col min-h-full transition-colors duration-300 ${isLight ? 'bg-[#F0F3F7]' : 'bg-transparent'}`}>
+    <div className={`flex flex-col min-h-full transition-colors duration-300`}>
       {/* Header Profile with Settings Button */}
       <div className={`pt-12 pb-6 px-4 md:px-8 relative overflow-hidden transition-all duration-300 ${
         isLight 

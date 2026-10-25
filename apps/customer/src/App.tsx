@@ -418,10 +418,14 @@ export default function App() {
   if (!isAuthenticated) return <CustomerAuthScreen />;
 
   const appContent = (
-    <div className={`w-full h-[100dvh] max-h-[100dvh] overflow-hidden font-sans transition-colors duration-300 ${isLight ? 'bg-[#FAFBFD] text-[#1E1B18]' : 'bg-[#0A0807] text-[#EBE3DB]'}`}>
+    <div className={`w-full h-[100dvh] max-h-[100dvh] overflow-hidden font-sans transition-colors duration-300 ${isLight ? 'bg-[#F7F4EF] text-[#1E1B18]' : 'bg-[#0A0807] text-[#EBE3DB]'}`}>
+      {/* Light mode carries the blurred coffee artwork; dark mode keeps its own gradient,
+          because the artwork is cream and would have to be dimmed past the point of being
+          worth loading. This layer never scrolls — <main> below does — so the backdrop
+          stays put without needing a fixed layer. The login screen returns above this. */}
       <div className={`w-full h-full flex flex-col relative overflow-hidden transition-colors duration-300 ${
-        isLight 
-          ? 'bg-gradient-to-b from-[#FAFBFD] via-[#F1F5F9] to-[#E2E8F0]' 
+        isLight
+          ? 'cust-app-bg'
           : 'bg-gradient-to-br from-[#161210] to-[#0A0807]'
       }`}>
         {/* Main Content Area */}

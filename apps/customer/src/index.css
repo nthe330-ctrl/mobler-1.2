@@ -229,3 +229,25 @@ html {
   70%  { opacity: 1; transform: translateY(-6px); }
   100% { opacity: 0; transform: translateY(-14px); }
 }
+
+/* ==========================================================================
+   App backdrop (light mode only) — the same blurred coffee artwork the shop
+   dashboard uses. Dark mode keeps its own gradient: the artwork is cream, and
+   dimming it far enough for dark mode would leave nothing worth downloading.
+
+   The blur is baked into the file rather than applied with `filter: blur()`,
+   which would be re-rasterised on every repaint. Having no fine detail left, it
+   compresses to 5 KB and upscales to any screen without showing it.
+
+   The veil above it is what keeps cards and body text readable over the artwork.
+   This element does not scroll — <main> inside it does — so no fixed layer is needed.
+   ========================================================================== */
+.cust-app-bg {
+  background-color: #f7f4ef;
+  background-image:
+    linear-gradient(rgba(252, 250, 247, .62), rgba(252, 250, 247, .62)),
+    url('/mobler-app-bg.webp');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}

@@ -579,7 +579,7 @@ export default function BookingView({ id, shops, initialVoucher, onNavigate }: P
   };
 
   return (
-    <div className={`flex flex-col min-h-full pb-28 transition-colors duration-300 ${isLight ? 'bg-[#F0F3F7]' : 'bg-[#120E0C]'}`}>
+    <div className={`flex flex-col min-h-full pb-28 transition-colors duration-300 ${isLight ? 'bg-transparent' : 'bg-[#120E0C]'}`}>
       {/* Top Header */}
       <div className={`border-b px-4 py-3.5 sticky top-0 z-30 shadow-sm transition-all ${
         isLight 

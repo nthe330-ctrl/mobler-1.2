@@ -34,7 +34,17 @@ export default function DashboardLayout({ currentView, onNavigate, shop, shops, 
   ] as const;
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900 flex font-sans">
+    <div className="shop-dash-shell min-h-screen text-gray-900 flex font-sans">
+      {/*
+        The dashboard's backdrop. A fixed layer rather than a background on this element,
+        because this page scrolls: `background-attachment: fixed` is the one-line version
+        and iOS Safari ignores it, which would leave the artwork sliding under the data.
+
+        It sits behind everything (z-index -1) and takes no pointer events, so the sidebar,
+        the overlay and every modal keep their own stacking exactly as before. The login
+        screen has its own backdrop and never renders this component.
+      */}
+      <div className="shop-dash-backdrop" aria-hidden="true" />
       {/* Mobile Sidebar Overlay */}
       <AnimatePresence>
         {isSidebarOpen && (

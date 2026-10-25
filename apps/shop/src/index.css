@@ -246,3 +246,35 @@ html {
   .boba { transition: none; transform: none; }
   .boba::before { animation: none; }
 }
+
+/* ==========================================================================
+   Dashboard backdrop — the blurred coffee artwork behind the whole shop app.
+
+   The blur is baked into the file, not applied with `filter: blur()`. A CSS blur on a
+   full-viewport layer is re-rasterised on every scroll and repaint, which is exactly
+   the wrong cost on a dashboard that updates live; a pre-blurred image costs nothing
+   and, having no fine detail left, compresses to 5 KB and upscales without showing it.
+
+   The veil over it is what keeps a data screen readable: the artwork alone is too
+   saturated on its right-hand side, which is where the tables and charts sit.
+   ========================================================================== */
+/* The shell must stay transparent. It is the backdrop's parent and paints over it —
+   giving it the cream as an anti-flash colour hid the artwork completely. The colour
+   belongs on the backdrop itself, underneath the image, where it does that job. */
+.shop-dash-shell {
+  background-color: transparent;
+}
+
+.shop-dash-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-color: #f7f4ef;   /* the artwork's own cream, so there is no flash before it loads */
+  background-image:
+    linear-gradient(rgba(252, 250, 247, .62), rgba(252, 250, 247, .62)),
+    url('/mobler-app-bg.webp');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}

@@ -273,7 +273,7 @@ export default function BookingsView({ shops, onNavigate, highlightBookingId }: 
   };
 
   return (
-    <div className={`flex flex-col min-h-full pb-32 transition-colors duration-300 ${isLight ? 'bg-[#F0F3F7]' : 'bg-transparent'}`}>
+    <div className={`flex flex-col min-h-full pb-32 transition-colors duration-300`}>
       <div className="max-w-5xl mx-auto w-full px-4 md:px-8 pt-6 pb-2">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2.5">
