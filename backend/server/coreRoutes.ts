@@ -16,7 +16,7 @@ import {
 } from './auth';
 import { publish, topics, issueTicket, streamHandler, realtimeStats } from './realtime';
 import { storage, isOwnUploadUrl } from './storage';
-import { publicMenu, registerShopDataRoutes, shopVouchersAsRecords } from './shopData';
+import { isSafeImage, publicMenu, registerShopDataRoutes, shopVouchersAsRecords } from './shopData';
 import { getUserAchievements, syncUserAchievements, getShopLoyalty, expireAndListWalletVouchers, PersonalVoucher } from './achievements';
 import { getUserRank } from './ranks';
 import { ACHIEVEMENTS } from '../../shared/achievements';
@@ -50,6 +50,8 @@ const SHOP_TIMEZONE = process.env.SHOP_TIMEZONE || 'Asia/Ho_Chi_Minh';
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 const TIME_REGEX = /^([01]\d|2[0-3]):[0-5]\d$/;
+/** How many photos one shop may show in its gallery. Mirrored in the shop profile editor. */
+const MAX_SHOP_IMAGES = 5;
 
 /** Today's date and current time in the shops' timezone. */
 function shopClock(): { today: string; now: string } {
@@ -1053,6 +1055,25 @@ export function registerCoreRoutes(app: Express) {
     const allowed = ['name', 'address', 'phoneNumber', 'website', 'description', 'coverImage', 'images', 'openingHours', 'tags', 'amenities'] as const;
     const updates: Partial<CoffeeShop> = {};
     for (const key of allowed) if (key in (req.body || {})) (updates as any)[key] = req.body[key];
+
+    // The cover and the gallery are rendered in <img src> on the public shop page, so they
+    // are filtered the same way menu photos already are: an outside https:// address, or a
+    // path this server handed back from an upload. A `javascript:` or `data:` URL stored
+    // here would run in every visitor's browser, and the shop account is not trusted with
+    // that. An unusable cover is dropped rather than saved, so the field simply stays as it
+    // was instead of leaving a broken image on the page.
+    if ('coverImage' in updates) {
+      const cover = String(updates.coverImage ?? '').trim();
+      if (cover && isSafeImage(cover)) updates.coverImage = cover;
+      else delete (updates as any).coverImage;
+    }
+    if ('images' in updates) {
+      updates.images = (Array.isArray(updates.images) ? updates.images : [])
+        .map(i => String(i ?? '').trim())
+        .filter(i => i && isSafeImage(i))
+        .filter((i, idx, all) => all.indexOf(i) === idx)   // the carousel should not repeat a photo
+        .slice(0, MAX_SHOP_IMAGES);
+    }
     const loc = req.body?.location;
     if (loc && Number.isFinite(Number(loc.lat)) && Number.isFinite(Number(loc.lng)) && Math.abs(Number(loc.lat)) <= 90 && Math.abs(Number(loc.lng)) <= 180) {
       updates.location = { lat: Number(loc.lat), lng: Number(loc.lng) };

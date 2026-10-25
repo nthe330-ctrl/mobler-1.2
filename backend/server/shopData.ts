@@ -26,7 +26,16 @@ const num = (v: unknown, min: number, max: number, def = 0) => {
 };
 const strList = (v: unknown, maxItems: number, maxLen: number) =>
   Array.isArray(v) ? v.map(x => str(x, maxLen)).filter(Boolean).slice(0, maxItems) : [];
-const isSafeImage = (u: string) => /^https:\/\//.test(u) || /^\/api\/media\/uploads\/[a-z0-9_.-]+$/i.test(u);
+/**
+ * An image URL safe to render on a public page: either an outside https:// address or a
+ * path this server itself handed back from an upload. Anything else — `javascript:`,
+ * `data:`, a bare http:// — is dropped rather than stored, because these strings end up
+ * inside an <img src> that other people's browsers load.
+ *
+ * Exported so the shop-profile route applies the same rule to the cover and gallery that
+ * the menu already applies to dish photos.
+ */
+export const isSafeImage = (u: string) => /^https:\/\//.test(u) || /^\/api\/media\/uploads\/[a-z0-9_.-]+$/i.test(u);
 
 export function sanitizeMenuItem(raw: any) {
   const name = str(raw?.name, 120);

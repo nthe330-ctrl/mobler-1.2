@@ -85,6 +85,10 @@ html {
   z-index: -2;
   width: 104%;
   height: 104%;
+  /* Tailwind's preflight caps every <video> at max-width:100%, which silently held this
+     layer 58px narrower than the poster behind it — a visible seam down the right edge
+     once the artwork had a bright side. The layer is deliberately oversized, so opt out. */
+  max-width: none;
   object-fit: cover;     /* portrait phones crop the sides; the cup is centred, so it stays */
   object-position: center;
   pointer-events: none;
@@ -277,4 +281,29 @@ html {
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
+}
+
+/* Desktop: the clip puts its subject on the RIGHT and the sign-in card sits on the LEFT,
+   so the shade turns horizontal. Darkening the whole frame vertically (what phones need,
+   where the portrait clip runs behind centred text) would dim the glass that the layout
+   is built around. Here the left is covered for the heading, and the right is left alone. */
+@media (min-width: 1024px) {
+  .shop-auth-shade {
+    /* Two layers. The horizontal one covers the heading and card on the left and fades
+       out before the glass. The vertical one is a band under the floating dock, whose
+       white labels run across the full width and would otherwise sit on the bright half. */
+    background:
+      linear-gradient(180deg,
+        rgba(42, 25, 16, .30) 0%,
+        rgba(42, 25, 16, 0) 16%,
+        rgba(42, 25, 16, 0) 58%,
+        rgba(36, 21, 13, .62) 84%,
+        rgba(36, 21, 13, .84) 100%),
+      linear-gradient(90deg,
+        rgba(42, 25, 16, .74) 0%,
+        rgba(42, 25, 16, .60) 32%,
+        rgba(42, 25, 16, .24) 56%,
+        rgba(42, 25, 16, .04) 72%,
+        rgba(42, 25, 16, 0) 100%);
+  }
 }

@@ -58,6 +58,15 @@ export const shopApi = {
     return http.put<{ shop: CoffeeShop }>(`/merchant/shops/${shopId}`, updates);
   },
 
+  /**
+   * Uploads one photo and returns the URL to store on the shop. The server decides where
+   * the bytes land — local disk or an S3 bucket — so the caller only ever handles the URL
+   * it gets back. It rejects anything that is not a JPG/PNG/WEBP/GIF, and anything over 3MB.
+   */
+  uploadImage(shopId: string, dataUrl: string) {
+    return http.post<{ url: string }>(`/merchant/shops/${shopId}/uploads`, { dataUrl });
+  },
+
   getBookings(shopId: string, date?: string) {
     return http.get<{ bookings: BookingDTO[]; clock: { today: string; now: string } }>(
       `/merchant/shops/${shopId}/bookings${date ? `?date=${date}` : ''}`

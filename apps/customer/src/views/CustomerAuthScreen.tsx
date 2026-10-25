@@ -188,9 +188,9 @@ export default function CustomerAuthScreen() {
       {/* pb-32/36 is what keeps the submit button clear of the floating bar once the
           taller register form has been scrolled to the bottom. Measured: ~85px of
           clearance at 390px and at 1440px. Reducing it puts the button under the bar. */}
-      <main className="relative z-10 flex min-h-[calc(100dvh-190px)] items-center justify-center px-4 pb-32 pt-2 sm:px-8 sm:pb-36">
+      <main className="relative z-10 flex min-h-[calc(100dvh-190px)] items-center justify-center px-4 pb-32 pt-2 sm:px-8 sm:pb-36 lg:justify-start lg:pl-[8%] xl:pl-[11%]">
         <div className="w-full max-w-[420px]">
-          <div className="mb-5 text-center drop-shadow-lg">
+          <div className="mb-5 text-center drop-shadow-lg lg:text-left">
             <p className="mb-2 text-xs font-bold uppercase tracking-[.24em] opacity-85">
               {t('auth.title', 'Tài khoản Mobler')}
             </p>

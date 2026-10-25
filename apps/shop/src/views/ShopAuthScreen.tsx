@@ -153,9 +153,9 @@ export default function ShopAuthScreen() {
         <div className="hidden items-center gap-2 rounded-full border border-white/25 bg-white/10 px-4 py-2 text-xs text-white/85 shadow-lg backdrop-blur-xl sm:flex"><Sparkles size={14} /> Không gian quản lý cửa hàng</div>
       </header>
 
-      <main className="relative z-10 flex min-h-[calc(100dvh-190px)] items-center justify-center px-4 pb-32 pt-3 sm:px-8 sm:pb-36">
+      <main className="relative z-10 flex min-h-[calc(100dvh-190px)] items-center justify-center px-4 pb-32 pt-3 sm:px-8 sm:pb-36 lg:justify-start lg:pl-[8%] xl:pl-[11%]">
         <div className="w-full max-w-[440px]">
-          <div className="mb-5 text-center drop-shadow-lg">
+          <div className="mb-5 text-center drop-shadow-lg lg:text-left">
             <p className="mb-2 text-xs font-bold uppercase tracking-[.24em] text-white/85">Chào mừng đến với Mobler</p>
             <h1 className="text-3xl font-black tracking-tight sm:text-4xl">Quán bạn, luôn trong tầm tay</h1>
             <p className="mt-2 text-sm text-white/85">Nhận đặt bàn và quản lý quán theo thời gian thực.</p>
