@@ -29,9 +29,12 @@ import { useShopAuth } from '../../context/ShopAuthContext';
 import { Customer } from '../../types/dashboard';
 import CustomerAvatar from './CustomerAvatar';
 import { useMoney } from '../../hooks/useMoney';
+import { useShopI18n } from '../../i18n/useShopI18n';
+import { localeFor } from '@shared/locale';
 
 export default function CustomerInsightsView() {
   const { money } = useMoney();
+  const { t, tf, num, language } = useShopI18n();
   // Built only from this shop's real bookings & orders — empty for a new shop.
   const { activeShop } = useShopAuth();
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -41,10 +44,17 @@ export default function CustomerInsightsView() {
     setLoadingCustomers(true);
     http
       .get<{ customers: Customer[] }>(`/merchant/shops/${activeShop.id}/customers`)
-      .then(r => setCustomers(r.customers.map(c => ({ ...c, joinDate: c.joinDate ? new Date(c.joinDate).toLocaleDateString('vi-VN') : '—', lastVisit: c.lastVisit ? new Date(c.lastVisit).toLocaleDateString('vi-VN') : 'Chưa đến quán' }))))
+      // Dates in the reader's locale, not a fixed vi-VN.
+      .then(r => setCustomers(r.customers.map(c => ({
+        ...c,
+        joinDate: c.joinDate ? new Date(c.joinDate).toLocaleDateString(localeFor(language)) : '—',
+        lastVisit: c.lastVisit ? new Date(c.lastVisit).toLocaleDateString(localeFor(language)) : t('shop.cust.neverVisited')
+      }))))
       .catch(() => setCustomers([]))
       .finally(() => setLoadingCustomers(false));
-  }, [activeShop?.id]);
+    // language and t are dependencies because the dates are formatted here, not at render:
+    // without them a language switch would leave the previous locale's dates on screen.
+  }, [activeShop?.id, language, t]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedMilestone, setSelectedMilestone] = useState<string>('all');
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
@@ -79,7 +89,7 @@ export default function CustomerInsightsView() {
       return (
         <span className="bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 text-[10px] font-black px-2.5 py-1 rounded-lg border border-amber-300 shadow-xs flex items-center gap-1">
           <Crown size={12} className="fill-slate-950" />
-          <span>Huyền Thoại (25+)</span>
+          <span>{t('shop.cust.tierLegend')}</span>
         </span>
       );
     }
@@ -87,7 +97,7 @@ export default function CustomerInsightsView() {
       return (
         <span className="bg-purple-100 text-purple-800 text-[10px] font-bold px-2.5 py-1 rounded-lg border border-purple-300 flex items-center gap-1">
           <Award size={12} />
-          <span>Chuyên Gia (10+)</span>
+          <span>{t('shop.cust.tierExpert')}</span>
         </span>
       );
     }
@@ -95,14 +105,14 @@ export default function CustomerInsightsView() {
       return (
         <span className="bg-blue-100 text-blue-800 text-[10px] font-bold px-2.5 py-1 rounded-lg border border-blue-300 flex items-center gap-1">
           <Sparkles size={12} />
-          <span>Thám Hiểm (4-9)</span>
+          <span>{t('shop.cust.tierExplorer')}</span>
         </span>
       );
     }
     return (
       <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2.5 py-1 rounded-lg border border-emerald-300 flex items-center gap-1">
         <span>🌱</span>
-        <span>Lính Mới (1-3)</span>
+        <span>{t('shop.cust.tierNew')}</span>
       </span>
     );
   };
@@ -123,14 +133,14 @@ export default function CustomerInsightsView() {
       <div className="bg-white p-6 rounded-2xl border border-gray-200/80 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center space-x-3">
-            <h2 className="text-2xl font-extrabold text-gray-900">Quản lý Khách hàng & Thành viên</h2>
+            <h2 className="text-2xl font-extrabold text-gray-900">{t('shop.cust.title')}</h2>
             <span className="bg-purple-50 text-purple-700 text-xs font-bold px-3 py-1 rounded-full border border-purple-200 flex items-center gap-1.5">
               <Users size={14} />
-              <span>{totalMembers} khách lưu trữ</span>
+              <span>{tf('shop.cust.storedCount', { count: num(totalMembers) })}</span>
             </span>
           </div>
           <p className="text-gray-500 text-sm mt-1">
-            Theo dõi phân cấp cột mốc khách hàng (Lính mới, Thám hiểm gia, Chuyên gia, Huyền thoại), lịch sử ghé quán và điểm tích lũy.
+            {t('shop.cust.subtitle')}
           </p>
         </div>
       </div>
@@ -142,8 +152,8 @@ export default function CustomerInsightsView() {
             <Users size={24} />
           </div>
           <div>
-            <p className="text-xs text-gray-500 font-medium">Tổng thành viên</p>
-            <p className="text-xl font-black text-gray-900">{totalMembers} khách</p>
+            <p className="text-xs text-gray-500 font-medium">{t('shop.cust.statTotal')}</p>
+            <p className="text-xl font-black text-gray-900">{tf('shop.cust.guestCount', { count: num(totalMembers) })}</p>
           </div>
         </div>
 
@@ -152,8 +162,8 @@ export default function CustomerInsightsView() {
             <Crown size={24} />
           </div>
           <div>
-            <p className="text-xs text-gray-500 font-medium">Khách VIP & Thân thiết</p>
-            <p className="text-xl font-black text-amber-600">{vipCount} khách</p>
+            <p className="text-xs text-gray-500 font-medium">{t('shop.cust.statVip')}</p>
+            <p className="text-xl font-black text-amber-600">{tf('shop.cust.guestCount', { count: num(vipCount) })}</p>
           </div>
         </div>
 
@@ -162,8 +172,8 @@ export default function CustomerInsightsView() {
             <DollarSign size={24} />
           </div>
           <div>
-            <p className="text-xs text-gray-500 font-medium">Doanh số từ hội viên</p>
-            <p className="text-xl font-black text-gray-900">{(totalRevenue / 1000000).toFixed(1)}Tr đ</p>
+            <p className="text-xs text-gray-500 font-medium">{t('shop.cust.statRevenue')}</p>
+            <p className="text-xl font-black text-gray-900">{money(totalRevenue)}</p>
           </div>
         </div>
 
@@ -172,8 +182,8 @@ export default function CustomerInsightsView() {
             <Gift size={24} />
           </div>
           <div>
-            <p className="text-xs text-gray-500 font-medium">Điểm tích lũy chưa đổi</p>
-            <p className="text-xl font-black text-blue-600">{totalPoints.toLocaleString()} pts</p>
+            <p className="text-xs text-gray-500 font-medium">{t('shop.cust.statPoints')}</p>
+            <p className="text-xl font-black text-blue-600">{tf('shop.cust.points', { count: num(totalPoints) })}</p>
           </div>
         </div>
       </div>
@@ -185,7 +195,7 @@ export default function CustomerInsightsView() {
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
             <input 
               type="text" 
-              placeholder="Tìm theo tên khách, số điện thoại, email..."
+              placeholder={t('shop.cust.searchPh')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-600 focus:bg-white text-sm transition-all"
@@ -201,13 +211,13 @@ export default function CustomerInsightsView() {
           </div>
 
           <div className="flex items-center gap-2 overflow-x-auto pb-1 pt-1 scrollbar-none text-xs">
-            <span className="text-gray-400 font-semibold shrink-0 mr-1">Cột mốc:</span>
+            <span className="text-gray-400 font-semibold shrink-0 mr-1">{t('shop.cust.tierFilter')}</span>
             {[
-              { key: 'all', label: 'Tất cả', count: customers.length },
-              { key: 'legend', label: '👑 Huyền thoại (25+)', count: customers.filter(c => c.visitCount >= 25).length },
-              { key: 'connoisseur', label: '🎓 Chuyên gia (10-24)', count: customers.filter(c => c.visitCount >= 10 && c.visitCount < 25).length },
-              { key: 'explorer', label: '🧭 Thám hiểm (4-9)', count: customers.filter(c => c.visitCount >= 4 && c.visitCount < 10).length },
-              { key: 'new', label: '🌱 Lính mới (1-3)', count: customers.filter(c => c.visitCount <= 3).length },
+              { key: 'all', label: t('shop.cust.all'), count: customers.length },
+              { key: 'legend', label: `👑 ${t('shop.cust.tierLegend')}`, count: customers.filter(c => c.visitCount >= 25).length },
+              { key: 'connoisseur', label: `🎓 ${t('shop.cust.tierExpert')}`, count: customers.filter(c => c.visitCount >= 10 && c.visitCount < 25).length },
+              { key: 'explorer', label: `🧭 ${t('shop.cust.tierExplorer')}`, count: customers.filter(c => c.visitCount >= 4 && c.visitCount < 10).length },
+              { key: 'new', label: `🌱 ${t('shop.cust.tierNew')}`, count: customers.filter(c => c.visitCount <= 3).length },
             ].map(m => {
               const isActive = selectedMilestone === m.key;
               return (
@@ -239,21 +249,21 @@ export default function CustomerInsightsView() {
           <table className="w-full text-left border-collapse min-w-[850px]">
             <thead>
               <tr className="bg-gray-50/80 border-b border-gray-200 text-gray-500 font-bold text-xs">
-                <th className="py-3.5 pl-5">Khách hàng & Cột mốc</th>
-                <th className="py-3.5">Liên hệ</th>
-                <th className="py-3.5 text-center">Số lần ghé</th>
-                <th className="py-3.5">Tổng chi tiêu</th>
-                <th className="py-3.5">Điểm thưởng</th>
-                <th className="py-3.5">Món ưa thích</th>
-                <th className="py-3.5">Lần cuối ghé</th>
-                <th className="py-3.5 text-right pr-5">Chi tiết</th>
+                <th className="py-3.5 pl-5">{t('shop.cust.colCustomer')}</th>
+                <th className="py-3.5">{t('shop.cust.colContact')}</th>
+                <th className="py-3.5 text-center">{t('shop.cust.colVisits')}</th>
+                <th className="py-3.5">{t('shop.cust.colSpend')}</th>
+                <th className="py-3.5">{t('shop.cust.colPoints')}</th>
+                <th className="py-3.5">{t('shop.cust.colFavourite')}</th>
+                <th className="py-3.5">{t('shop.cust.colLastVisit')}</th>
+                <th className="py-3.5 text-right pr-5">{t('shop.cust.colDetail')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 text-sm">
               {filteredCustomers.length === 0 && (
                 <tr>
                   <td colSpan={8} className="py-12 text-center text-sm text-gray-500">
-                    {loadingCustomers ? 'Đang tải…' : customers.length === 0 ? 'Chưa có khách hàng nào. Khách đặt bàn hoặc gọi món tại quán sẽ xuất hiện ở đây.' : 'Không có khách hàng khớp bộ lọc.'}
+                    {loadingCustomers ? t('shop.common.loading') : customers.length === 0 ? t('shop.cust.empty') : t('shop.cust.noMatch')}
                   </td>
                 </tr>
               )}
@@ -305,7 +315,7 @@ export default function CustomerInsightsView() {
                   </td>
 
                   <td className="py-4 font-bold text-purple-700">
-                    <span>{customer.points.toLocaleString()} pts</span>
+                    <span>{tf('shop.cust.points', { count: num(customer.points) })}</span>
                   </td>
 
                   <td className="py-4 text-xs">
@@ -370,36 +380,36 @@ export default function CustomerInsightsView() {
 
             <div className="grid grid-cols-2 gap-3 bg-gray-50 p-4 rounded-2xl border border-gray-200 text-xs">
               <div>
-                <span className="text-gray-400 block font-medium">Số điện thoại:</span>
+                <span className="text-gray-400 block font-medium">{t('shop.cust.phone')}</span>
                 <span className="font-bold text-gray-900">{selectedCustomer.phone}</span>
               </div>
               <div>
                 <span className="text-gray-400 block font-medium">Email:</span>
-                <span className="font-bold text-gray-900">{selectedCustomer.email || 'Chưa cung cấp'}</span>
+                <span className="font-bold text-gray-900">{selectedCustomer.email || t('shop.cust.notProvided')}</span>
               </div>
               <div>
-                <span className="text-gray-400 block font-medium">Lần đầu ghé quán:</span>
+                <span className="text-gray-400 block font-medium">{t('shop.cust.firstVisit')}</span>
                 <span className="font-bold text-gray-900">{selectedCustomer.joinDate}</span>
               </div>
               <div>
-                <span className="text-gray-400 block font-medium">Ghé gần nhất:</span>
+                <span className="text-gray-400 block font-medium">{t('shop.cust.lastVisit')}</span>
                 <span className="font-bold text-gray-900">{selectedCustomer.lastVisit}</span>
               </div>
             </div>
 
             <div className="grid grid-cols-3 gap-3">
               <div className="bg-purple-50 p-3.5 rounded-2xl border border-purple-200 text-center">
-                <p className="text-[11px] text-purple-700 font-semibold">Số lần đến</p>
+                <p className="text-[11px] text-purple-700 font-semibold">{t('shop.cust.visitsLabel')}</p>
                 <p className="text-2xl font-black text-purple-900 mt-0.5">{selectedCustomer.visitCount}</p>
               </div>
 
               <div className="bg-emerald-50 p-3.5 rounded-2xl border border-emerald-200 text-center">
-                <p className="text-[11px] text-emerald-700 font-semibold">Tổng chi tiêu</p>
-                <p className="text-lg font-black text-emerald-900 mt-1">{(selectedCustomer.totalSpent / 1000).toLocaleString()}k</p>
+                <p className="text-[11px] text-emerald-700 font-semibold">{t('shop.cust.spendLabel')}</p>
+                <p className="text-lg font-black text-emerald-900 mt-1">{money(selectedCustomer.totalSpent)}</p>
               </div>
 
               <div className="bg-amber-50 p-3.5 rounded-2xl border border-amber-200 text-center">
-                <p className="text-[11px] text-amber-700 font-semibold">Điểm tích lũy</p>
+                <p className="text-[11px] text-amber-700 font-semibold">{t('shop.cust.pointsLabel')}</p>
                 <p className="text-2xl font-black text-amber-900 mt-0.5">{selectedCustomer.points}</p>
               </div>
             </div>
@@ -407,7 +417,7 @@ export default function CustomerInsightsView() {
             <div>
               <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
                 <Coffee size={14} className="text-red-600" />
-                <span>Món đồ uống & Món ăn yêu thích:</span>
+                <span>{t('shop.cust.favourites')}</span>
               </h4>
               <div className="flex flex-wrap gap-2">
                 {selectedCustomer.favoriteItems.map((fav, idx) => (
@@ -422,19 +432,19 @@ export default function CustomerInsightsView() {
             <div className="pt-4 border-t border-gray-100 flex gap-3">
               <button
                 onClick={() => {
-                  triggerToast(`Đã tặng voucher ưu đãi riêng cho ${selectedCustomer.name}!`);
+                  triggerToast(tf('shop.cust.voucherSent', { name: selectedCustomer.name }));
                   setSelectedCustomer(null);
                 }}
                 className="flex-1 bg-gradient-to-r from-red-600 to-rose-600 text-white font-bold py-2.5 rounded-xl shadow-md shadow-red-600/20 text-xs flex items-center justify-center space-x-1.5 cursor-pointer"
               >
                 <Gift size={15} />
-                <span>Tặng Voucher Riêng Cho Khách</span>
+                <span>{t('shop.cust.giveVoucher')}</span>
               </button>
               <button
                 onClick={() => setSelectedCustomer(null)}
                 className="px-5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-2.5 rounded-xl text-xs transition-colors cursor-pointer"
               >
-                Đóng
+                {t('shop.cust.close')}
               </button>
             </div>
           </div>

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Camera, Keyboard, Loader2, ScanLine, X } from 'lucide-react';
+import { useShopI18n } from '../../i18n/useShopI18n';
 
 interface Props {
   open: boolean;
@@ -26,6 +27,7 @@ export default function QrScannerModal({ open, onDecode, onClose, title, subtitl
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const rafRef = useRef<number | null>(null);
+  const { t } = useShopI18n();
   const [camState, setCamState] = useState<CamState>('starting');
   const [manualCode, setManualCode] = useState('');
   const [showManual, setShowManual] = useState(false);
@@ -123,10 +125,10 @@ export default function QrScannerModal({ open, onDecode, onClose, title, subtitl
       <div className="w-full max-w-sm bg-white rounded-3xl shadow-2xl overflow-hidden">
         <div className="p-4 border-b border-gray-100 flex items-center justify-between">
           <div>
-            <p className="font-black text-gray-900 text-sm">{title || 'Quét mã QR nhận bàn'}</p>
+            <p className="font-black text-gray-900 text-sm">{title || t('shop.live.scanQrHeader')}</p>
             {subtitle && <p className="text-[11px] text-gray-500">{subtitle}</p>}
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-full hover:bg-gray-100 text-gray-500" aria-label="Đóng">
+          <button onClick={onClose} className="p-1.5 rounded-full hover:bg-gray-100 text-gray-500" aria-label={t('shop.live.close')}>
             <X size={18} />
           </button>
         </div>
@@ -143,28 +145,28 @@ export default function QrScannerModal({ open, onDecode, onClose, title, subtitl
               )}
               {camState === 'no-decoder' && (
                 <p className="absolute bottom-2 inset-x-2 text-[11px] text-white/80 text-center bg-black/50 rounded-lg py-1 px-2">
-                  Trình duyệt này không tự quét được — nhập mã bên dưới.
+                  {t('shop.scan.manualHint')}
                 </p>
               )}
             </>
           )}
           {camState === 'starting' && (
             <div className="text-white/80 flex flex-col items-center gap-2 text-xs">
-              <Loader2 size={24} className="animate-spin" /> Đang mở camera…
+              <Loader2 size={24} className="animate-spin" /> {t('shop.scan.openingCamera')}
             </div>
           )}
           {(camState === 'denied' || camState === 'unavailable') && (
             <div className="text-white/80 flex flex-col items-center gap-2 text-xs text-center px-6">
               <Camera size={24} />
               {camState === 'denied'
-                ? 'Không có quyền dùng camera. Hãy cho phép truy cập camera hoặc nhập mã bằng tay.'
-                : 'Thiết bị này không hỗ trợ camera. Hãy nhập mã bằng tay.'}
+                ? t('shop.scan.noPermission')
+                : t('shop.scan.noCamera')}
             </div>
           )}
           <canvas ref={canvasRef} className="hidden" />
           {busy && (
             <div className="absolute inset-0 bg-black/60 flex items-center justify-center text-white text-xs gap-2">
-              <Loader2 size={18} className="animate-spin" /> Đang xác nhận…
+              <Loader2 size={18} className="animate-spin" /> {t('shop.scan.confirming')}
             </div>
           )}
         </div>
@@ -179,7 +181,7 @@ export default function QrScannerModal({ open, onDecode, onClose, title, subtitl
               onClick={() => setShowManual(true)}
               className="w-full py-2.5 rounded-xl border border-gray-200 text-gray-600 text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-gray-50"
             >
-              <Keyboard size={14} /> Nhập mã đặt bàn bằng tay
+              <Keyboard size={14} /> {t('shop.scan.manualToggle')}
             </button>
           ) : (
             <form
@@ -194,7 +196,7 @@ export default function QrScannerModal({ open, onDecode, onClose, title, subtitl
                 className="flex-1 px-3 py-2.5 rounded-xl border border-gray-300 text-sm font-mono tracking-wider focus:outline-none focus:ring-2 focus:ring-red-300"
               />
               <button type="submit" disabled={!manualCode.trim() || busy} className="px-4 rounded-xl bg-gray-900 text-white text-xs font-bold disabled:opacity-50">
-                Xác nhận
+                {t('shop.scan.confirm')}
               </button>
             </form>
           )}

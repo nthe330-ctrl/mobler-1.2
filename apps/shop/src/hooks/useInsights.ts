@@ -43,4 +43,7 @@ export function useInsights(days = 14) {
   return { data, error };
 }
 
-export const vnd = (n: number) => `${Math.round(n).toLocaleString('vi-VN')}đ`;
+/**
+ * REMOVED: this hard-coded the dong into every caller. Money now goes through
+ * `useMoney().money` / `formatMoney`, which asks the shop for its currency.
+ */
