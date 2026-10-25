@@ -222,7 +222,8 @@ console.log('\nLocalized screens keep no Vietnamese text in code');
     'apps/shop/src/views/ShopProfileView.tsx',
     'apps/shop/src/components/dashboard/DashboardLayout.tsx',
     'apps/shop/src/components/dashboard/ShopLanguagePicker.tsx',
-    'apps/shop/src/components/dashboard/MenuManagerView.tsx'
+    'apps/shop/src/components/dashboard/MenuManagerView.tsx',
+    'apps/shop/src/components/dashboard/PromotionsVoucherView.tsx'
   ];
   const DIACRITIC = /[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/i;
   for (const rel of DONE) {
