@@ -81,7 +81,11 @@ export default function ShopLanguagePicker({ compact = false }: { compact?: bool
                 }`}
               >
                 <span aria-hidden="true">{opt.flag}</span>
-                <span className="flex-1 truncate">{opt.name}</span>
+                {/* Each language is listed in its OWN script, not in English. Somebody
+                    opens this menu precisely because the interface is in a language they
+                    cannot read, so "Thai" is the one label a Thai reader may not recognise
+                    — ไทย they always will. `name` stays for aria/debug use. */}
+                <span className="flex-1 truncate">{opt.nativeName}</span>
                 {opt.code === language && <Check size={15} />}
               </button>
             </li>

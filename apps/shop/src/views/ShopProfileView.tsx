@@ -31,6 +31,7 @@ import { CURRENCIES, CURRENCY_CODES, currencyLabel, formatMoney, toCurrencyCode,
 import { useShopI18n } from '../i18n/useShopI18n';
 import { useApiError } from '../i18n/apiError';
 import ShopLanguagePicker from '../components/dashboard/ShopLanguagePicker';
+import CurrencyChangeWarning from '../components/dashboard/CurrencyChangeWarning';
 
 const inputCls =
   'w-full px-3.5 py-2.5 rounded-xl border border-gray-300 bg-white text-sm focus:outline-none focus:border-red-600 focus:ring-2 focus:ring-red-600/15';
@@ -374,23 +375,12 @@ export default function ShopProfileView({ shop }: { shop: CoffeeShop }) {
           </label>
         </div>
 
-        {/*
-          Shown only when the picker differs from what is saved. The warning is literally
-          true: the server stores the code and converts nothing, so a 45,000 that means
-          dong today reads as 45,000 of the new currency tomorrow. Saying anything softer
-          would be telling the shop its prices were handled when they were not.
-        */}
-        {currency !== savedCurrency && (
-          <div role="alert" className="mt-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3">
-            <p className="text-sm font-bold text-amber-900">{t('shop.regional.changeWarningTitle')}</p>
-            <p className="mt-1 text-[13px] leading-relaxed text-amber-900/90">
-              {t('shop.regional.changeWarning')}
-            </p>
-            <p className="mt-2 text-[13px] font-semibold text-amber-900">
-              {formatMoney(45000, savedCurrency, language)} → {formatMoney(45000, currency, language)}
-            </p>
-          </div>
-        )}
+        {/* Shown only when the picker differs from what is saved. The wording lives in
+            CurrencyChangeWarning because the sidebar shortcut shows the same thing, and
+            this is the one message in the dashboard that must not drift between copies. */}
+        <div className="mt-4 empty:mt-0">
+          <CurrencyChangeWarning from={savedCurrency} to={currency} />
+        </div>
       </div>
 
       <div className="flex items-center gap-3">

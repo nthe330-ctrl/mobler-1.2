@@ -236,6 +236,8 @@ console.log('\nLocalized screens keep no Vietnamese text in code');
     'apps/shop/src/components/dashboard/QrScannerModal.tsx',
     'apps/shop/src/components/dashboard/NotificationBell.tsx',
     'apps/shop/src/App.tsx',
+    'apps/shop/src/components/dashboard/ShopCurrencyPicker.tsx',
+    'apps/shop/src/components/dashboard/CurrencyChangeWarning.tsx',
     'apps/shop/src/i18n/apiError.ts',
     'apps/shop/src/i18n/useShopI18n.ts',
     'apps/shop/src/hooks/useInsights.ts'
