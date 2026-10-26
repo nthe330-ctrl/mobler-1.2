@@ -15,6 +15,7 @@ import IncomingOrderModal from '../components/dashboard/IncomingOrderModal';
 import QrScannerModal from '../components/dashboard/QrScannerModal';
 import { useMoney } from '../hooks/useMoney';
 import { useShopI18n } from '../i18n/useShopI18n';
+import { useApiError } from '../i18n/apiError';
 
 const STATUS_STYLE: Record<BookingStatus, string> = {
   pending: 'bg-amber-100 text-amber-800 border-amber-200',
@@ -75,6 +76,7 @@ interface Props {
 export default function LiveBookingsView({ shop, onPendingCountChange }: Props) {
   const { money } = useMoney();
   const { t, tf, fmtDate, num, statusLabel } = useShopI18n();
+  const apiError = useApiError();
   const { replaceShop } = useShopAuth();
   const [date, setDate] = useState<string>(toIsoDate(new Date()));
   const [clock, setClock] = useState<{ today: string; now: string } | null>(null);
@@ -117,11 +119,13 @@ export default function LiveBookingsView({ shop, onPendingCountChange }: Props) 
       setTables(board);
       setError(null);
     } catch (err: any) {
-      setError(err?.message || t('shop.live.loadFailed'));
+      setError(apiError(err) || t('shop.live.loadFailed'));
     } finally {
       setLoading(false);
     }
-  }, [shop.id, date, t]);
+    // `apiError` changes only when the language does, exactly like `t` above, so listing
+    // it adds no extra loads.
+  }, [shop.id, date, t, apiError]);
 
   useEffect(() => {
     load();
@@ -235,7 +239,7 @@ export default function LiveBookingsView({ shop, onPendingCountChange }: Props) 
       setPendingAll(prev => prev.filter(x => x.id !== b.id || res.booking.status === 'pending'));
       if (status === 'rejected') showToast(t('shop.live.rejectedToast'), 'info');
     } catch (err: any) {
-      showToast(err?.message || t('shop.live.updateFailed'), 'error');
+      showToast(apiError(err) || t('shop.live.updateFailed'), 'error');
       load();
     } finally {
       setBusyId(null);
@@ -247,7 +251,7 @@ export default function LiveBookingsView({ shop, onPendingCountChange }: Props) 
       await shopApi.setTableStatus(shop.id, code, status);
       loadTables();
     } catch (err: any) {
-      showToast(err?.message || t('shop.live.tableUpdateFailed'), 'error');
+      showToast(apiError(err) || t('shop.live.tableUpdateFailed'), 'error');
     }
   };
 
@@ -301,7 +305,7 @@ export default function LiveBookingsView({ shop, onPendingCountChange }: Props) 
       setScanner(null);
       showToast(tf('shop.live.scanOk', { name: found.user_name }), 'new');
     } catch (err: any) {
-      setScanError(err?.message || t('shop.live.scanRetry'));
+      setScanError(apiError(err) || t('shop.live.scanRetry'));
     } finally {
       setScanBusy(false);
     }
@@ -313,7 +317,7 @@ export default function LiveBookingsView({ shop, onPendingCountChange }: Props) 
       const res = await shopApi.updateShop(shop.id, { bookingSettings: { ...current, [key]: !current[key] } });
       replaceShop(res.shop);
     } catch (err: any) {
-      showToast(err?.message || t('shop.live.settingSaveFailed'), 'error');
+      showToast(apiError(err) || t('shop.live.settingSaveFailed'), 'error');
     }
   };
 

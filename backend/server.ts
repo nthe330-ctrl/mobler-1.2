@@ -1612,9 +1612,33 @@ if (process.env.SERVE_STATIC === 'true') {
  * Express identifies an error handler by its four parameters — keep `next` even if unused.
  */
 app.use('/api', (err: any, req: Request, res: Response, _next: NextFunction) => {
+  if (res.headersSent) return;
+
+  // Not everything that lands here is a server fault. The body parser rejects a request
+  // before any route runs and throws an error that already carries the right status: an
+  // oversized upload is `entity.too.large` (413) and broken JSON is `entity.parse.failed`
+  // (400). Flattening those to 500 told a shop whose photo was too big that "the system
+  // had a problem", which sends them to support instead of to a smaller photo — and it
+  // answered with a code the dashboard has no translation for, so the message arrived in
+  // Vietnamese on a Thai screen.
+  const status = Number(err?.status || err?.statusCode) || 0;
+  if (status >= 400 && status < 500) {
+    const code =
+      err?.type === 'entity.too.large' || status === 413 ? 'PAYLOAD_TOO_LARGE'
+      : err?.type === 'entity.parse.failed' ? 'BAD_JSON'
+      : 'REQUEST_FAILED';
+    const error =
+      code === 'PAYLOAD_TOO_LARGE' ? 'Dữ liệu gửi lên quá lớn. Hãy thử ảnh nhỏ hơn hoặc lưu từng phần.'
+      : code === 'BAD_JSON' ? 'Dữ liệu gửi lên không đúng định dạng. Vui lòng tải lại trang và thử lại.'
+      : 'Yêu cầu không hợp lệ.';
+    // Logged without a stack: a client sending too much is not a defect to investigate.
+    console.warn(`[MOBLER API] rejected request ${status} ${code} ${req.method} ${req.originalUrl}`);
+    return res.status(status).json({ error, code });
+  }
+
+  // A genuine unhandled throw. Log the stack, answer JSON, send no internals.
   const ref = Math.random().toString(36).slice(2, 10);
   console.error(`[MOBLER API] unhandled error ref=${ref} ${req.method} ${req.originalUrl}\n`, err);
-  if (res.headersSent) return;
   res.status(500).json({
     error: 'Hệ thống gặp lỗi khi xử lý yêu cầu. Vui lòng thử lại.',
     code: 'INTERNAL_ERROR',

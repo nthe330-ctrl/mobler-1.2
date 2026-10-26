@@ -163,7 +163,7 @@ export function rateLimit(maxPerWindow: number, windowMs: number) {
     }
     entry.count += 1;
     if (entry.count > maxPerWindow) {
-      return res.status(429).json({ error: 'Bạn thao tác quá nhanh, vui lòng thử lại sau ít phút' });
+      return res.status(429).json({ error: 'Bạn thao tác quá nhanh, vui lòng thử lại sau ít phút', code: 'RATE_LIMITED' });
     }
     next();
   };

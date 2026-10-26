@@ -19,6 +19,7 @@ import { fileURLToPath } from 'node:url';
 /** Repo root, independent of where npm was invoked from (scripts run with cwd = backend/). */
 const REPO = fileURLToPath(new URL('../../', import.meta.url));
 import { SHOP_UI_TRANSLATIONS, SHOP_TRANSLATION_KEYS } from '../../shared/context/shopTranslations';
+import { SHOP_ERROR_CODES, isShopErrorCode } from '../../shared/apiErrors';
 import { SUPPORTED_LANGUAGES } from '../../shared/context/LanguageContext';
 
 let passed = 0;
@@ -195,7 +196,9 @@ console.log('\nEvery key the Dashboard asks for exists');
   const files = listFiles(join(REPO, 'apps/shop/src'), /\.tsx?$/);
   const referenced = new Map<string, string>();
   for (const file of files) {
-    const text = readFileSync(file, 'utf8');
+    // Comments are blanked first: a key named in a note explaining the code is not a
+    // reference, and flagging it would push writers towards vaguer comments.
+    const text = stripComments(readFileSync(file, 'utf8'));
     for (const m of text.matchAll(/['"`](shop\.[A-Za-z0-9_.]+)['"`]/g)) {
       if (!referenced.has(m[1])) referenced.set(m[1], file);
     }
@@ -232,7 +235,10 @@ console.log('\nLocalized screens keep no Vietnamese text in code');
     'apps/shop/src/components/dashboard/IncomingOrderModal.tsx',
     'apps/shop/src/components/dashboard/QrScannerModal.tsx',
     'apps/shop/src/components/dashboard/NotificationBell.tsx',
-    'apps/shop/src/App.tsx'
+    'apps/shop/src/App.tsx',
+    'apps/shop/src/i18n/apiError.ts',
+    'apps/shop/src/i18n/useShopI18n.ts',
+    'apps/shop/src/hooks/useInsights.ts'
   ];
   const DIACRITIC = /[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/i;
   for (const rel of DONE) {
@@ -243,6 +249,125 @@ console.log('\nLocalized screens keep no Vietnamese text in code');
     check(`${rel.split('/').pop()}: no Vietnamese literals left`, offenders.length === 0,
       offenders.slice(0, 4).map(([n, l]) => `L${n}: ${l.trim().slice(0, 60)}`));
   }
+}
+
+console.log('\nEvery API error the Dashboard can hit is translatable');
+{
+  // The dashboard shows what the server says went wrong. The server says it in Vietnamese,
+  // so what the reader actually sees comes from `shop.error.<CODE>` — which means a code
+  // without a dictionary entry is a Vietnamese sentence on a Thai screen, and a code the
+  // server invents that is not in SHOP_ERROR_CODES never gets looked up at all.
+  //
+  // Both halves are checked here because neither is visible from the other side: the
+  // dictionary cannot know which codes exist, and the routes cannot know what is translated.
+  check('the code list is not empty', SHOP_ERROR_CODES.length > 0, SHOP_ERROR_CODES.length);
+  for (const code of SHOP_ERROR_CODES) {
+    const key = `shop.error.${code}`;
+    const gaps = LANGS.filter(l => !SHOP_UI_TRANSLATIONS[l][key]);
+    check(`${key} exists in all four languages`, gaps.length === 0, gaps);
+  }
+}
+
+console.log('\nError sentences with values in them compose cleanly');
+{
+  // These are the ones the server sends as parts — `detail: { from, to }` — precisely so
+  // each language can order them its own way. Composing them here proves the parts fit the
+  // sentence: a translation that dropped `{to}`, or kept the raw `no_show` instead of the
+  // label, produces a sentence that is wrong only in that one language and only when a
+  // shop hits that one failure, which is close to never found by looking.
+  const fill = (tpl: string, vars: Record<string, string>) =>
+    tpl.replace(/\{(\w+)\}/g, (_m, k: string) => vars[k] ?? `{${k}}`);
+
+  for (const lang of LANGS) {
+    const dict = SHOP_UI_TRANSLATIONS[lang];
+    const from = dict['shop.status.pending'];
+    const to = dict['shop.status.no_show'];
+    const sentence = fill(dict['shop.error.BOOKING_BAD_TRANSITION'], { from, to });
+    check(`${lang}: the transition sentence keeps no empty slot`, !/\{\w+\}/.test(sentence), sentence);
+    check(`${lang}: it names both states in this language`,
+      sentence.includes(from) && sentence.includes(to), sentence);
+    check(`${lang}: it shows no raw status value`,
+      !/\b(pending|no_show|confirmed|arrived)\b/.test(sentence), sentence);
+
+    const spent = fill(dict['shop.error.CHECKIN_INVALID_STATUS'], { status: dict['shop.status.completed'] });
+    check(`${lang}: the spent-ticket sentence fills its slot`, !/\{\w+\}/.test(spent), spent);
+
+    const mismatch = fill(dict['shop.error.CHECKIN_CODE_MISMATCH'], { expected: 'BK-ABC123' });
+    check(`${lang}: the mismatch sentence keeps the code it was given`, mismatch.includes('BK-ABC123'), mismatch);
+  }
+}
+
+console.log('\nEvery shop route answers a failure with a code');
+{
+  // A new route that returns `{ error: 'Không tìm thấy...' }` and nothing else is invisible
+  // until a Taipei staff member hits it: the client has nothing to translate and falls back
+  // to the Vietnamese sentence. This reads the route files and refuses that shape.
+  //
+  // Paths the shop app calls — apps/shop/src/services/shopApi.ts, useShopCollection,
+  // NotificationBell, ReviewsManagerView and shared/api/realtime. auth.ts is middleware
+  // that sits in front of all of them, so every failure there counts too.
+  const SHOP_ROUTE = [/^\/api\/merchant\//, /^\/api\/shop\/auth\//, /^\/api\/auth\/me$/,
+                      /^\/api\/me\/notifications/, /^\/api\/realtime\/ticket$/];
+  const SOURCES = [
+    { rel: 'backend/server/coreRoutes.ts', allRoutes: false },
+    { rel: 'backend/server/shopData.ts', allRoutes: false },
+    { rel: 'backend/server/auth.ts', allRoutes: true }
+  ];
+
+  /** The object literal starting at `from` (which must be its `{`), brace-balanced. */
+  function objectAt(text: string, from: number): string {
+    let depth = 0;
+    for (let i = from; i < text.length; i++) {
+      if (text[i] === '{') depth++;
+      else if (text[i] === '}' && --depth === 0) return text.slice(from, i + 1);
+    }
+    return '';
+  }
+
+  const offenders: string[] = [];
+  let scanned = 0;
+  for (const { rel, allRoutes } of SOURCES) {
+    const text = readFileSync(join(REPO, rel), 'utf8');
+    // Where each route begins, so a failure can be attributed to the nearest one above it.
+    const routeAt: { at: number; path: string }[] = [];
+    for (const m of text.matchAll(/\b(?:app|router)\.(?:get|post|put|patch|delete|all)\(\s*'([^']+)'/g)) {
+      routeAt.push({ at: m.index!, path: m[1] });
+    }
+    for (const m of text.matchAll(/\.status\(\s*(4\d\d|5\d\d)\s*\)\s*\.json\(\s*\{/g)) {
+      const objStart = text.indexOf('{', m.index! + m[0].length - 1);
+      const body = objectAt(text, objStart);
+      const route = [...routeAt].reverse().find(r => r.at < m.index!);
+      const path = route?.path ?? '(middleware)';
+      if (!allRoutes && !SHOP_ROUTE.some(rx => rx.test(path))) continue;
+      scanned++;
+      const line = text.slice(0, m.index!).split('\n').length;
+      // `code:` may be a plain literal or a ternary choosing between two of them
+      // (sign-in picks by whether the account belongs to the other app), so the whole
+      // property value is read and every literal in it has to be a known code.
+      const at = body.search(/\bcode:\s*/);
+      const codes: string[] = [];
+      if (at >= 0) {
+        const after = body.slice(at + body.slice(at).indexOf(':') + 1);
+        let depth = 0;
+        let end = after.length;
+        for (let i = 0; i < after.length; i++) {
+          const ch = after[i];
+          if (ch === '{' || ch === '(' || ch === '[') depth++;
+          else if (ch === '}' || ch === ')' || ch === ']') {
+            if (depth === 0) { end = i; break; }
+            depth--;
+          } else if (ch === ',' && depth === 0) { end = i; break; }
+        }
+        for (const c of after.slice(0, end).matchAll(/'([A-Z_]+)'/g)) codes.push(c[1]);
+      }
+      if (!codes.length) offenders.push(`${rel}:${line} ${path} — no code`);
+      else for (const c of codes) {
+        if (!isShopErrorCode(c)) offenders.push(`${rel}:${line} ${path} — unknown code ${c}`);
+      }
+    }
+  }
+  check('the route scan found error responses', scanned > 30, scanned);
+  check('every shop-reachable failure carries a known code', offenders.length === 0, offenders.slice(0, 10));
 }
 
 console.log(`\ni18n: ${passed} passed, ${failed} failed`);

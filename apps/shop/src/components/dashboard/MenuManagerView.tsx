@@ -31,6 +31,7 @@ import { useShopCollection, uploadShopImage } from '../../hooks/useShopCollectio
 import { MenuItem, MenuItemSizeOption } from '../../types/dashboard';
 import { useMoney } from '../../hooks/useMoney';
 import { useShopI18n } from '../../i18n/useShopI18n';
+import { useApiError } from '../../i18n/apiError';
 import {
   AVAILABLE_TAGS, DEFAULT_CATEGORIES, PRESET_SAMPLE_IMAGES, SEEDED_DEFAULTS,
   STANDARD_ICE_LEVELS, STANDARD_SUGAR_LEVELS, menuOptionLabel
@@ -104,6 +105,7 @@ const SIZE_PRESETS: SizePreset[] = [
 export default function MenuManagerView() {
   const { money, currency } = useMoney();
   const { t, tf, language } = useShopI18n();
+  const apiError = useApiError();
   // Price inputs step by the currency's own increment: 1000 for dong, 0.5 for dollars.
   const priceStep = CURRENCIES[currency].priceStep;
   const minPrice = CURRENCIES[currency].minPrice;
@@ -285,7 +287,7 @@ export default function MenuManagerView() {
       const url = await uploadShopImage(shopId, file);
       setFormData(prev => ({ ...prev, image: url }));
     } catch (err: any) {
-      alert(err?.message || t('shop.menu.uploadFailed'));
+      alert(apiError(err) || t('shop.menu.uploadFailed'));
     } finally {
       setUploading(false);
     }

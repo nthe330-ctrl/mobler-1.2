@@ -4,6 +4,7 @@ import { useShopAuth } from '../context/ShopAuthContext';
 import { PHONE_REGEX, normalizePhone } from '@shared/booking';
 import AuthBackdropVideo from '@shared/components/AuthBackdropVideo';
 import { useShopI18n } from '../i18n/useShopI18n';
+import { useApiError } from '../i18n/apiError';
 
 const inputCls =
   'w-full px-3.5 py-2.5 rounded-xl border border-gray-300 bg-white text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-red-600 focus:ring-2 focus:ring-red-600/15 transition';
@@ -21,6 +22,7 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
 
 export default function ShopAuthScreen() {
   const { t, tf } = useShopI18n();
+  const apiError = useApiError();
   const { login, register } = useShopAuth();
   const sceneRef = useRef<HTMLDivElement>(null);
 
@@ -89,7 +91,7 @@ export default function ShopAuthScreen() {
     try {
       await fn();
     } catch (err: any) {
-      setError(err?.message || t('shop.common.errorGeneric'));
+      setError(apiError(err) || t('shop.common.errorGeneric'));
     } finally {
       setBusy(false);
     }

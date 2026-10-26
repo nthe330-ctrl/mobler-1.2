@@ -29,6 +29,7 @@ import { shopApi } from '../services/shopApi';
 import { useShopAuth } from '../context/ShopAuthContext';
 import { CURRENCIES, CURRENCY_CODES, currencyLabel, formatMoney, toCurrencyCode, type CurrencyCode } from '@shared/currency';
 import { useShopI18n } from '../i18n/useShopI18n';
+import { useApiError } from '../i18n/apiError';
 import ShopLanguagePicker from '../components/dashboard/ShopLanguagePicker';
 
 const inputCls =
@@ -90,6 +91,7 @@ async function toUploadableDataUrl(file: File, t: (k: string, f?: string) => str
 export default function ShopProfileView({ shop }: { shop: CoffeeShop }) {
   const { replaceShop, user } = useShopAuth();
   const { t, tf, language } = useShopI18n();
+  const apiError = useApiError();
   const [form, setForm] = useState(() => toForm(shop));
   const [amenities, setAmenities] = useState<Amenity[]>(shop.amenities || []);
   const [saving, setSaving] = useState(false);
@@ -134,7 +136,7 @@ export default function ShopProfileView({ shop }: { shop: CoffeeShop }) {
         // Appended as they arrive, so the first upload of an empty shop becomes the cover.
         setGallery(prev => (prev.includes(url) || prev.length >= MAX_SHOP_IMAGES ? prev : [...prev, url]));
       } catch (err: any) {
-        setError(err?.message || tf('shop.photos.uploadFailedName', { name: file.name }));
+        setError(apiError(err) || tf('shop.photos.uploadFailedName', { name: file.name }));
       } finally {
         setUploading(n => n - 1);
       }
@@ -192,7 +194,7 @@ export default function ShopProfileView({ shop }: { shop: CoffeeShop }) {
       replaceShop(res.shop);
       setSaved(true);
     } catch (err: any) {
-      setError(err?.message || t('shop.profile.saveFailed'));
+      setError(apiError(err) || t('shop.profile.saveFailed'));
     } finally {
       setSaving(false);
     }

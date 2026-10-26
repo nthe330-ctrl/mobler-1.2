@@ -15,12 +15,14 @@ import {
 import { http } from '../../services/shopApi';
 import { useShopAuth } from '../../context/ShopAuthContext';
 import { useShopI18n } from '../../i18n/useShopI18n';
+import { useApiError } from '../../i18n/apiError';
 import { Review } from '../../types/dashboard';
 
 export default function ReviewsManagerView() {
   // Real reviews customers left for this shop — none for a new shop.
   const { activeShop } = useShopAuth();
   const { t, tf, num } = useShopI18n();
+  const apiError = useApiError();
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loadingReviews, setLoadingReviews] = useState(true);
   useEffect(() => {
@@ -51,7 +53,7 @@ export default function ReviewsManagerView() {
     try {
       await http.post(`/merchant/reviews/${reviewId}/reply`, { reply: text.trim() });
     } catch (err: any) {
-      alert(err?.message || t('shop.rev.sendFailed'));
+      alert(apiError(err) || t('shop.rev.sendFailed'));
       return;
     }
 

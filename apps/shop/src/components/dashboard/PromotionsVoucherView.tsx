@@ -46,6 +46,7 @@ import { useShopCollection, uploadShopImage } from '../../hooks/useShopCollectio
 import { Voucher, DiscountType, VoucherStatus, TargetAudience, CustomerSegmentKey } from '../../types/dashboard';
 import { useMoney } from '../../hooks/useMoney';
 import { useShopI18n } from '../../i18n/useShopI18n';
+import { useApiError } from '../../i18n/apiError';
 import { SEEDED_DEFAULTS, menuOptionLabel } from '@shared/menuOptions';
 import { CURRENCIES } from '@shared/currency';
 
@@ -176,6 +177,7 @@ export const getVoucherAudiences = (voucher: Voucher): CustomerSegmentKey[] => {
 export default function PromotionsVoucherView() {
   const { money, currency } = useMoney();
   const { t, tf, language, num } = useShopI18n();
+  const apiError = useApiError();
   const priceStep = CURRENCIES[currency].priceStep;
   // Vouchers are created by this shop and stored on the server; a new shop has none.
   const { items: rawVouchers, setItems: setVouchers, loading: vouchersLoading, error: vouchersError, shopId } = useShopCollection<Voucher>('vouchers');
@@ -407,7 +409,7 @@ export default function PromotionsVoucherView() {
       const url = await uploadShopImage(shopId, file);
       setFormData(prev => ({ ...prev, bannerImage: url }));
     } catch (err: any) {
-      alert(err?.message || t('shop.menu.uploadFailed'));
+      alert(apiError(err) || t('shop.menu.uploadFailed'));
     }
   };
 

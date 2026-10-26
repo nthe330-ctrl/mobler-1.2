@@ -18,6 +18,7 @@ import { publish, topics, issueTicket, streamHandler, realtimeStats } from './re
 import { storage, isOwnUploadUrl } from './storage';
 import { isSafeImage, publicMenu, registerShopDataRoutes, shopVouchersAsRecords } from './shopData';
 import { DEFAULT_CURRENCY, isCurrencyCode, toCurrencyCode } from '../../shared/currency';
+import type { ShopErrorCode } from '../../shared/apiErrors';
 import { getUserAchievements, syncUserAchievements, getShopLoyalty, expireAndListWalletVouchers, PersonalVoucher } from './achievements';
 import { getUserRank } from './ranks';
 import { ACHIEVEMENTS } from '../../shared/achievements';
@@ -150,11 +151,16 @@ function generateBookingId(): string {
   return id;
 }
 
-function validateCredentials(body: any): string | null {
+/**
+ * Returns the first problem with the submitted credentials, or null when they are fine.
+ * Carries a code alongside the sentence so the shop app can say the same thing in the
+ * staff member's own language — see shared/apiErrors.ts.
+ */
+function validateCredentials(body: any): { error: string; code: ShopErrorCode } | null {
   const phone = normalizePhone(body.phone);
-  if (!phone || !PHONE_REGEX.test(phone)) return 'Số điện thoại không hợp lệ (VD: 0901234567)';
-  if (!body.password || String(body.password).length < 6) return 'Mật khẩu cần ít nhất 6 ký tự';
-  if (body.email && !EMAIL_REGEX.test(String(body.email).trim())) return 'Email không hợp lệ';
+  if (!phone || !PHONE_REGEX.test(phone)) return { error: 'Số điện thoại không hợp lệ (VD: 0901234567)', code: 'PHONE_INVALID' };
+  if (!body.password || String(body.password).length < 6) return { error: 'Mật khẩu cần ít nhất 6 ký tự', code: 'PASSWORD_TOO_SHORT' };
+  if (body.email && !EMAIL_REGEX.test(String(body.email).trim())) return { error: 'Email không hợp lệ', code: 'EMAIL_INVALID' };
   return null;
 }
 
@@ -195,7 +201,7 @@ export function registerCoreRoutes(app: Express) {
       const phone = normalizePhone(req.body?.phone);
       if (!name || !String(name).trim()) return res.status(400).json({ error: 'Vui lòng nhập họ tên' });
       const invalid = validateCredentials(req.body || {});
-      if (invalid) return res.status(400).json({ error: invalid });
+      if (invalid) return res.status(400).json(invalid);
       if (accountExists('customer', phone, email)) {
         return res.status(409).json({ error: 'Số điện thoại hoặc email này đã có tài khoản khách hàng' });
       }
@@ -242,14 +248,14 @@ export function registerCoreRoutes(app: Express) {
     try {
       const { owner_name, email, password, shop: shopInput = {} } = req.body || {};
       const phone = normalizePhone(req.body?.phone);
-      if (!owner_name || !String(owner_name).trim()) return res.status(400).json({ error: 'Vui lòng nhập tên chủ quán' });
+      if (!owner_name || !String(owner_name).trim()) return res.status(400).json({ error: 'Vui lòng nhập tên chủ quán', code: 'OWNER_NAME_REQUIRED' });
       const invalid = validateCredentials(req.body || {});
-      if (invalid) return res.status(400).json({ error: invalid });
-      if (!email) return res.status(400).json({ error: 'Tài khoản cửa hàng cần email để nhận thông báo' });
-      if (!shopInput.name || !String(shopInput.name).trim()) return res.status(400).json({ error: 'Vui lòng nhập tên quán' });
-      if (!shopInput.address || !String(shopInput.address).trim()) return res.status(400).json({ error: 'Vui lòng nhập địa chỉ quán' });
+      if (invalid) return res.status(400).json(invalid);
+      if (!email) return res.status(400).json({ error: 'Tài khoản cửa hàng cần email để nhận thông báo', code: 'SHOP_EMAIL_REQUIRED' });
+      if (!shopInput.name || !String(shopInput.name).trim()) return res.status(400).json({ error: 'Vui lòng nhập tên quán', code: 'SHOP_NAME_REQUIRED' });
+      if (!shopInput.address || !String(shopInput.address).trim()) return res.status(400).json({ error: 'Vui lòng nhập địa chỉ quán', code: 'SHOP_ADDRESS_REQUIRED' });
       if (accountExists('shop', phone, email)) {
-        return res.status(409).json({ error: 'Số điện thoại hoặc email này đã có tài khoản cửa hàng' });
+        return res.status(409).json({ error: 'Số điện thoại hoặc email này đã có tài khoản cửa hàng', code: 'SHOP_ACCOUNT_EXISTS' });
       }
 
       const now = new Date().toISOString();
@@ -317,7 +323,10 @@ export function registerCoreRoutes(app: Express) {
       db.createUser(user);
       res.status(201).json({ message: 'Tạo tài khoản cửa hàng thành công', token: generateToken(user), user: safeUser(user), shop });
     } catch (err: any) {
-      res.status(500).json({ error: err.message || 'Lỗi máy chủ' });
+      // The internal message goes to the log, not the sign-up form: it can name a file
+      // path or a database field, and the form shows whatever the server sends.
+      console.error('[MOBLER API] shop register failed', err);
+      res.status(500).json({ error: 'Không tạo được tài khoản, vui lòng thử lại', code: 'REGISTER_FAILED' });
     }
   });
 
@@ -329,29 +338,36 @@ export function registerCoreRoutes(app: Express) {
     try {
       const { identifier, password } = req.body || {};
       if (!identifier || !password) {
-        return res.status(400).json({ error: 'Vui lòng nhập số điện thoại/email và mật khẩu' });
+        return res.status(400).json({ error: 'Vui lòng nhập số điện thoại/email và mật khẩu', code: 'LOGIN_FIELDS_REQUIRED' });
       }
       const user = db.findUserByPhoneOrEmail(String(identifier), type);
       const ok = user ? await comparePassword(String(password), user.password_hash) : false;
       if (!user || !ok) {
         const otherType: AccountType = type === 'shop' ? 'customer' : 'shop';
-        const hint = !user && db.findUserByPhoneOrEmail(String(identifier), otherType)
+        // Signing in with the other app's account is a different mistake from a wrong
+        // password, and the fix is different too, so it gets its own code.
+        const wrongApp = !user && !!db.findUserByPhoneOrEmail(String(identifier), otherType);
+        const hint = wrongApp
           ? type === 'shop'
             ? ' Thông tin này là tài khoản khách hàng — hãy đăng ký tài khoản cửa hàng riêng.'
             : ' Thông tin này là tài khoản cửa hàng — hãy đăng ký tài khoản khách hàng riêng.'
           : '';
-        return res.status(401).json({ error: `Sai thông tin đăng nhập.${hint}` });
+        return res.status(401).json({
+          error: `Sai thông tin đăng nhập.${hint}`,
+          code: wrongApp ? 'LOGIN_WRONG_APP' : 'LOGIN_BAD_CREDENTIALS'
+        });
       }
       res.json({ message: 'Đăng nhập thành công', token: generateToken(user), user: safeUser(user) });
     } catch (err: any) {
-      res.status(500).json({ error: err.message || 'Lỗi đăng nhập' });
+      console.error('[MOBLER API] login failed', err);
+      res.status(500).json({ error: 'Không đăng nhập được, vui lòng thử lại', code: 'LOGIN_FAILED' });
     }
   }
 
   // Old shared endpoints — the two apps now have separate account flows.
   for (const legacy of ['/api/auth/register', '/api/auth/login', '/api/auth/otp/request', '/api/auth/otp/verify', '/api/auth/switch-role', '/api/auth/demo-accounts']) {
     app.all(legacy, (_req, res) =>
-      res.status(410).json({ error: 'Endpoint đã ngừng. Dùng /api/customer/auth/* hoặc /api/shop/auth/*' })
+      res.status(410).json({ error: 'Endpoint đã ngừng. Dùng /api/customer/auth/* hoặc /api/shop/auth/*', code: 'ENDPOINT_RETIRED' })
     );
   }
 
@@ -359,7 +375,7 @@ export function registerCoreRoutes(app: Express) {
 
   app.get('/api/auth/me', authenticateToken, (req: AuthRequest, res: Response) => {
     const user = db.findUserById(req.user!.userId);
-    if (!user) return res.status(404).json({ error: 'Không tìm thấy người dùng' });
+    if (!user) return res.status(404).json({ error: 'Không tìm thấy người dùng', code: 'USER_NOT_FOUND' });
     const favorites = user.account_type === 'customer' ? db.getUserFavorites(user.id) : [];
     const shops =
       user.account_type === 'shop'
@@ -1114,7 +1130,7 @@ export function registerCoreRoutes(app: Express) {
       };
     }
     const updated = db.updateShop(req.params.id, updates);
-    if (!updated) return res.status(404).json({ error: 'Không tìm thấy quán' });
+    if (!updated) return res.status(404).json({ error: 'Không tìm thấy quán', code: 'SHOP_NOT_FOUND' });
     publish([topics.availability(updated.id)], 'availability', { shop_id: updated.id });
     res.json({ message: 'Cập nhật thông tin quán thành công', shop: updated });
   });
@@ -1148,7 +1164,7 @@ export function registerCoreRoutes(app: Express) {
   app.put('/api/merchant/bookings/:id/status', ...shopOnly, (req: AuthRequest, res: Response) => {
     const booking = db.getBookingById(req.params.id);
     if (!booking || !canManageShop(req.user, booking.shop_id)) {
-      return res.status(404).json({ error: 'Không tìm thấy lịch đặt' });
+      return res.status(404).json({ error: 'Không tìm thấy lịch đặt', code: 'BOOKING_NOT_FOUND' });
     }
     const next = String(req.body?.status || '') as BookingStatus;
     // Marking a guest present requires the guest's own code — the shop cannot assert it.
@@ -1161,7 +1177,12 @@ export function registerCoreRoutes(app: Express) {
       });
     }
     if (!SHOP_TRANSITIONS[booking.status]?.includes(next)) {
-      return res.status(409).json({ error: `Không thể chuyển từ "${booking.status}" sang "${next}"`, booking });
+      return res.status(409).json({
+        error: `Không thể chuyển từ "${booking.status}" sang "${next}"`,
+        code: 'BOOKING_BAD_TRANSITION',
+        detail: { from: booking.status, to: next },
+        booking
+      });
     }
     const note = req.body?.note ? String(req.body.note).slice(0, 300) : undefined;
     const wasNoShow = booking.status === 'no_show';
@@ -1173,7 +1194,7 @@ export function registerCoreRoutes(app: Express) {
       const markedAt = booking.no_show_at ? Date.parse(booking.no_show_at) : 0;
       const ageMin = markedAt ? (Date.now() - markedAt) / 60_000 : Infinity;
       if (ageMin > NO_SHOW_REVERT_WINDOW_MIN) {
-        return res.status(409).json({ error: 'Đã quá hạn gỡ ghi nhận khách không đến', booking });
+        return res.status(409).json({ error: 'Đã quá hạn gỡ ghi nhận khách không đến', code: 'NO_SHOW_REVERT_EXPIRED', booking });
       }
       db.updateBooking(booking.id, { no_show_at: undefined });
       releaseNoShowMark(booking.user_id, booking.id);
@@ -1181,7 +1202,7 @@ export function registerCoreRoutes(app: Express) {
 
     if (next === 'no_show') {
       const marked = recordNoShow(booking, 'shop', note);
-      if (!marked) return res.status(404).json({ error: 'Không tìm thấy lịch đặt' });
+      if (!marked) return res.status(404).json({ error: 'Không tìm thấy lịch đặt', code: 'BOOKING_NOT_FOUND' });
       // Only a deliberate press by someone at the shop counts against the customer.
       // The sweeper never does this, because silence does not prove absence.
       countNoShowAgainstCustomer(marked.user_id, marked.id, marked.shop_id);
@@ -1255,7 +1276,8 @@ export function registerCoreRoutes(app: Express) {
     if (expected && booking.id.toUpperCase() !== expected) {
       return res.status(409).json({
         error: `Mã này không khớp với đơn đang chọn (${expected})`,
-        code: 'CHECKIN_CODE_MISMATCH'
+        code: 'CHECKIN_CODE_MISMATCH',
+        detail: { expected }
       });
     }
     if (booking.status === 'arrived') {
@@ -1264,6 +1286,7 @@ export function registerCoreRoutes(app: Express) {
       return res.status(409).json({
         error: `${booking.user_name} đã được nhận bàn trước đó`,
         code: 'CHECKIN_ALREADY_DONE',
+        detail: { name: booking.user_name },
         already_checked_in: true,
         booking
       });
@@ -1277,8 +1300,11 @@ export function registerCoreRoutes(app: Express) {
     }
     if (booking.status !== CHECK_IN_FROM_STATUS) {
       return res.status(409).json({
+        // The status travels as the raw value, not the Vietnamese label: the dashboard
+        // already has a label for every status in all four languages.
         error: `Đơn này đã "${BOOKING_STATUS_LABEL_VI[booking.status]}", không thể nhận bàn`,
         code: 'CHECKIN_INVALID_STATUS',
+        detail: { status: booking.status },
         booking
       });
     }
@@ -1301,7 +1327,7 @@ export function registerCoreRoutes(app: Express) {
   app.put('/api/merchant/bookings/:id/payment', ...shopOnly, (req: AuthRequest, res: Response) => {
     const booking = db.getBookingById(req.params.id);
     if (!booking || !canManageShop(req.user, booking.shop_id)) {
-      return res.status(404).json({ error: 'Không tìm thấy lịch đặt' });
+      return res.status(404).json({ error: 'Không tìm thấy lịch đặt', code: 'BOOKING_NOT_FOUND' });
     }
     if (booking.status === 'cancelled' || booking.status === 'rejected' || booking.status === 'pending') {
       return res.status(409).json({ error: 'Không thể ghi nhận thanh toán cho lịch đặt này', code: 'PAYMENT_INVALID_BOOKING' });
@@ -1329,13 +1355,13 @@ export function registerCoreRoutes(app: Express) {
   app.put('/api/merchant/shops/:id/tables/:code/status', ...shopOnly, requireShopAccess(), (req: AuthRequest, res: Response) => {
     const status = String(req.body?.operational_status || '') as TableOperationalStatus;
     if (!['available', 'occupied', 'reserved', 'locked'].includes(status)) {
-      return res.status(400).json({ error: 'Trạng thái bàn không hợp lệ' });
+      return res.status(400).json({ error: 'Trạng thái bàn không hợp lệ', code: 'TABLE_STATUS_INVALID' });
     }
     const table = db.updateTable(req.params.id, req.params.code, {
       operational_status: status,
       status: status === 'available' ? 'empty' : 'full'
     });
-    if (!table) return res.status(404).json({ error: 'Không tìm thấy bàn' });
+    if (!table) return res.status(404).json({ error: 'Không tìm thấy bàn', code: 'TABLE_NOT_FOUND' });
     publish([topics.shop(req.params.id)], 'table', { action: 'updated', table });
     publish([topics.availability(req.params.id)], 'availability', { shop_id: req.params.id });
     res.json({ message: 'Cập nhật trạng thái bàn thành công', table });
@@ -1343,7 +1369,7 @@ export function registerCoreRoutes(app: Express) {
 
   app.put('/api/merchant/products/:id/toggle-availability', ...shopOnly, (req: AuthRequest, res: Response) => {
     const product = db.getRawDb().products.find(p => p.id === req.params.id);
-    if (!product || !canManageShop(req.user, product.shop_id || '1')) return res.status(404).json({ error: 'Không tìm thấy món' });
+    if (!product || !canManageShop(req.user, product.shop_id || '1')) return res.status(404).json({ error: 'Không tìm thấy món', code: 'PRODUCT_NOT_FOUND' });
     const updated = db.updateProduct(req.params.id, { is_available: !!req.body?.is_available });
     res.json({ message: 'Đã cập nhật trạng thái món', product: updated });
   });
@@ -1354,10 +1380,10 @@ export function registerCoreRoutes(app: Express) {
 
   app.put('/api/merchant/orders/:id/status', ...shopOnly, (req: AuthRequest, res: Response) => {
     const order = db.getRawDb().orders.find(o => o.id === req.params.id);
-    if (!order || !canManageShop(req.user, order.shop_id)) return res.status(404).json({ error: 'Không tìm thấy đơn' });
+    if (!order || !canManageShop(req.user, order.shop_id)) return res.status(404).json({ error: 'Không tìm thấy đơn', code: 'ORDER_NOT_FOUND' });
     const status = req.body?.status;
     if (!['pending', 'preparing', 'served', 'paid', 'cancelled'].includes(status)) {
-      return res.status(400).json({ error: 'Trạng thái đơn không hợp lệ' });
+      return res.status(400).json({ error: 'Trạng thái đơn không hợp lệ', code: 'ORDER_STATUS_INVALID' });
     }
     const updated = db.updateOrderStatus(order.id, status);
     publish([topics.user(order.user_id)], 'order', { action: 'updated', order: updated });
@@ -1366,8 +1392,8 @@ export function registerCoreRoutes(app: Express) {
 
   app.post('/api/merchant/reviews/:id/reply', ...shopOnly, (req: AuthRequest, res: Response) => {
     const review = db.getRawDb().reviews.find(r => r.id === req.params.id);
-    if (!review || !canManageShop(req.user, review.shop_id)) return res.status(404).json({ error: 'Không tìm thấy đánh giá' });
-    if (!req.body?.reply) return res.status(400).json({ error: 'Vui lòng nhập nội dung phản hồi' });
+    if (!review || !canManageShop(req.user, review.shop_id)) return res.status(404).json({ error: 'Không tìm thấy đánh giá', code: 'REVIEW_NOT_FOUND' });
+    if (!req.body?.reply) return res.status(400).json({ error: 'Vui lòng nhập nội dung phản hồi', code: 'REPLY_EMPTY' });
     res.json({ message: 'Đã phản hồi đánh giá', review: db.replyToReview(review.id, String(req.body.reply)) });
   });
 

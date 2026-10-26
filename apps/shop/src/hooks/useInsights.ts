@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { http } from '../services/shopApi';
 import { useShopAuth } from '../context/ShopAuthContext';
+import { useApiError } from '../i18n/apiError';
 
 export interface Insights {
   totals: {
@@ -28,19 +29,23 @@ export interface Insights {
 export function useInsights(days = 14) {
   const { activeShop } = useShopAuth();
   const [data, setData] = useState<Insights | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  // The failure is kept as the thrown object, not as a sentence: the sentence is written
+  // during render, so switching language rewrites a visible error instead of leaving the
+  // message in whatever language was active when the request failed.
+  const [failure, setFailure] = useState<unknown>(null);
+  const apiError = useApiError();
   useEffect(() => {
     if (!activeShop) return;
     let alive = true;
     http
       .get<Insights>(`/merchant/shops/${activeShop.id}/insights?days=${days}`)
       .then(d => alive && setData(d))
-      .catch(e => alive && setError(e.message));
+      .catch(e => alive && setFailure(e));
     return () => {
       alive = false;
     };
   }, [activeShop?.id, days]);
-  return { data, error };
+  return { data, error: failure ? apiError(failure) : null };
 }
 
 /**

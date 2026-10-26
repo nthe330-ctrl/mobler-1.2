@@ -45,7 +45,8 @@
     "test:sweeper": "cd backend && tsx scripts/sweeper-e2e.ts",
     "test:photos": "cd backend && tsx scripts/shop-photos-e2e.ts",
     "test:currency": "cd backend && tsx scripts/currency-e2e.ts",
-    "test:i18n": "cd backend && tsx scripts/i18n-test.ts"
+    "test:i18n": "cd backend && tsx scripts/i18n-test.ts",
+    "test:api-errors": "cd backend && tsx scripts/api-errors-e2e.ts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

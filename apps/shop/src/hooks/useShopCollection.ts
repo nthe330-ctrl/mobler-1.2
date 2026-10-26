@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { http } from '../services/shopApi';
+import { ApiError } from '@shared/api/http';
 import { useShopAuth } from '../context/ShopAuthContext';
+import { useApiError } from '../i18n/apiError';
+import { useShopI18n } from '../i18n/useShopI18n';
 
 type Updater<T> = T[] | ((prev: T[]) => T[]);
 
@@ -14,7 +17,11 @@ export function useShopCollection<T>(kind: 'menu' | 'vouchers') {
   const shopId = activeShop?.id;
   const [items, setItemsState] = useState<T[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // Kept as {what failed, the thrown object} rather than a finished sentence, so the
+  // message is written at render time and follows a language change — see useInsights.
+  const [failure, setFailure] = useState<{ kind: 'load' | 'save'; err: unknown } | null>(null);
+  const apiError = useApiError();
+  const { tf } = useShopI18n();
   const [saving, setSaving] = useState(false);
   const latest = useRef<T[]>([]);
   const saveSeq = useRef(0);
@@ -29,9 +36,9 @@ export function useShopCollection<T>(kind: 'menu' | 'vouchers') {
         if (!alive) return;
         latest.current = r.items;
         setItemsState(r.items);
-        setError(null);
+        setFailure(null);
       })
-      .catch(e => alive && setError(e.message))
+      .catch(e => alive && setFailure({ kind: 'load', err: e }))
       .finally(() => alive && setLoading(false));
     return () => {
       alive = false;
@@ -53,19 +60,25 @@ export function useShopCollection<T>(kind: 'menu' | 'vouchers') {
           if (seq !== saveSeq.current) return;
           latest.current = r.items;
           setItemsState(r.items);
-          setError(null);
+          setFailure(null);
         })
         .catch(e => {
           if (seq !== saveSeq.current) return;
           // Roll back so the screen never shows something that was not saved.
           latest.current = previous;
           setItemsState(previous);
-          setError(`Không lưu được: ${e.message}`);
+          setFailure({ kind: 'save', err: e });
         })
         .finally(() => seq === saveSeq.current && setSaving(false));
     },
     [shopId, kind]
   );
+
+  const error = failure
+    ? tf(failure.kind === 'save' ? 'shop.error.saveFailed' : 'shop.error.loadFailed', {
+        reason: apiError(failure.err)
+      })
+    : null;
 
   return { items, setItems, loading, error, saving, shopId };
 }
@@ -75,7 +88,10 @@ export async function uploadShopImage(shopId: string, file: File): Promise<strin
   const dataUrl: string = await new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(String(reader.result));
-    reader.onerror = () => reject(new Error('Không đọc được tệp ảnh'));
+    // Thrown as an ApiError even though no request happened, so the screens that show it
+    // translate it the same way as a server failure instead of special-casing this one.
+    reader.onerror = () =>
+      reject(new ApiError('Không đọc được tệp ảnh', 0, { code: 'FILE_UNREADABLE' }));
     reader.readAsDataURL(file);
   });
   const res = await http.post<{ url: string }>(`/merchant/shops/${shopId}/uploads`, { dataUrl });

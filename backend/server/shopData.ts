@@ -165,8 +165,8 @@ export function registerShopDataRoutes(app: Express) {
 
   /** Replace the whole menu (the shop app sends its list after every add/edit/delete). */
   app.put('/api/merchant/shops/:id/menu', bigJson, ...shopOnly, (req: AuthRequest, res: Response) => {
-    if (!Array.isArray(req.body?.items)) return res.status(400).json({ error: 'items phải là danh sách' });
-    if (req.body.items.length > 300) return res.status(400).json({ error: 'Tối đa 300 món' });
+    if (!Array.isArray(req.body?.items)) return res.status(400).json({ error: 'items phải là danh sách', code: 'MENU_ITEMS_INVALID' });
+    if (req.body.items.length > 300) return res.status(400).json({ error: 'Tối đa 300 món', code: 'MENU_TOO_MANY', detail: { limit: 300 } });
     const seen = new Set<string>();
     const items = req.body.items
       .map(sanitizeMenuItem)
@@ -187,8 +187,8 @@ export function registerShopDataRoutes(app: Express) {
   });
 
   app.put('/api/merchant/shops/:id/vouchers', bigJson, ...shopOnly, (req: AuthRequest, res: Response) => {
-    if (!Array.isArray(req.body?.items)) return res.status(400).json({ error: 'items phải là danh sách' });
-    if (req.body.items.length > 200) return res.status(400).json({ error: 'Tối đa 200 voucher' });
+    if (!Array.isArray(req.body?.items)) return res.status(400).json({ error: 'items phải là danh sách', code: 'VOUCHER_ITEMS_INVALID' });
+    if (req.body.items.length > 200) return res.status(400).json({ error: 'Tối đa 200 voucher', code: 'VOUCHER_TOO_MANY', detail: { limit: 200 } });
     const codes = new Set<string>();
     const items = req.body.items.map(sanitizeVoucher).filter((v: any) => v && !codes.has(v.code) && codes.add(v.code));
     db.setShopCollection(req.params.id, 'vouchers', items);
@@ -198,9 +198,9 @@ export function registerShopDataRoutes(app: Express) {
   // ---------- image uploads (menu photos, banners) ----------
   app.post('/api/merchant/shops/:id/uploads', bigJson, ...shopOnly, (req: AuthRequest, res: Response) => {
     const m = /^data:(image\/[a-z]+);base64,([A-Za-z0-9+/=]+)$/.exec(String(req.body?.dataUrl || ''));
-    if (!m || !IMAGE_TYPES[m[1]]) return res.status(400).json({ error: 'Chỉ nhận ảnh JPG, PNG, WEBP hoặc GIF' });
+    if (!m || !IMAGE_TYPES[m[1]]) return res.status(400).json({ error: 'Chỉ nhận ảnh JPG, PNG, WEBP hoặc GIF', code: 'UPLOAD_BAD_TYPE' });
     const buf = Buffer.from(m[2], 'base64');
-    if (buf.length > MAX_UPLOAD_BYTES) return res.status(413).json({ error: 'Ảnh tối đa 3MB' });
+    if (buf.length > MAX_UPLOAD_BYTES) return res.status(413).json({ error: 'Ảnh tối đa 3MB', code: 'UPLOAD_TOO_LARGE', detail: { limit: '3MB' } });
     const name = `${req.params.id.replace(/[^a-z0-9-]/gi, '')}-${crypto.randomBytes(8).toString('hex')}.${IMAGE_TYPES[m[1]]}`;
     // Through the storage driver, so the same route works on local disk and on an
     // S3-compatible bucket without the caller knowing which is active.
