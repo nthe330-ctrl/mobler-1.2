@@ -31,6 +31,8 @@ import { CURRENCIES, CURRENCY_CODES, currencyLabel, formatMoney, toCurrencyCode,
 import { useShopI18n } from '../i18n/useShopI18n';
 import { useApiError } from '../i18n/apiError';
 import ShopLanguagePicker from '../components/dashboard/ShopLanguagePicker';
+import OpeningHoursPicker from '../components/dashboard/OpeningHoursPicker';
+import { EVERY_DAY_LABEL, DEFAULT_OPEN_RANGE, formatOpenRange } from '@shared/openingHours';
 import CurrencyChangeWarning from '../components/dashboard/CurrencyChangeWarning';
 
 const inputCls =
@@ -184,7 +186,10 @@ export default function ShopProfileView({ shop }: { shop: CoffeeShop }) {
         currency_code: currency,
         coverImage: gallery[0] || '',
         images: gallery,
-        openingHours: [{ day: t('shop.profile.everyday'), time: form.openingHours.trim() || '07:00 - 22:00' }],
+        // EVERY_DAY_LABEL, not t(...): this string is stored and then read by the customer
+        // app, so saving the profile in Thai must not leave "ทุกวัน" where a Vietnamese
+        // guest will read it. The dashboard shows its own translated label.
+        openingHours: [{ day: EVERY_DAY_LABEL, time: form.openingHours.trim() || formatOpenRange(DEFAULT_OPEN_RANGE) }],
         amenities,
         bookingSettings: {
           ...(shop.bookingSettings || { autoConfirm: false, acceptingBookings: true, slotDurationMin: 120 }),
@@ -216,7 +221,13 @@ export default function ShopProfileView({ shop }: { shop: CoffeeShop }) {
           <label className="md:col-span-2"><span className="block text-xs font-bold text-gray-700 mb-1.5">{t('shop.profile.name')}</span><input className={inputCls} value={form.name} onChange={set('name')} /></label>
           <label className="md:col-span-2"><span className="block text-xs font-bold text-gray-700 mb-1.5">{t('shop.profile.address')}</span><input className={inputCls} value={form.address} onChange={set('address')} /></label>
           <label><span className="block text-xs font-bold text-gray-700 mb-1.5">{t('shop.profile.phone')}</span><input className={inputCls} value={form.phone} onChange={set('phone')} /></label>
-          <label><span className="block text-xs font-bold text-gray-700 mb-1.5">{t('shop.profile.hours')}</span><input className={inputCls} value={form.openingHours} onChange={set('openingHours')} /></label>
+          <div>
+            <span className="block text-xs font-bold text-gray-700 mb-1.5">{t('shop.profile.hours')}</span>
+            <OpeningHoursPicker
+              value={form.openingHours}
+              onChange={next => { setSaved(false); setForm(f => ({ ...f, openingHours: next })); }}
+            />
+          </div>
           <label><span className="block text-xs font-bold text-gray-700 mb-1.5">Website</span><input className={inputCls} value={form.website} onChange={set('website')} /></label>
           <label>
             <span className="block text-xs font-bold text-gray-700 mb-1.5">{t('shop.profile.slotDuration')}</span>

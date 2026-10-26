@@ -54,9 +54,13 @@ export default function ShopLanguagePicker({ compact = false }: { compact?: bool
       >
         <span className="flex items-center gap-2 min-w-0">
           <Globe size={compact ? 18 : 16} className="shrink-0" />
+          {/* The native name here too, matching the list this button opens. Showing
+              "Traditional Chinese" on the button and 繁體中文 inside it reads as two
+              different languages, and the English one is the half a reader of that
+              language may not recognise. */}
           {!compact && (
             <span className="truncate font-bold text-gray-800">
-              {currentLanguageOption.flag} {currentLanguageOption.name}
+              {currentLanguageOption.flag} {currentLanguageOption.nativeName}
             </span>
           )}
         </span>

@@ -4,6 +4,7 @@ import { useShopAuth } from '../context/ShopAuthContext';
 import { PHONE_REGEX, normalizePhone } from '@shared/booking';
 import AuthBackdropVideo from '@shared/components/AuthBackdropVideo';
 import { useShopI18n } from '../i18n/useShopI18n';
+import OpeningHoursPicker from '../components/dashboard/OpeningHoursPicker';
 import { useApiError } from '../i18n/apiError';
 
 const inputCls =
@@ -222,7 +223,9 @@ export default function ShopAuthScreen() {
                 <Field label={t('shop.auth.addressLabel')}><input className={inputCls} value={form.address} onChange={set('address')} placeholder={t('shop.auth.addressPh')} /></Field>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <Field label={t('shop.auth.shopPhone')}><input className={inputCls} value={form.shopPhone} onChange={set('shopPhone')} placeholder="028 ..." /></Field>
-                  <Field label={t('shop.auth.openingHours')}><input className={inputCls} value={form.openingHours} onChange={set('openingHours')} /></Field>
+                  <Field label={t('shop.auth.openingHours')}>
+                    <OpeningHoursPicker value={form.openingHours} onChange={next => setForm(f => ({ ...f, openingHours: next }))} />
+                  </Field>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <button type="button" onClick={useCurrentLocation} className="px-3 py-2 rounded-xl border border-gray-300 text-xs font-bold text-gray-700 flex items-center gap-1.5">

@@ -135,3 +135,43 @@ export function isPastTime(isoDate: string, time: string, now: Date = new Date()
   if (t === null) return false;
   return t <= now.getHours() * 60 + now.getMinutes();
 }
+
+/**
+ * The half-hour marks a shop picks its hours from, on a 24-hour clock.
+ *
+ * `24:00` is last and is offered as a CLOSING time only: `toMinutes` accepts it and
+ * `isWithinOpeningHours` reads it as midnight at the end of the day, which is how a shop
+ * that closes at midnight says so without the range looping back to 00:00 and reading as
+ * "closed all day".
+ */
+export const TIME_CHOICES: string[] = (() => {
+  const out: string[] = [];
+  for (let m = 0; m < 24 * 60; m += 30) {
+    out.push(`${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`);
+  }
+  out.push('24:00');
+  return out;
+})();
+
+/** What a shop gets before it has chosen anything. Matches the server's registration default. */
+export const DEFAULT_OPEN_RANGE: OpenWindow = { open: '07:00', close: '22:00' };
+
+/**
+ * The day label stored alongside a single all-week window.
+ *
+ * A constant, NOT a translated string: it is written to the database and read back by the
+ * customer app, so a staff member saving the profile while reading Thai must not leave
+ * "ทุกวัน" where a Vietnamese guest will see it. The dashboard shows its own translated
+ * label; this is only what gets stored. Same value the registration route writes.
+ */
+export const EVERY_DAY_LABEL = 'Hằng ngày';
+
+/** 'HH:MM - HH:MM' → the two ends, or null when the string is not that shape. */
+export function parseOpenRange(range: string | undefined | null): OpenWindow | null {
+  return parseRange(String(range ?? ''));
+}
+
+/** The storage format every reader of this field expects. */
+export function formatOpenRange(win: OpenWindow): string {
+  return `${win.open} - ${win.close}`;
+}

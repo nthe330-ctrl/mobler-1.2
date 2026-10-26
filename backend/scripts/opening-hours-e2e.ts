@@ -1,5 +1,8 @@
 /** Unit tests for shop opening-hours parsing.  npm run test:hours */
-import { openWindowFor, isWithinOpeningHours, formatOpenWindow, isPastTime, toMinutes } from '../../shared/openingHours';
+import {
+  openWindowFor, isWithinOpeningHours, formatOpenWindow, isPastTime, toMinutes,
+  TIME_CHOICES, DEFAULT_OPEN_RANGE, EVERY_DAY_LABEL, parseOpenRange, formatOpenRange
+} from '../../shared/openingHours';
 let pass = 0, fail = 0;
 const check = (n: string, c: unknown, extra?: unknown) => { if (c) pass++; else { fail++; console.error('  ✗', n, extra ?? ''); } };
 
@@ -35,6 +38,42 @@ check('hôm nay: đúng phút hiện tại coi như đã qua', isPastTime('2026-
 check('hôm nay: giờ sắp tới hợp lệ', !isPastTime('2026-10-26', '15:00', now));
 check('ngày khác không bị chặn bởi giờ hiện tại', !isPastTime('2026-10-27', '08:00', now));
 check('toMinutes', toMinutes('08:30') === 510 && toMinutes('bậy') === null);
+
+// --- what the shop's dropdowns can produce -------------------------------------------
+// The picker replaced a free-text box, and the whole point is that it can only emit
+// strings this parser reads. So every choice it offers is round-tripped here: if a value
+// in TIME_CHOICES ever stopped parsing, the shop would save hours that silently disable
+// the booking-time check instead of enforcing it.
+check('the picker offers half-hour marks across the day', TIME_CHOICES.length === 49, TIME_CHOICES.length);
+check('it starts at midnight and ends at 24:00',
+  TIME_CHOICES[0] === '00:00' && TIME_CHOICES[TIME_CHOICES.length - 1] === '24:00');
+check('every mark is a readable time', TIME_CHOICES.every(x => toMinutes(x) !== null));
+
+{
+  // Every open/close pair the dropdowns allow must survive save → read.
+  const broken: string[] = [];
+  for (const open of TIME_CHOICES) {
+    for (const close of TIME_CHOICES) {
+      const stored = formatOpenRange({ open, close });
+      const back = parseOpenRange(stored);
+      if (!back || back.open !== open || back.close !== close) broken.push(stored);
+    }
+  }
+  check('every pair the picker can produce parses back identically', broken.length === 0, broken.slice(0, 5));
+}
+
+check('a hand-typed value the old box allowed is rejected, not half-read',
+  parseOpenRange('7h - 22h') === null && parseOpenRange('Mở cả ngày') === null);
+check('an empty value is rejected rather than guessed', parseOpenRange('') === null && parseOpenRange(undefined) === null);
+check('the default is a real window', parseOpenRange(formatOpenRange(DEFAULT_OPEN_RANGE))?.open === '07:00');
+check('the stored day label is a constant, not a translation', EVERY_DAY_LABEL === 'Hằng ngày');
+check('that label applies to every weekday',
+  ['2026-10-24', '2026-10-26', '2026-10-28'].every(d =>
+    openWindowFor([{ day: EVERY_DAY_LABEL, time: '08:00 - 20:00' }], d)?.open === '08:00'));
+// A label saved in another language must still mean "every day" rather than silently
+// narrowing the window to nothing.
+check('a non-Vietnamese day label still covers every day',
+  openWindowFor([{ day: '每天', time: '08:00 - 20:00' }], '2026-10-26')?.close === '20:00');
 
 console.log(`\nopening-hours: ${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);
