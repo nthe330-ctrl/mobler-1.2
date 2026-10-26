@@ -38,14 +38,59 @@ function listFiles(dir: string, pattern: RegExp): string[] {
 
 /**
  * Blank out `//` and block comments so a check for leftover text does not flag the notes
- * explaining the code. Quotes inside a comment are irrelevant once the comment is gone,
- * and a `//` inside a string (a URL) blanks the rest of that line — acceptable here,
- * because the only thing read afterwards is whether Vietnamese letters remain.
+ * explaining the code.
+ *
+ * This walks the source tracking whether it is inside a string, because the obvious
+ * two-regex version is actively dangerous here. `accept="image/*"` is an ordinary JSX
+ * attribute, but to a regex the `/*` inside that string opens a block comment — which then
+ * ran to the next `*​/` anywhere below, in this repo a JSX comment **167 lines later**. Every
+ * line in between was blanked, so the "no Vietnamese literals left" check passed over an
+ * entire untranslated voucher preview card and reported the file clean. A gate that fails
+ * open is worse than no gate: it is a green tick that means nothing.
+ *
+ * Strings keep their contents (only comments are blanked), so a `//` inside a URL no longer
+ * eats the rest of its line either. Regex literals are not tracked — `/*` inside one would
+ * still misread — but a regex starting with `*` is not valid, so the case cannot arise.
  */
 function stripComments(text: string): string {
-  return text
-    .replace(/\/\*[\s\S]*?\*\//g, m => m.replace(/[^\n]/g, ' '))
-    .replace(/^(.*?)\/\/.*$/gm, (_m, head: string) => head);
+  let out = '';
+  let i = 0;
+  // Which quote character closes the string we are in, or null when in code.
+  let quote: string | null = null;
+  const blank = (s: string) => s.replace(/[^\n]/g, ' ');
+
+  while (i < text.length) {
+    const ch = text[i];
+    const next = text[i + 1];
+
+    if (quote) {
+      // Inside a string: copy it through, honouring escapes so `\"` does not end it.
+      if (ch === '\\') { out += text.slice(i, i + 2); i += 2; continue; }
+      if (ch === quote) quote = null;
+      out += ch;
+      i++;
+      continue;
+    }
+
+    if (ch === '/' && next === '*') {
+      const end = text.indexOf('*/', i + 2);
+      const stop = end === -1 ? text.length : end + 2;
+      out += blank(text.slice(i, stop));
+      i = stop;
+      continue;
+    }
+    if (ch === '/' && next === '/') {
+      const nl = text.indexOf('\n', i);
+      const stop = nl === -1 ? text.length : nl;
+      out += blank(text.slice(i, stop));
+      i = stop;
+      continue;
+    }
+    if (ch === '"' || ch === "'" || ch === '`') quote = ch;
+    out += ch;
+    i++;
+  }
+  return out;
 }
 
 /**
@@ -95,6 +140,30 @@ function check(name: string, cond: unknown, extra?: unknown) {
 }
 
 const LANGS = ['vi', 'en', 'zh-TW', 'th'] as const;
+
+console.log('\nThe comment filter itself is honest');
+{
+  // This suite's Vietnamese check is only as good as the filter in front of it, and that
+  // filter once failed OPEN: `accept="image/*"` opened a block comment to the regex that
+  // used to do this job, blanking 167 lines of a screen and reporting it clean. A gate that
+  // passes because it read nothing is worse than no gate, so the filter is tested directly.
+  const keeps = (src: string, needle: string) => stripComments(src).includes(needle);
+
+  check('a /* inside a string does not start a comment',
+    keeps('<input accept="image/*" />\nconst a = "GIỮ LẠI";', 'GIỮ LẠI'));
+  check('a // inside a string does not blank the rest of the line',
+    keeps('const u = "https://x.test"; const b = "GIỮ LẠI";', 'GIỮ LẠI'));
+  check('a real block comment is still removed',
+    !keeps('/* XOÁ ĐI */ const a = 1;', 'XOÁ ĐI'));
+  check('a real line comment is still removed',
+    !keeps('const a = 1; // XOÁ ĐI', 'XOÁ ĐI'));
+  check('an escaped quote does not end the string early',
+    keeps('const a = "he said \\"hi\\""; const b = "GIỮ LẠI";', 'GIỮ LẠI'));
+  check('a comment after a string is still removed',
+    !keeps('const a = "keep"; /* XOÁ ĐI */', 'XOÁ ĐI'));
+  check('line numbers survive blanking',
+    stripComments('a\n/* x\ny */\nb').split('\n').length === 4);
+}
 
 console.log('\nEvery language carries every key');
 {

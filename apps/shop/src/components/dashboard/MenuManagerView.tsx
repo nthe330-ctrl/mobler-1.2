@@ -1717,7 +1717,7 @@ export default function MenuManagerView() {
                                 }`}
                               >
                                 <span>{sz.sizeCode}</span>
-                                <span className="opacity-80">({(sz.price / 1000)}k)</span>
+                                <span className="opacity-80">({money(sz.price)})</span>
                               </button>
                             ))}
                           </div>

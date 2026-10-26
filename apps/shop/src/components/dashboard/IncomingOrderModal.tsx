@@ -75,7 +75,10 @@ export default function IncomingOrderModal({ booking: b, queueCount, busy, onAcc
               alt={tf('shop.incoming.avatarAlt', { name: b.user_name })}
               className="relative w-16 h-16 rounded-full object-cover border-2 border-white shadow-lg"
               onError={event => {
-                event.currentTarget.src = `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(b.user_name || 'Khách')}`;
+                // The seed decides which avatar is drawn, so it must NOT be translated:
+                // a localized fallback would give the same nameless guest a different face
+                // in each language. Matches the seed used on the <img> above.
+                event.currentTarget.src = `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(b.user_name || 'Mobler guest')}`;
               }}
             />
           </div>

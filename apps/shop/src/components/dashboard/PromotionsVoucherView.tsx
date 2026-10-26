@@ -43,12 +43,13 @@ import {
   Layers
 } from 'lucide-react';
 import { useShopCollection, uploadShopImage } from '../../hooks/useShopCollection';
+import { useShopAuth } from '../../context/ShopAuthContext';
 import { Voucher, DiscountType, VoucherStatus, TargetAudience, CustomerSegmentKey } from '../../types/dashboard';
 import { useMoney } from '../../hooks/useMoney';
 import { useShopI18n } from '../../i18n/useShopI18n';
 import { useApiError } from '../../i18n/apiError';
 import { SEEDED_DEFAULTS, menuOptionLabel } from '@shared/menuOptions';
-import { CURRENCIES } from '@shared/currency';
+import { CURRENCIES, minorUnit, presetAmounts } from '@shared/currency';
 
 /**
  * Banner photos offered in the voucher editor. The subject is a dictionary key because it
@@ -92,7 +93,6 @@ export interface CustomerCategoryConfig {
   activeRing: string;
   bgTint: string;
   iconBg: string;
-  customerCount: number;
 }
 
 /**
@@ -121,7 +121,6 @@ export const CUSTOMER_CATEGORIES_CONFIG: Record<CustomerSegmentKey, CustomerCate
     activeRing: 'ring-blue-400 border-blue-600 bg-blue-50/60',
     bgTint: 'bg-blue-50/40',
     iconBg: 'bg-blue-100 text-blue-600',
-    customerCount: 8,
   },
   regular: {
     key: 'regular',
@@ -133,7 +132,6 @@ export const CUSTOMER_CATEGORIES_CONFIG: Record<CustomerSegmentKey, CustomerCate
     activeRing: 'ring-emerald-400 border-emerald-600 bg-emerald-50/60',
     bgTint: 'bg-emerald-50/40',
     iconBg: 'bg-emerald-100 text-emerald-600',
-    customerCount: 10,
   },
   vip_members: {
     key: 'vip_members',
@@ -145,7 +143,6 @@ export const CUSTOMER_CATEGORIES_CONFIG: Record<CustomerSegmentKey, CustomerCate
     activeRing: 'ring-amber-400 border-amber-600 bg-amber-50/70',
     bgTint: 'bg-amber-50/40',
     iconBg: 'bg-amber-100 text-amber-700',
-    customerCount: 6,
   },
   top_spenders: {
     key: 'top_spenders',
@@ -157,7 +154,6 @@ export const CUSTOMER_CATEGORIES_CONFIG: Record<CustomerSegmentKey, CustomerCate
     activeRing: 'ring-purple-400 border-purple-600 bg-purple-50/60',
     bgTint: 'bg-purple-50/40',
     iconBg: 'bg-purple-100 text-purple-600',
-    customerCount: 5,
   }
 };
 
@@ -176,9 +172,16 @@ export const getVoucherAudiences = (voucher: Voucher): CustomerSegmentKey[] => {
 
 export default function PromotionsVoucherView() {
   const { money, currency } = useMoney();
+  // The preview card used to print "The Workshop Coffee" as a literal, so every shop's
+  // voucher preview carried another shop's name.
+  const { activeShop } = useShopAuth();
   const { t, tf, language, num } = useShopI18n();
   const apiError = useApiError();
   const priceStep = CURRENCIES[currency].priceStep;
+  // What a money input may step by. NOT priceStep: `step` also validates, so the dong's
+  // 1000 made the browser refuse NT$100 outright. The minor unit never rejects a real
+  // amount; the preset buttons below carry the fast entry instead.
+  const moneyStep = minorUnit(currency);
   // Vouchers are created by this shop and stored on the server; a new shop has none.
   const { items: rawVouchers, setItems: setVouchers, loading: vouchersLoading, error: vouchersError, shopId } = useShopCollection<Voucher>('vouchers');
   const vouchers = rawVouchers.map(v => ({
@@ -224,7 +227,9 @@ export default function PromotionsVoucherView() {
   const [uploadFileName, setUploadFileName] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [testOrderAmount, setTestOrderAmount] = useState<number>(120000);
+  // 120.000 ₫ was the old literal default; the middle preset is the same order of
+  // magnitude in whatever the shop prices in, instead of dong everywhere.
+  const [testOrderAmount, setTestOrderAmount] = useState<number>(() => presetAmounts(currency)[1]);
   const [testCustomerType, setTestCustomerType] = useState<string>('guest_never_visited');
   const [selectedTestVoucherId, setSelectedTestVoucherId] = useState<string>(vouchers[0]?.id || '');
 
@@ -1185,7 +1190,7 @@ export default function PromotionsVoucherView() {
                       <input 
                         type="number"
                         min={0}
-                        step={1000}
+                        step={moneyStep}
                         disabled={formData.discountType !== 'percent'}
                         placeholder={t(formData.discountType !== 'percent' ? 'shop.promo.notApplicable' : 'shop.promo.zeroUnlimited')}
                         value={formData.discountType === 'percent' ? formData.maxDiscountAmount : ''}
@@ -1203,7 +1208,7 @@ export default function PromotionsVoucherView() {
                     <input 
                       type="number"
                       min={0}
-                      step={5000}
+                      step={moneyStep}
                       value={formData.minOrderValue}
                       onChange={(e) => setFormData({ ...formData, minOrderValue: parseInt(e.target.value) || 0 })}
                       className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-600 focus:bg-white text-sm font-bold"
@@ -1537,7 +1542,7 @@ export default function PromotionsVoucherView() {
                         >
                           <Upload size={18} className="mx-auto text-red-600 mb-1" />
                           <p className="text-xs font-bold text-gray-800">
-                            {uploadFileName ? `Đã chọn: ${uploadFileName}` : 'Nhấn để chọn ảnh từ máy'}
+                            {uploadFileName ? tf('shop.promo.fileChosen', { name: uploadFileName }) : t('shop.promo.pickFromDevice')}
                           </p>
                         </div>
                       </div>
@@ -1558,7 +1563,7 @@ export default function PromotionsVoucherView() {
                 <div className="lg:col-span-5 space-y-4">
                   <div className="flex items-center space-x-2 text-gray-900 font-bold text-xs">
                     <Sparkles size={15} className="text-amber-500" />
-                    <span>Xem trước thẻ Voucher (Live Preview)</span>
+                    <span>{t('shop.promo.previewTitle')}</span>
                   </div>
 
                   {(() => {
@@ -1574,8 +1579,8 @@ export default function PromotionsVoucherView() {
                               <Coffee size={20} className="text-white" />
                             </div>
                             <div>
-                              <p className="text-[11px] font-bold text-white/80 uppercase tracking-wider">The Workshop Coffee</p>
-                              <p className="text-xs font-black text-amber-200">Phiếu Ưu Đãi Đặc Biệt</p>
+                              <p className="text-[11px] font-bold text-white/80 uppercase tracking-wider">{activeShop?.name}</p>
+                              <p className="text-xs font-black text-amber-200">{t('shop.promo.specialOffer')}</p>
                             </div>
                           </div>
 
@@ -1583,12 +1588,12 @@ export default function PromotionsVoucherView() {
                             {isAll ? (
                               <>
                                 <span>👥</span>
-                                <span>Tất cả khách (4 nhóm)</span>
+                                <span>{t('shop.promo.allGuestsFour')}</span>
                               </>
                             ) : (
                               <>
                                 <span>🎯</span>
-                                <span>{formData.targetAudiences.length}/4 Nhóm khách</span>
+                                <span>{tf('shop.promo.segmentsOf', { count: formData.targetAudiences.length })}</span>
                               </>
                             )}
                           </span>
@@ -1607,14 +1612,14 @@ export default function PromotionsVoucherView() {
 
                         <div className="py-2">
                           <div className="text-3xl font-black text-white tracking-tight">
-                            {formData.discountType === 'percent' 
-                              ? `GIẢM ${formData.discountValue}%`
+                            {formData.discountType === 'percent'
+                              ? tf('shop.promo.offPercent', { value: formData.discountValue })
                               : formData.discountType === 'same_price'
-                              ? `ĐỒNG GIÁ ${(formData.discountValue / 1000)}K`
-                              : `GIẢM ${(formData.discountValue / 1000)}K`}
+                              ? tf('shop.promo.offSamePrice', { amount: money(formData.discountValue) })
+                              : tf('shop.promo.offFixed', { amount: money(formData.discountValue) })}
                           </div>
                           <p className="text-xs font-medium text-white/90 line-clamp-1 mt-0.5">
-                            {formData.title || 'Tiêu đề khuyến mãi'}
+                            {formData.title || t('shop.promo.titlePreviewPh')}
                           </p>
                         </div>
 
@@ -1627,47 +1632,53 @@ export default function PromotionsVoucherView() {
                         <div className="space-y-3">
                           <div className="bg-white text-gray-900 p-3 rounded-2xl flex items-center justify-between">
                             <div>
-                              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">MÃ ÁP DỤNG</p>
+                              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{t('shop.promo.codeApplyLabel')}</p>
                               <p className="text-base font-black tracking-widest text-red-600 font-mono">
                                 {formData.code || 'CHILL2026'}
                               </p>
                             </div>
                             <span className="text-xs font-bold text-gray-500 bg-gray-100 px-2.5 py-1 rounded-xl">
-                              {formData.minOrderValue > 0 ? `Đơn từ ${(formData.minOrderValue / 1000)}K` : 'Mọi đơn'}
+                              {formData.minOrderValue > 0
+                                ? tf('shop.promo.minOrderFrom', { amount: money(formData.minOrderValue) })
+                                : t('shop.promo.anyOrder')}
                             </span>
                           </div>
 
                           <div className="flex justify-between text-[11px] text-white/80 font-medium px-1">
                             <span>HSD: {formData.endDate}</span>
-                            <span>Giới hạn: {formData.usageLimit > 0 ? `${formData.usageLimit} lượt` : 'Không giới hạn'}</span>
+                            <span>{tf('shop.promo.limitLabel', {
+                              value: formData.usageLimit > 0
+                                ? tf('shop.promo.usesCount', { count: formData.usageLimit })
+                                : t('shop.promo.unlimited')
+                            })}</span>
                           </div>
                         </div>
                       </div>
                     );
                   })()}
 
+                  {/*
+                    The four tiers, read from the same config and dictionary the rest of the
+                    screen uses. The counts that used to sit on the right ("8 khách", "10
+                    khách"…) were literals: every shop saw the same four numbers presented as
+                    its own customer base. There is no per-segment count on this screen to
+                    replace them with, so they are gone rather than invented — the legend
+                    explains what each tier means, which is what it was for.
+                  */}
                   <div className="bg-gray-50 border border-gray-200 p-4 rounded-2xl space-y-2 text-xs">
                     <div className="flex items-center space-x-1.5 font-bold text-gray-900">
                       <Award size={15} className="text-amber-500" />
-                      <span>Hệ thống phân cấp Quản lý Khách hàng:</span>
+                      <span>{t('shop.promo.tierTitle')}</span>
                     </div>
                     <ul className="space-y-1.5 text-[11px] text-gray-600">
-                      <li className="flex items-center justify-between">
-                        <span>🌱 <strong>Khách mới (Lính mới):</strong> Ghé 1 - 3 lần</span>
-                        <span className="text-blue-600 font-bold">8 khách</span>
-                      </li>
-                      <li className="flex items-center justify-between">
-                        <span>🧭 <strong>Khách quen (Thám Hiểm Gia):</strong> Ghé 4 - 9 lần</span>
-                        <span className="text-emerald-600 font-bold">10 khách</span>
-                      </li>
-                      <li className="flex items-center justify-between">
-                        <span>👑 <strong>Khách ruột (VIP):</strong> Ghé 10+ lần</span>
-                        <span className="text-amber-600 font-bold">6 khách</span>
-                      </li>
-                      <li className="flex items-center justify-between">
-                        <span>🏆 <strong>Khách Top Chi Tiêu:</strong> Bảng xếp hạng</span>
-                        <span className="text-purple-600 font-bold">5 khách</span>
-                      </li>
+                      {ALL_CUSTOMER_SEGMENTS.map(key => (
+                        <li key={key} className="flex items-start gap-1.5">
+                          <span aria-hidden="true">{CUSTOMER_CATEGORIES_CONFIG[key].milestoneIcon}</span>
+                          <span>
+                            <strong>{segmentText(key, 'name', t)}:</strong> {segmentText(key, 'criteria', t)}
+                          </span>
+                        </li>
+                      ))}
                     </ul>
                   </div>
                 </div>
@@ -1679,14 +1690,14 @@ export default function PromotionsVoucherView() {
                   onClick={() => setIsCreateModalOpen(false)}
                   className="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-bold text-xs transition-colors cursor-pointer"
                 >
-                  Hủy bỏ
+                  {t('shop.common.cancel')}
                 </button>
                 <button
                   type="submit"
                   className="px-6 py-2.5 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white rounded-xl font-bold text-xs shadow-md shadow-red-600/30 transition-all flex items-center space-x-1.5 cursor-pointer"
                 >
                   <Check size={16} />
-                  <span>{editingVoucher ? 'Lưu thay đổi' : 'Tạo & Phát hành Voucher'}</span>
+                  <span>{editingVoucher ? t('shop.common.save') : t('shop.promo.publishVoucher')}</span>
                 </button>
               </div>
             </form>
@@ -1840,7 +1851,7 @@ export default function PromotionsVoucherView() {
                   <span className="text-red-600 font-extrabold">{money(testOrderAmount)}</span>
                 </label>
                 <div className="flex gap-2">
-                  {[50000, 100000, 150000, 250000].map(val => (
+                  {presetAmounts(currency).map(val => (
                     <button
                       key={val}
                       type="button"
@@ -1849,14 +1860,14 @@ export default function PromotionsVoucherView() {
                         testOrderAmount === val ? 'bg-red-600 text-white border-red-600' : 'bg-gray-50 text-gray-700 border-gray-200'
                       }`}
                     >
-                      {(val / 1000)}K
+                      {money(val)}
                     </button>
                   ))}
                 </div>
                 <input 
                   type="number"
-                  step={5000}
-                  min={10000}
+                  step={moneyStep}
+                  min={0}
                   value={testOrderAmount}
                   onChange={(e) => setTestOrderAmount(parseInt(e.target.value) || 0)}
                   className="w-full mt-2 px-3.5 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-black"

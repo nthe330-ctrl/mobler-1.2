@@ -19,6 +19,19 @@ type Dict = Record<string, string>;
 
 const vi: Dict = {
 
+  "shop.promo.fileChosen": "Đã chọn: {name}",
+  "shop.promo.pickFromDevice": "Nhấn để chọn ảnh từ máy",
+  "shop.promo.previewTitle": "Xem trước thẻ voucher",
+  "shop.promo.specialOffer": "Phiếu ưu đãi đặc biệt",
+  "shop.promo.allGuestsFour": "Tất cả khách (4 nhóm)",
+  "shop.promo.titlePreviewPh": "Tiêu đề khuyến mãi",
+  "shop.promo.codeApplyLabel": "Mã áp dụng",
+  "shop.promo.minOrderFrom": "Đơn từ {amount}",
+  "shop.promo.anyOrder": "Mọi đơn",
+  "shop.promo.limitLabel": "Giới hạn: {value}",
+  "shop.promo.unlimited": "Không giới hạn",
+  "shop.promo.tierTitle": "Các nhóm khách của quán",
+  "shop.promo.publishVoucher": "Tạo & phát hành voucher",
   // --- API / network errors. Keyed by the code the server sends; see shared/apiErrors.ts.
   "shop.error.PAYLOAD_TOO_LARGE": "Dữ liệu gửi lên quá lớn. Hãy thử ảnh nhỏ hơn hoặc lưu từng phần.",
   "shop.error.BAD_JSON": "Dữ liệu gửi lên không đúng định dạng. Vui lòng tải lại trang và thử lại.",
@@ -897,6 +910,19 @@ const vi: Dict = {
 
 const en: Dict = {
 
+  "shop.promo.fileChosen": "Chosen: {name}",
+  "shop.promo.pickFromDevice": "Tap to pick an image from this device",
+  "shop.promo.previewTitle": "Voucher card preview",
+  "shop.promo.specialOffer": "Special offer",
+  "shop.promo.allGuestsFour": "All guests (4 segments)",
+  "shop.promo.titlePreviewPh": "Campaign title",
+  "shop.promo.codeApplyLabel": "Code to use",
+  "shop.promo.minOrderFrom": "Orders from {amount}",
+  "shop.promo.anyOrder": "Any order",
+  "shop.promo.limitLabel": "Limit: {value}",
+  "shop.promo.unlimited": "Unlimited",
+  "shop.promo.tierTitle": "Your customer tiers",
+  "shop.promo.publishVoucher": "Create & publish voucher",
   // --- API / network errors. Keyed by the code the server sends; see shared/apiErrors.ts.
   "shop.error.PAYLOAD_TOO_LARGE": "That was too large to send. Try a smaller photo, or save in smaller batches.",
   "shop.error.BAD_JSON": "The data sent was malformed. Reload the page and try again.",
@@ -1764,6 +1790,19 @@ const en: Dict = {
 
 const zhTW: Dict = {
 
+  "shop.promo.fileChosen": "已選擇：{name}",
+  "shop.promo.pickFromDevice": "點擊從裝置選擇圖片",
+  "shop.promo.previewTitle": "優惠券預覽",
+  "shop.promo.specialOffer": "特別優惠",
+  "shop.promo.allGuestsFour": "所有顧客（4 個分群）",
+  "shop.promo.titlePreviewPh": "活動標題",
+  "shop.promo.codeApplyLabel": "使用代碼",
+  "shop.promo.minOrderFrom": "訂單滿 {amount}",
+  "shop.promo.anyOrder": "任何訂單",
+  "shop.promo.limitLabel": "上限：{value}",
+  "shop.promo.unlimited": "無上限",
+  "shop.promo.tierTitle": "顧客分級",
+  "shop.promo.publishVoucher": "建立並發布優惠券",
   // --- API / network errors. Keyed by the code the server sends; see shared/apiErrors.ts.
   "shop.error.PAYLOAD_TOO_LARGE": "傳送的資料過大，請改用較小的圖片，或分批儲存。",
   "shop.error.BAD_JSON": "傳送的資料格式不正確，請重新載入頁面後再試。",
@@ -2631,6 +2670,19 @@ const zhTW: Dict = {
 
 const th: Dict = {
 
+  "shop.promo.fileChosen": "เลือกแล้ว: {name}",
+  "shop.promo.pickFromDevice": "แตะเพื่อเลือกรูปจากเครื่องนี้",
+  "shop.promo.previewTitle": "ตัวอย่างบัตรคูปอง",
+  "shop.promo.specialOffer": "ข้อเสนอพิเศษ",
+  "shop.promo.allGuestsFour": "ลูกค้าทั้งหมด (4 กลุ่ม)",
+  "shop.promo.titlePreviewPh": "ชื่อแคมเปญ",
+  "shop.promo.codeApplyLabel": "รหัสที่ใช้",
+  "shop.promo.minOrderFrom": "ออเดอร์ตั้งแต่ {amount}",
+  "shop.promo.anyOrder": "ทุกออเดอร์",
+  "shop.promo.limitLabel": "จำกัด: {value}",
+  "shop.promo.unlimited": "ไม่จำกัด",
+  "shop.promo.tierTitle": "กลุ่มลูกค้าของร้าน",
+  "shop.promo.publishVoucher": "สร้างและเผยแพร่คูปอง",
   // --- API / network errors. Keyed by the code the server sends; see shared/apiErrors.ts.
   "shop.error.PAYLOAD_TOO_LARGE": "ข้อมูลที่ส่งมีขนาดใหญ่เกินไป ลองใช้รูปที่เล็กลง หรือบันทึกทีละส่วน",
   "shop.error.BAD_JSON": "รูปแบบข้อมูลที่ส่งไม่ถูกต้อง โปรดโหลดหน้าใหม่แล้วลองอีกครั้ง",

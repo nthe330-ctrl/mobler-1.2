@@ -172,3 +172,30 @@ export function currencyLabel(code: CurrencyCode, language = 'vi'): string {
   const lang = (language in meta.label ? language : 'en') as keyof CurrencyMeta['label'];
   return `${meta.code} — ${meta.label[lang]}`;
 }
+
+/**
+ * The smallest amount this currency can express: 1 for VND/TWD/THB, 0.01 for USD.
+ *
+ * This is what a money input's `step` must be. `step` in HTML does two jobs — it sizes the
+ * spinner arrows AND it rejects anything off the step — and the second one bites: a field
+ * left at the dong's `priceStep` of 1000 made the browser refuse NT$100 with "the two
+ * nearest valid values are 0 and 1000". A shop could not type its own price.
+ *
+ * So inputs step by the minor unit, which can never reject a real amount, and the quick
+ * `+5k / +7k`-style buttons built from `quickAdjust` carry the fast entry instead.
+ */
+export function minorUnit(code: CurrencyCode): number {
+  const decimals = CURRENCIES[toCurrencyCode(code)].decimals;
+  return decimals > 0 ? Number(`1e-${decimals}`) : 1;
+}
+
+/**
+ * Round-number amounts to offer as one-tap presets, in the shop's own currency.
+ * Built from `minPrice` so each currency gets figures a café would actually ring up:
+ * 50.000–250.000 ₫, NT$100–500, $5–25, ฿100–500 — rather than one currency's numbers
+ * reused everywhere, which is how the voucher simulator came to suggest NT$250,000.
+ */
+export function presetAmounts(code: CurrencyCode): number[] {
+  const base = CURRENCIES[toCurrencyCode(code)].minPrice;
+  return [5, 10, 15, 25].map(m => base * m);
+}
