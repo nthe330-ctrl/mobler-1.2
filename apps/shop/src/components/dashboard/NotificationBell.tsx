@@ -7,6 +7,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Bell, Check, X } from 'lucide-react';
+import { useShopI18n } from '../../i18n/useShopI18n';
 import { connectRealtime } from '@shared/api/realtime';
 import { http } from '../../services/shopApi';
 
@@ -18,16 +19,21 @@ interface NotificationItem {
   created_at: string;
 }
 
-function timeAgo(iso: string): string {
+/**
+ * "3 giờ trước" / "3 h ago". Takes the formatter rather than building the phrase, because
+ * where the number sits in the sentence is the translator's decision, not this function's.
+ */
+function timeAgo(iso: string, tf: (key: string, vars?: Record<string, string | number>) => string, t: (key: string) => string): string {
   const mins = Math.max(0, Math.floor((Date.now() - Date.parse(iso)) / 60_000));
-  if (mins < 1) return 'vừa xong';
-  if (mins < 60) return `${mins} phút trước`;
+  if (mins < 1) return t('shop.notif.justNow');
+  if (mins < 60) return tf('shop.notif.minsAgo', { count: mins });
   const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours} giờ trước`;
-  return `${Math.floor(hours / 24)} ngày trước`;
+  if (hours < 24) return tf('shop.notif.hoursAgo', { count: hours });
+  return tf('shop.notif.daysAgo', { count: Math.floor(hours / 24) });
 }
 
 export default function ShopNotificationBell() {
+  const { t, tf } = useShopI18n();
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [unread, setUnread] = useState(0);
@@ -95,7 +101,7 @@ export default function ShopNotificationBell() {
     <div ref={boxRef} className="relative">
       <button
         type="button"
-        aria-label="Thông báo"
+        aria-label={t('shop.notif.aria')}
         onClick={() => setOpen(o => !o)}
         className="relative p-2 rounded-lg text-gray-600 hover:bg-gray-100"
       >
@@ -110,21 +116,21 @@ export default function ShopNotificationBell() {
       {open && (
         <div className="absolute right-0 mt-2 w-[min(90vw,22rem)] max-h-[70vh] overflow-y-auto rounded-2xl border border-gray-200 bg-white shadow-2xl z-50">
           <div className="sticky top-0 bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
-            <strong className="text-sm text-gray-900">Thông báo</strong>
+            <strong className="text-sm text-gray-900">{t('shop.notif.title')}</strong>
             <div className="flex items-center gap-2">
               {unread > 0 && (
                 <button type="button" onClick={markAll} className="text-[11px] font-semibold text-sky-600 hover:underline">
-                  Đánh dấu đã đọc hết
+                  {t('shop.notif.markAll')}
                 </button>
               )}
-              <button type="button" aria-label="Đóng" onClick={() => setOpen(false)} className="text-gray-400 hover:text-gray-700">
+              <button type="button" aria-label={t('shop.live.close')} onClick={() => setOpen(false)} className="text-gray-400 hover:text-gray-700">
                 <X size={16} />
               </button>
             </div>
           </div>
 
           {items.length === 0 ? (
-            <p className="px-4 py-8 text-center text-xs text-gray-400">Chưa có thông báo nào</p>
+            <p className="px-4 py-8 text-center text-xs text-gray-400">{t('shop.notif.empty')}</p>
           ) : (
             <ul>
               {items.map(n => (
@@ -133,10 +139,10 @@ export default function ShopNotificationBell() {
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-bold text-gray-900">{n.title}</p>
                       <p className="mt-0.5 text-[11px] leading-relaxed text-gray-600">{n.message}</p>
-                      <p className="mt-1 text-[10px] text-gray-400">{timeAgo(n.created_at)}</p>
+                      <p className="mt-1 text-[10px] text-gray-400">{timeAgo(n.created_at, tf, t)}</p>
                     </div>
                     {!n.is_read && (
-                      <button type="button" aria-label="Đánh dấu đã đọc" onClick={() => markRead(n.id)} className="shrink-0 mt-0.5 text-gray-300 hover:text-gray-700">
+                      <button type="button" aria-label={t('shop.notif.markOne')} onClick={() => markRead(n.id)} className="shrink-0 mt-0.5 text-gray-300 hover:text-gray-700">
                         <Check size={14} />
                       </button>
                     )}

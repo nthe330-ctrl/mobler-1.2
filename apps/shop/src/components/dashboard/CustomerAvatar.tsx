@@ -1,10 +1,21 @@
 import React from 'react';
+import { useShopI18n } from '../../i18n/useShopI18n';
 
+// i18n-exempt-start: the tier names here are MATCHED against the milestone strings the
+// backend sends (and against aliases like "VIP" and "Regular"), so they are identity, not
+// display text. What the reader sees comes from shop.milestone.* via titleKey/descKey.
 export type MilestoneType = 'Lính mới' | 'Thám Hiểm Gia' | 'Chuyên Gia' | 'Huyền Thoại';
 
 export interface MilestoneInfo {
+  /**
+   * The Vietnamese tier name is the IDENTITY here, not display text: `getMilestoneInfo`
+   * matches it against the milestone strings the backend sends (and against aliases like
+   * "VIP" and "Regular"). So it stays, and what the reader SEES comes from the dictionary
+   * via `titleKey` / `descKey`.
+   */
   title: MilestoneType;
-  desc: string;
+  titleKey: string;
+  descKey: string;
   icon: string;
   badgeBg: string;
   badgeBorder: string;
@@ -20,7 +31,8 @@ export interface MilestoneInfo {
 export const MILESTONES: Record<MilestoneType, MilestoneInfo> = {
   'Lính mới': {
     title: 'Lính mới',
-    desc: 'Dành cho khách hàng mới khởi đầu hành trình',
+    titleKey: 'shop.milestone.newbie.title',
+    descKey: 'shop.milestone.newbie.desc',
     icon: '🌱',
     badgeBg: 'bg-slate-100 text-slate-700',
     badgeBorder: 'border-slate-300',
@@ -34,7 +46,8 @@ export const MILESTONES: Record<MilestoneType, MilestoneInfo> = {
   },
   'Thám Hiểm Gia': {
     title: 'Thám Hiểm Gia',
-    desc: 'Tích lũy trải nghiệm nhiều món ngon & không gian',
+    titleKey: 'shop.milestone.explorer.title',
+    descKey: 'shop.milestone.explorer.desc',
     icon: '🧭',
     badgeBg: 'bg-red-50 text-red-700',
     badgeBorder: 'border-red-300',
@@ -48,7 +61,8 @@ export const MILESTONES: Record<MilestoneType, MilestoneInfo> = {
   },
   'Chuyên Gia': {
     title: 'Chuyên Gia',
-    desc: 'Gắn bó thường xuyên & am hiểu menu',
+    titleKey: 'shop.milestone.expert.title',
+    descKey: 'shop.milestone.expert.desc',
     icon: '🎓',
     badgeBg: 'bg-amber-50 text-amber-800',
     badgeBorder: 'border-amber-300',
@@ -62,7 +76,8 @@ export const MILESTONES: Record<MilestoneType, MilestoneInfo> = {
   },
   'Huyền Thoại': {
     title: 'Huyền Thoại',
-    desc: 'Mốc gắn bó lâu năm xuất sắc nhất',
+    titleKey: 'shop.milestone.legend.title',
+    descKey: 'shop.milestone.legend.desc',
     icon: '👑',
     badgeBg: 'bg-purple-100 text-purple-900',
     badgeBorder: 'border-purple-300',
@@ -92,6 +107,7 @@ export const getMilestoneInfo = (milestoneInput?: string | string[]): MilestoneI
   }
   return MILESTONES['Lính mới'];
 };
+// i18n-exempt-end
 
 interface CustomerAvatarProps {
   src?: string;
@@ -110,6 +126,7 @@ export const CustomerAvatar: React.FC<CustomerAvatarProps> = ({
   showBadgeOverlay = false,
   className = '',
 }) => {
+  const { t } = useShopI18n();
   const info = getMilestoneInfo(milestone);
 
   const imageDimensions = {
@@ -134,7 +151,7 @@ export const CustomerAvatar: React.FC<CustomerAvatarProps> = ({
       <div className={`${info.frameContainerClass} transition-all`}>
         <img
           src={src}
-          alt={name || info.title}
+          alt={name || t(info.titleKey)}
           referrerPolicy="no-referrer"
           className={`${imageDimensions} rounded-full object-cover bg-white block`}
         />
@@ -144,7 +161,7 @@ export const CustomerAvatar: React.FC<CustomerAvatarProps> = ({
       {showBadgeOverlay && (
         <span
           className={`absolute ${overlayBadgeSize} rounded-full bg-white shadow-md border border-gray-200 flex items-center justify-center select-none z-10`}
-          title={`${info.title}: ${info.desc}`}
+          title={`${t(info.titleKey)}: ${t(info.descKey)}`}
         >
           {info.icon}
         </span>

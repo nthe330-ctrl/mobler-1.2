@@ -34,6 +34,7 @@ import { useLanguage } from '@shared/context/LanguageContext';
 import { LanguageControlButton } from './LanguageSelectorModal';
 import CalendarPicker from './booking/CalendarPicker';
 import ClockTimePicker from './booking/ClockTimePicker';
+import { isWithinOpeningHours, isPastTime, formatOpenWindow } from '@shared/openingHours';
 import InteractiveFloorPlan from './booking/InteractiveFloorPlan';
 import { useAuth } from '../context/AuthContext';
 import { api, http } from '../services/api';
@@ -397,6 +398,19 @@ export default function BookingView({ id, shops, initialVoucher, onNavigate }: P
     );
   }
 
+  /* Two different questions, deliberately kept apart:
+     - isTimeSelectable: is this hour bookable AT ALL on this date? Shop closed, or the
+       hour already gone today. True the moment a date is picked — it must not wait for a
+       table, which is what used to leave every hour open until one was chosen.
+     - isTableAvailable: is this particular table still free at that hour? Needs a table. */
+  const isTimeSelectable = (date: string, time: string) => {
+    const iso = resolveIsoDate(date);
+    if (isPastTime(iso, time)) return false;
+    return isWithinOpeningHours(shop?.openingHours, iso, time);
+  };
+
+  const openWindowLabel = formatOpenWindow(shop?.openingHours, resolveIsoDate(selectedDate));
+
   const isTableAvailable = (tableId: string, date: string, time: string) => {
     if (!availability) return !availabilityError;
     // Availability is loaded per day; for a different day assume free until it loads.
@@ -565,7 +579,7 @@ export default function BookingView({ id, shops, initialVoucher, onNavigate }: P
   };
 
   return (
-    <div className={`flex flex-col min-h-full pb-28 transition-colors duration-300 ${isLight ? 'bg-[#F0F3F7]' : 'bg-[#120E0C]'}`}>
+    <div className={`flex flex-col min-h-full pb-28 transition-colors duration-300 ${isLight ? 'bg-transparent' : 'bg-[#120E0C]'}`}>
       {/* Top Header */}
       <div className={`border-b px-4 py-3.5 sticky top-0 z-30 shadow-sm transition-all ${
         isLight 
@@ -592,10 +606,14 @@ export default function BookingView({ id, shops, initialVoucher, onNavigate }: P
 
           <div className="text-center">
             <h1 className="text-sm md:text-base font-bold truncate max-w-[200px] md:max-w-md">
-              {step === 'booking' && `1. ${t('booking.step1', 'Chọn bàn & Giờ')}`}
-              {step === 'menu' && `2. ${t('booking.step2', 'Chọn món trước')}`}
-              {step === 'confirm' && `3. ${t('booking.step3', 'Xác nhận đặt bàn')}`}
-              {step === 'payment' && `4. ${t('booking.step4', 'Thanh toán')}`}
+              {/* The step number is already part of every booking.stepN translation
+                  ("1. Choose Zone & Table", "1. Chọn vị trí & bàn", …), so prefixing one here
+                  printed it twice in every language. The fallbacks carry the number instead,
+                  for the case where a key is missing. */}
+              {step === 'booking' && t('booking.step1', '1. Chọn bàn & Giờ')}
+              {step === 'menu' && t('booking.step2', '2. Chọn món trước')}
+              {step === 'confirm' && t('booking.step3', '3. Xác nhận đặt bàn')}
+              {step === 'payment' && t('booking.step4', '4. Thanh toán')}
               {step === 'success' && t('booking.success', 'Thành công')}
             </h1>
             <p className={`text-[10px] md:text-xs truncate max-w-[200px] md:max-w-md ${isLight ? 'text-red-900 font-semibold' : 'text-[#D4AF37]'}`}>
@@ -687,7 +705,7 @@ export default function BookingView({ id, shops, initialVoucher, onNavigate }: P
         {step === 'booking' && (
           <div className="animate-in fade-in slide-in-from-right-3 space-y-5">
             {/* View Switcher Tabs: Calendar / Clock / Both */}
-            <div className={`p-1.5 rounded-2xl border flex items-center gap-1 text-xs font-bold transition-all ${
+            <div className={`p-1.5 rounded-2xl border flex items-center gap-1 text-xs font-bold transition-all overflow-hidden ${
               isLight 
                 ? 'bg-red-50/80 border-red-200 shadow-sm' 
                 : 'bg-[#18130F] border-[#3E3023]'
@@ -695,7 +713,7 @@ export default function BookingView({ id, shops, initialVoucher, onNavigate }: P
               <button
                 type="button"
                 onClick={() => setDateTimeTab('both')}
-                className={`flex-1 py-2 px-3 rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+                className={`flex-1 min-w-0 py-2 px-3 rounded-xl transition-all flex items-center justify-center gap-1.5 ${
                   dateTimeTab === 'both'
                     ? isLight 
                       ? 'bg-white text-[#800020] shadow-sm font-extrabold' 
@@ -703,14 +721,14 @@ export default function BookingView({ id, shops, initialVoucher, onNavigate }: P
                     : isLight ? 'text-slate-600 hover:text-slate-900' : 'text-[#A48F7A] hover:text-[#EBE3DB]'
                 }`}
               >
-                <span>⚡</span>
-                <span className="truncate">{t('booking.dateTimeTabs', 'Lịch & Giờ hẹn')}</span>
+                <span className="shrink-0">⚡</span>
+                <span className="truncate min-w-0">{t('booking.dateTimeTabs', 'Lịch & Giờ hẹn')}</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setDateTimeTab('calendar')}
-                className={`flex-1 py-2 px-3 rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+                className={`flex-1 min-w-0 py-2 px-3 rounded-xl transition-all flex items-center justify-center gap-1.5 ${
                   dateTimeTab === 'calendar'
                     ? isLight 
                       ? 'bg-white text-[#800020] shadow-sm font-extrabold' 
@@ -718,14 +736,17 @@ export default function BookingView({ id, shops, initialVoucher, onNavigate }: P
                     : isLight ? 'text-slate-600 hover:text-slate-900' : 'text-[#A48F7A] hover:text-[#EBE3DB]'
                 }`}
               >
-                <CalendarDays size={14} className={isLight ? 'text-[#800020]' : 'text-[#D4AF37]'} />
-                <span className="truncate">{t('booking.calendarTab', 'Lịch ngày')}: {formatDateDisplay(selectedDate)}</span>
+                <CalendarDays size={14} className={`shrink-0 ${isLight ? 'text-[#800020]' : 'text-[#D4AF37]'}`} />
+                <span className="truncate min-w-0">
+                  <span className="hidden sm:inline">{t('booking.calendarTab', 'Lịch ngày')}: </span>
+                  {formatDateDisplay(selectedDate)}
+                </span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setDateTimeTab('clock')}
-                className={`flex-1 py-2 px-3 rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+                className={`flex-1 min-w-0 py-2 px-3 rounded-xl transition-all flex items-center justify-center gap-1.5 ${
                   dateTimeTab === 'clock'
                     ? isLight 
                       ? 'bg-white text-[#800020] shadow-sm font-extrabold' 
@@ -733,8 +754,11 @@ export default function BookingView({ id, shops, initialVoucher, onNavigate }: P
                     : isLight ? 'text-slate-600 hover:text-slate-900' : 'text-[#A48F7A] hover:text-[#EBE3DB]'
                 }`}
               >
-                <Clock size={14} className={isLight ? 'text-[#800020]' : 'text-[#D4AF37]'} />
-                <span className="truncate">{t('booking.clockTab', 'Đồng hồ')}: {selectedTime}</span>
+                <Clock size={14} className={`shrink-0 ${isLight ? 'text-[#800020]' : 'text-[#D4AF37]'}`} />
+                <span className="truncate min-w-0">
+                  <span className="hidden sm:inline">{t('booking.clockTab', 'Đồng hồ')}: </span>
+                  {selectedTime}
+                </span>
               </button>
             </div>
 
@@ -760,7 +784,11 @@ export default function BookingView({ id, shops, initialVoucher, onNavigate }: P
                   <ClockTimePicker
                     selectedTime={selectedTime}
                     onSelectTime={(time) => setSelectedTime(time)}
-                    isTableAvailable={(time) => selectedTable ? isTableAvailable(selectedTable.id, selectedDate, time) : true}
+                    isTableAvailable={(time) =>
+                      isTimeSelectable(selectedDate, time) &&
+                      (selectedTable ? isTableAvailable(selectedTable.id, selectedDate, time) : true)
+                    }
+                    openWindowLabel={openWindowLabel}
                     isLight={isLight}
                   />
                 </div>
@@ -1598,9 +1626,9 @@ export default function BookingView({ id, shops, initialVoucher, onNavigate }: P
                   {bookingCode}
                 </span>
                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full mt-1 ${
-                  paymentMethod === 'at_store' ? 'bg-purple-100 text-purple-800' : 'bg-emerald-100 text-emerald-800'
+                  'bg-amber-100 text-amber-800'
                 }`}>
-                  {paymentMethod === 'at_store' ? t('booking.payAtShop', 'Thanh toán tại quán') : t('booking.paidOnline', 'Đã thanh toán online')}
+                  {paymentMethod === 'at_store' ? t('booking.payAtShop', 'Thanh toán tại quán') : 'Chờ quán xác nhận thanh toán'}
                 </span>
               </div>
 

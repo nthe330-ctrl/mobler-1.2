@@ -1,9 +1,11 @@
 /**
  * MOBLER explorer-rank system.
  *
- * One real currency: `points`. Points are earned only from real activity —
- * every successful booking (confirmed / arrived / completed) and every unlocked
- * achievement. A new account starts at 0 and climbs the ladder below.
+ * One real currency: `points`, earned only from real activity:
+ *   • POINTS_PER_VISIT for every booking the shop actually scanned in, and
+ *   • the reward of every unlocked mission.
+ * Merely booking earns nothing — a `pending` or `confirmed` booking is not a visit.
+ * A new account starts at 0 and climbs the ladder below.
  *
  * The names follow an exploration / adventure arc: from a first-time wanderer
  * to a legend of the city's coffee map. Pure, framework-free so both the server
@@ -36,6 +38,27 @@ export const RANK_TIERS: RankTier[] = [
   { id: 'rank-7', title: 'Huyền Thoại Phiêu Lưu', subtitle: 'Tên bạn vang danh giới mê cà phê',        icon: '🏆', minPoints: 5000, color: '#C9A227' },
   { id: 'rank-8', title: 'Kẻ Chinh Phục Bản Đồ', subtitle: 'Chinh phục trọn bản đồ thành phố',         icon: '👑', minPoints: 8000, color: '#D4AF37' }
 ];
+
+/**
+ * Points for one real visit — a booking the shop scanned in (`arrived`, and still counted
+ * once it is wrapped up as `completed`).
+ *
+ * Calibrated against the ladder above: tier 2 sits at 100 points, so a guest sees the bar
+ * move about a third of a tier for every finished booking and is promoted on their fourth.
+ * That is the whole point of this number — progress has to be visible after ONE visit,
+ * otherwise the bar reads as broken. Missions stay as the bigger, rarer jumps on top.
+ */
+export const POINTS_PER_VISIT = 30;
+
+/**
+ * Points for writing a review, and the extra for attaching at least one photo.
+ *
+ * Deliberately smaller than a visit: a review is a few minutes at home, a visit is a
+ * trip across town. Both are capped by reality — a guest can only review a shop they
+ * actually checked in at — so these cannot be farmed.
+ */
+export const POINTS_PER_REVIEW = 15;
+export const POINTS_REVIEW_PHOTO_BONUS = 10;
 
 export interface ResolvedRank {
   points: number;

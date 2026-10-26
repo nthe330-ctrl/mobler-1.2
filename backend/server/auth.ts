@@ -136,6 +136,16 @@ export function requireShopAccess(paramName = 'id') {
     if (!canManageShop(req.user, shopId)) {
       return res.status(403).json({ error: 'Bạn không có quyền quản lý quán này', code: 'SHOP_FORBIDDEN' });
     }
+    // The shop must actually exist. Checked after the permission test so a shop account
+    // cannot use this route to probe which shop ids are real.
+    //
+    // This is what stops a handler further down from working on `undefined`: an admin (or a
+    // client holding a stale shop id, e.g. after the database was reseeded) could otherwise
+    // reach handlers that assume the shop was found, which crashed with a 500 on
+    // GET /api/merchant/shops/:id/tables and returned empty 200s elsewhere.
+    if (!db.getShopById(shopId)) {
+      return res.status(404).json({ error: 'Không tìm thấy quán', code: 'SHOP_NOT_FOUND' });
+    }
     next();
   };
 }
@@ -153,7 +163,7 @@ export function rateLimit(maxPerWindow: number, windowMs: number) {
     }
     entry.count += 1;
     if (entry.count > maxPerWindow) {
-      return res.status(429).json({ error: 'Bạn thao tác quá nhanh, vui lòng thử lại sau ít phút' });
+      return res.status(429).json({ error: 'Bạn thao tác quá nhanh, vui lòng thử lại sau ít phút', code: 'RATE_LIMITED' });
     }
     next();
   };

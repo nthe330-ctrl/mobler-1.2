@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { CoffeeShop, MenuItem, Mood, SpecialModel, ShopStyle } from '../types';
+import { SHOP_UI_TRANSLATIONS } from './shopTranslations';
 import { SHOP_TRANSLATIONS, MENU_TRANSLATIONS, MOOD_TRANSLATIONS, CITY_TRANSLATIONS } from '../data/translations';
 
 export type Language = 'zh-TW' | 'th' | 'en' | 'vi';
@@ -42,6 +43,13 @@ export const SUPPORTED_LANGUAGES: LanguageOption[] = [
     shortLabel: 'VI'
   }
 ];
+
+/* Looked up by code, not by array index: the old `SUPPORTED_LANGUAGES[2]` silently
+   points at a different language the moment anyone reorders this list. */
+export const DEFAULT_LANGUAGE: Language = 'vi';
+export const DEFAULT_LANGUAGE_OPTION: LanguageOption =
+  SUPPORTED_LANGUAGES.find(l => l.code === DEFAULT_LANGUAGE) ?? SUPPORTED_LANGUAGES[0];
+
 
 export const TRANSLATIONS: Record<Language, Record<string, string>> = {
   'zh-TW': {
@@ -123,35 +131,6 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     'bookings.statusUpcoming': '已確認預約',
     'bookings.statusCompleted': '已完成體驗',
     'bookings.statusCancelled': '已取消預約',
-    'bookings.st.pending': '等待店家確認',
-    'bookings.st.confirmed': '已確認',
-    'bookings.st.arrived': '已入座',
-    'bookings.st.completed': '已完成',
-    'bookings.st.cancelled': '已取消',
-    'bookings.st.rejected': '店家婉拒',
-    'bookings.st.no_show': '未到店',
-    'bookings.runningLate': '我正在路上，請多留 15 分鐘',
-    'bookings.lateSending': '通知店家中…',
-    'bookings.lateNoted': '已通知店家你會晚到，座位多保留 15 分鐘。',
-    'bookings.lateFailed': '無法通知店家',
-    'bookings.noShowExplain': '過了預約時間仍未入座，座位已重新開放給其他客人。若你其實有到店，請聯絡店家取消這筆紀錄。',
-    'notif.title': '通知',
-    'notif.empty': '目前沒有通知',
-    'notif.markAll': '全部標示為已讀',
-    'notif.markOne': '標示為已讀',
-    'notif.justNow': '剛剛',
-    'notif.minutesAgo': '分鐘前',
-    'notif.hoursAgo': '小時前',
-    'notif.daysAgo': '天前',
-    'home.matchAll': '符合你選的全部設施',
-    'home.missingAmenities': '缺少',
-    'home.amenitiesUnknown': '店家尚未填寫設施',
-    'push.label': '關閉 App 後也推播到手機',
-    'push.iosHint': 'iPhone 上要先把 MOBLER 加到主畫面才能收到推播：在 Safari 按分享鍵，選「加入主畫面」。',
-    'push.unsupported': '這個瀏覽器不支援推播通知。',
-    'push.serverOff': '伺服器尚未開啟推播功能。',
-    'push.denied': '你已封鎖這個網站的通知，請到瀏覽器設定重新開啟。',
-    'push.onHint': '只有三件事會震動手機：店家回覆訂位、快到預約時間、座位即將被釋出。優惠只留在通知匣。',
     'bookings.cancelBtn': '取消訂位',
     'bookings.viewQr': '出示報到 QR Code',
     'bookings.qrTitle': '門市報到核銷碼',
@@ -575,6 +554,16 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     'common.loading': '載入中…',
     'common.notifications': '通知',
     'auth.title': 'Mobler 帳號',
+    'auth.heroTitle': '好咖啡館，座位已備妥',
+    'auth.heroSubtitle': '登入即可訂位並追蹤您的預約。',
+    'auth.customerOnlyHint': '顧客帳號。店家請使用 Mobler Shop 應用程式。',
+    'auth.registerHint': '只要一分鐘即可開始訂位。',
+    'auth.noAccountYet': '還沒有帳號？',
+    'auth.haveAccount': '已經有帳號了？',
+    'auth.featuresLabel': 'Mobler 功能',
+    'nav.nearby': '附近咖啡館',
+    'settings.darkMode': '深色模式',
+    'settings.lightMode': '淺色模式',
     'auth.subtitle': '供訂位顧客使用',
     'auth.signIn': '登入',
     'auth.createAccount': '建立帳號',
@@ -836,6 +825,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     'storeReward.freePastry': '免費精選糕點',
     'storeReward.discount10': '整筆帳單 9 折優惠',
     'storeReward.welcomeDrink': '主理人特調迎賓飲',
+    'storeReward.soulmate': '知己專屬 8 折優惠',
     'storeAch.newTitle': '初次探訪',
     'storeAch.newDesc': '首次造訪並完成簽到',
     'storeAch.regularTitle': '熟門熟路',
@@ -1187,35 +1177,6 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     'bookings.statusUpcoming': 'ยืนยันการจองแล้ว',
     'bookings.statusCompleted': 'เสร็จสิ้นแล้ว',
     'bookings.statusCancelled': 'ยกเลิกแล้ว',
-    'bookings.st.pending': 'รอร้านยืนยัน',
-    'bookings.st.confirmed': 'ยืนยันแล้ว',
-    'bookings.st.arrived': 'เช็คอินแล้ว',
-    'bookings.st.completed': 'เสร็จสิ้น',
-    'bookings.st.cancelled': 'ยกเลิกแล้ว',
-    'bookings.st.rejected': 'ร้านปฏิเสธ',
-    'bookings.st.no_show': 'ไม่มาตามนัด',
-    'bookings.runningLate': 'กำลังไป ขอเก็บโต๊ะอีก 15 นาที',
-    'bookings.lateSending': 'กำลังแจ้งร้าน…',
-    'bookings.lateNoted': 'แจ้งร้านแล้วว่าคุณจะมาสาย ร้านเก็บโต๊ะให้อีก 15 นาที',
-    'bookings.lateFailed': 'แจ้งร้านไม่สำเร็จ',
-    'bookings.noShowExplain': 'เลยเวลานัดแล้วยังไม่เช็คอิน ระบบจึงเปิดโต๊ะให้ลูกค้าคนอื่น หากคุณมาถึงร้านจริง กรุณาแจ้งร้านเพื่อลบบันทึกนี้',
-    'notif.title': 'การแจ้งเตือน',
-    'notif.empty': 'ยังไม่มีการแจ้งเตือน',
-    'notif.markAll': 'ทำเครื่องหมายอ่านแล้วทั้งหมด',
-    'notif.markOne': 'ทำเครื่องหมายว่าอ่านแล้ว',
-    'notif.justNow': 'เมื่อสักครู่',
-    'notif.minutesAgo': 'นาทีที่แล้ว',
-    'notif.hoursAgo': 'ชั่วโมงที่แล้ว',
-    'notif.daysAgo': 'วันที่แล้ว',
-    'home.matchAll': 'มีสิ่งอำนวยความสะดวกครบตามที่เลือก',
-    'home.missingAmenities': 'ขาด',
-    'home.amenitiesUnknown': 'ร้านยังไม่ได้ระบุสิ่งอำนวยความสะดวก',
-    'push.label': 'แจ้งเตือนเข้ามือถือแม้ปิดแอปแล้ว',
-    'push.iosHint': 'บน iPhone ต้องเพิ่ม MOBLER ไปที่หน้าจอโฮมก่อนจึงจะได้รับการแจ้งเตือน: กดปุ่มแชร์ใน Safari แล้วเลือก "เพิ่มไปยังหน้าจอโฮม"',
-    'push.unsupported': 'เบราว์เซอร์นี้ไม่รองรับการแจ้งเตือนแบบพุช',
-    'push.serverOff': 'เซิร์ฟเวอร์ยังไม่ได้เปิดใช้การแจ้งเตือนแบบพุช',
-    'push.denied': 'คุณบล็อกการแจ้งเตือนของเว็บนี้ไว้ กรุณาเปิดใหม่ในการตั้งค่าเบราว์เซอร์',
-    'push.onHint': 'มีแค่สามเรื่องที่จะเตือน: ร้านตอบการจอง ใกล้ถึงเวลานัด และโต๊ะกำลังจะถูกปล่อย ส่วนโปรโมชันอยู่ในกล่องแจ้งเตือนเท่านั้น',
     'bookings.cancelBtn': 'ยกเลิกการจอง',
     'bookings.viewQr': 'แสดง QR Code เช็คอิน',
     'bookings.qrTitle': 'รหัส QR สำหรับเช็คอินที่ร้าน',
@@ -1639,6 +1600,16 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     'common.loading': 'กำลังโหลด…',
     'common.notifications': 'การแจ้งเตือน',
     'auth.title': 'บัญชี Mobler',
+    'auth.heroTitle': 'คาเฟ่ดี ๆ โต๊ะพร้อมแล้ว',
+    'auth.heroSubtitle': 'เข้าสู่ระบบเพื่อจองโต๊ะและติดตามการจองของคุณ',
+    'auth.customerOnlyHint': 'บัญชีลูกค้า เจ้าของร้านใช้แอป Mobler Shop',
+    'auth.registerHint': 'ใช้เวลาเพียงนาทีเดียวก็เริ่มจองได้',
+    'auth.noAccountYet': 'ยังไม่มีบัญชี?',
+    'auth.haveAccount': 'มีบัญชีอยู่แล้ว?',
+    'auth.featuresLabel': 'ฟีเจอร์ Mobler',
+    'nav.nearby': 'คาเฟ่ใกล้คุณ',
+    'settings.darkMode': 'โหมดมืด',
+    'settings.lightMode': 'โหมดสว่าง',
     'auth.subtitle': 'สำหรับลูกค้าที่จองโต๊ะ',
     'auth.signIn': 'เข้าสู่ระบบ',
     'auth.createAccount': 'สร้างบัญชี',
@@ -1900,6 +1871,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     'storeReward.freePastry': 'รับฟรีขนมอบ 1 ชิ้น',
     'storeReward.discount10': 'ลด 10% ทั้งบิล',
     'storeReward.welcomeDrink': 'เครื่องดื่มต้อนรับฟรี',
+    'storeReward.soulmate': 'ส่วนลดคู่หูกาแฟ 20%',
     'storeAch.newTitle': 'เยือนครั้งแรก',
     'storeAch.newDesc': 'เยือนร้านเป็นครั้งแรก',
     'storeAch.regularTitle': 'ลูกค้าขาประจำ',
@@ -2251,35 +2223,6 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     'bookings.statusUpcoming': 'Confirmed',
     'bookings.statusCompleted': 'Completed',
     'bookings.statusCancelled': 'Cancelled',
-    'bookings.st.pending': 'Waiting for the shop',
-    'bookings.st.confirmed': 'Confirmed',
-    'bookings.st.arrived': 'Checked in',
-    'bookings.st.completed': 'Completed',
-    'bookings.st.cancelled': 'Cancelled',
-    'bookings.st.rejected': 'Declined by shop',
-    'bookings.st.no_show': 'Did not arrive',
-    'bookings.runningLate': "I'm on my way, hold it 15 more minutes",
-    'bookings.lateSending': 'Telling the shop…',
-    'bookings.lateNoted': 'The shop knows you are running late. Your table is held 15 minutes longer.',
-    'bookings.lateFailed': 'Could not tell the shop',
-    'bookings.noShowExplain': 'The table was reopened to other guests because nobody checked in after the agreed time. If you did turn up, ask the shop to clear this.',
-    'notif.title': 'Notifications',
-    'notif.empty': 'Nothing here yet',
-    'notif.markAll': 'Mark all as read',
-    'notif.markOne': 'Mark as read',
-    'notif.justNow': 'just now',
-    'notif.minutesAgo': 'min ago',
-    'notif.hoursAgo': 'hr ago',
-    'notif.daysAgo': 'days ago',
-    'home.matchAll': 'Has everything you picked',
-    'home.missingAmenities': 'Missing',
-    'home.amenitiesUnknown': 'Amenities not declared yet',
-    'push.label': 'Reach my phone when the app is closed',
-    'push.iosHint': 'On iPhone, notifications only work once MOBLER is added to the home screen: tap Share in Safari, then "Add to Home Screen".',
-    'push.unsupported': 'This browser cannot receive push notifications.',
-    'push.serverOff': 'Push is not switched on for this server.',
-    'push.denied': 'You blocked notifications for this site. Re-enable them in your browser settings.',
-    'push.onHint': 'Only three things buzz your phone: the shop answers your booking, your time is near, and your table is about to be released. Offers stay in the inbox.',
     'bookings.cancelBtn': 'Cancel Booking',
     'bookings.viewQr': 'Check-in QR Code',
     'bookings.qrTitle': 'Check-in Pass',
@@ -2703,6 +2646,16 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     'common.loading': 'Loading…',
     'common.notifications': 'Notifications',
     'auth.title': 'Mobler account',
+    'auth.heroTitle': 'Great cafés, a table ready',
+    'auth.heroSubtitle': 'Sign in to book a table and track your reservations.',
+    'auth.customerOnlyHint': 'Customer account. Shop owners use the Mobler Shop app.',
+    'auth.registerHint': 'It takes a minute to start booking.',
+    'auth.noAccountYet': 'No account yet?',
+    'auth.haveAccount': 'Already have an account?',
+    'auth.featuresLabel': 'Mobler features',
+    'nav.nearby': 'Nearby cafés',
+    'settings.darkMode': 'Dark mode',
+    'settings.lightMode': 'Light mode',
     'auth.subtitle': 'For customers booking a table',
     'auth.signIn': 'Sign in',
     'auth.createAccount': 'Create account',
@@ -2964,6 +2917,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     'storeReward.freePastry': 'Free Pastry',
     'storeReward.discount10': '10% Off Bill',
     'storeReward.welcomeDrink': 'Welcome Drink',
+    'storeReward.soulmate': 'Soulmate 20% Off',
     'storeAch.newTitle': 'First Visit',
     'storeAch.newDesc': 'First visit to store & checked in',
     'storeAch.regularTitle': 'Regular Patron',
@@ -3315,35 +3269,6 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     'bookings.statusUpcoming': 'Đã xác nhận',
     'bookings.statusCompleted': 'Đã hoàn thành',
     'bookings.statusCancelled': 'Đã hủy',
-    'bookings.st.pending': 'Chờ quán xác nhận',
-    'bookings.st.confirmed': 'Đã xác nhận',
-    'bookings.st.arrived': 'Đã nhận bàn',
-    'bookings.st.completed': 'Hoàn tất',
-    'bookings.st.cancelled': 'Đã hủy',
-    'bookings.st.rejected': 'Quán từ chối',
-    'bookings.st.no_show': 'Khách không đến',
-    'bookings.runningLate': 'Tôi đang tới, giữ bàn thêm 15 phút',
-    'bookings.lateSending': 'Đang báo quán…',
-    'bookings.lateNoted': 'Đã báo quán bạn tới trễ. Bàn được giữ thêm 15 phút.',
-    'bookings.lateFailed': 'Không báo trễ được',
-    'bookings.noShowExplain': 'Quá giờ hẹn mà bàn chưa được nhận nên hệ thống đã mở lại bàn cho khách khác. Nếu bạn thật ra có tới quán, hãy báo quán để gỡ ghi nhận này.',
-    'notif.title': 'Thông báo',
-    'notif.empty': 'Chưa có thông báo nào',
-    'notif.markAll': 'Đánh dấu đã đọc hết',
-    'notif.markOne': 'Đánh dấu đã đọc',
-    'notif.justNow': 'vừa xong',
-    'notif.minutesAgo': 'phút trước',
-    'notif.hoursAgo': 'giờ trước',
-    'notif.daysAgo': 'ngày trước',
-    'home.matchAll': 'Có đủ tiện ích bạn chọn',
-    'home.missingAmenities': 'Thiếu',
-    'home.amenitiesUnknown': 'Quán chưa khai tiện ích',
-    'push.label': 'Báo về điện thoại khi đã đóng ứng dụng',
-    'push.iosHint': 'Trên iPhone, thông báo chỉ chạy sau khi bạn thêm MOBLER vào màn hình chính: bấm nút Chia sẻ trong Safari rồi chọn "Thêm vào MH chính".',
-    'push.unsupported': 'Trình duyệt này không hỗ trợ thông báo đẩy.',
-    'push.serverOff': 'Máy chủ chưa bật thông báo đẩy.',
-    'push.denied': 'Bạn đã chặn thông báo cho trang này. Hãy mở lại trong phần cài đặt của trình duyệt.',
-    'push.onHint': 'Chỉ ba việc được báo: quán trả lời đơn, sắp đến giờ hẹn, và bàn sắp bị nhả. Khuyến mãi chỉ nằm im trong hộp thông báo.',
     'bookings.cancelBtn': 'Hủy đặt bàn',
     'bookings.viewQr': 'Mã QR nhận bàn',
     'bookings.qrTitle': 'Mã nhận bàn tại quán',
@@ -3767,6 +3692,16 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     'common.loading': 'Đang tải…',
     'common.notifications': 'Thông báo',
     'auth.title': 'Tài khoản Mobler',
+    'auth.heroTitle': 'Quán ngon, bàn sẵn sàng',
+    'auth.heroSubtitle': 'Đăng nhập để đặt bàn và theo dõi lịch hẹn của bạn.',
+    'auth.customerOnlyHint': 'Tài khoản khách hàng. Chủ quán dùng ứng dụng Mobler Shop.',
+    'auth.registerHint': 'Chỉ mất một phút để bắt đầu đặt bàn.',
+    'auth.noAccountYet': 'Chưa có tài khoản?',
+    'auth.haveAccount': 'Đã có tài khoản?',
+    'auth.featuresLabel': 'Tính năng Mobler',
+    'nav.nearby': 'Quán gần bạn',
+    'settings.darkMode': 'Chế độ tối',
+    'settings.lightMode': 'Chế độ sáng',
     'auth.subtitle': 'Dành cho khách hàng đặt bàn',
     'auth.signIn': 'Đăng nhập',
     'auth.createAccount': 'Tạo tài khoản',
@@ -4028,6 +3963,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     'storeReward.freePastry': 'Bánh ngọt miễn phí',
     'storeReward.discount10': 'Giảm 10% hóa đơn',
     'storeReward.welcomeDrink': 'Nước chào mừng',
+    'storeReward.soulmate': 'Ưu đãi Tri Kỷ giảm 20%',
     'storeAch.newTitle': 'Khách Mới',
     'storeAch.newDesc': 'Ghé quán lần đầu tiên',
     'storeAch.regularTitle': 'Khách Quen',
@@ -4308,10 +4244,8 @@ export const AMENITY_TRANSLATIONS: Record<Language, Record<string, string>> = {
     'Chỗ sạc': '座位插座',
     'WC': '獨立洗手間',
     'Parking': '汽機車停車場',
-    'Indoor': '室內座位區',
+    'Indoor': '室內空調區',
     'Outdoor': '戶外庭園座',
-    'Điều hòa': '冷氣空調',
-    'Hóa đơn điện tử': '可掃載具',
     'Private': '獨立包廂',
     'Shared': '共享長桌',
     'Table Service': '桌邊服務',
@@ -4322,10 +4256,8 @@ export const AMENITY_TRANSLATIONS: Record<Language, Record<string, string>> = {
     'Chỗ sạc': 'ที่ชาร์จไฟ',
     'WC': 'ห้องน้ำสะอาด',
     'Parking': 'ที่จอดรถ',
-    'Indoor': 'โซนในร่ม',
+    'Indoor': 'ห้องแอร์ในร่ม',
     'Outdoor': 'สวนกลางแจ้ง',
-    'Điều hòa': 'มีแอร์',
-    'Hóa đơn điện tử': 'สแกนใบกำกับภาษีอิเล็กทรอนิกส์',
     'Private': 'ห้องส่วนตัว',
     'Shared': 'โต๊ะยาวส่วนกลาง',
     'Table Service': 'เสิร์ฟถึงโต๊ะ',
@@ -4336,10 +4268,8 @@ export const AMENITY_TRANSLATIONS: Record<Language, Record<string, string>> = {
     'Chỗ sạc': 'Power Outlets',
     'WC': 'Clean Restroom',
     'Parking': 'Parking Lot',
-    'Indoor': 'Indoor Seating',
+    'Indoor': 'Indoor AC',
     'Outdoor': 'Outdoor Garden',
-    'Điều hòa': 'Air Conditioning',
-    'Hóa đơn điện tử': 'E-invoice Carrier Scan',
     'Private': 'Private Room',
     'Shared': 'Shared Worktable',
     'Table Service': 'Table Service',
@@ -4350,10 +4280,8 @@ export const AMENITY_TRANSLATIONS: Record<Language, Record<string, string>> = {
     'Chỗ sạc': 'Chỗ sạc',
     'WC': 'WC',
     'Parking': 'Bãi đỗ xe',
-    'Indoor': 'Trong nhà',
+    'Indoor': 'Máy lạnh',
     'Outdoor': 'Ngoài trời',
-    'Điều hòa': 'Điều hòa',
-    'Hóa đơn điện tử': 'Hóa đơn điện tử',
     'Private': 'Phòng riêng',
     'Shared': 'Bàn dài chung',
     'Table Service': 'Phục vụ tại bàn',
@@ -4483,6 +4411,17 @@ export const SPECIAL_MODEL_TRANSLATIONS: Record<Language, Record<string, string>
   }
 };
 
+/**
+ * The dashboard's strings, merged in once at module load rather than spread into every
+ * lookup. `t()` runs on each render of every label; rebuilding a merged object there
+ * would allocate thousands of times a second for no gain.
+ *
+ * Shop keys all start with `shop.`, so they cannot collide with the customer app's.
+ */
+for (const lang of Object.keys(SHOP_UI_TRANSLATIONS) as Language[]) {
+  Object.assign(TRANSLATIONS[lang], SHOP_UI_TRANSLATIONS[lang]);
+}
+
 interface LanguageContextType {
   language: Language;
   setLanguage: (lang: Language) => void;
@@ -4502,9 +4441,9 @@ interface LanguageContextType {
 }
 
 const LanguageContext = createContext<LanguageContextType>({
-  language: 'en',
+  language: 'vi',
   setLanguage: () => {},
-  currentLanguageOption: SUPPORTED_LANGUAGES[2],
+  currentLanguageOption: DEFAULT_LANGUAGE_OPTION,
   t: (key: string, fallback?: string) => fallback || key,
   translateAmenity: (name: string) => name,
   translateStyle: (name: string) => name,
@@ -4519,24 +4458,52 @@ const LanguageContext = createContext<LanguageContextType>({
   closeLanguageModal: () => {},
 });
 
-export const LanguageProvider = ({ children }: { children: ReactNode }) => {
+/**
+ * `storageKey` is what keeps two apps on one browser from sharing a language.
+ *
+ * In production the customer app and the shop dashboard are served from the SAME origin
+ * (`/` and `/shop`), so they share one localStorage. Writing both preferences to
+ * `app_language` meant a barista switching the dashboard to Thai also switched the
+ * customer-facing app for whoever next opened it on that machine. Each app now names its
+ * own key; the default keeps the customer app exactly where it was.
+ *
+ * This is per browser, which is the scope a preference like this can have without an
+ * account setting behind it: two staff on two devices already have their own, two staff
+ * sharing one browser also share the login session, so they share the language too.
+ */
+export const LanguageProvider = ({
+  children,
+  storageKey = 'app_language'
+}: { children: ReactNode; storageKey?: string }) => {
   const [language, setLanguageState] = useState<Language>(() => {
-    const saved = localStorage.getItem('app_language') as Language;
-    if (saved && ['zh-TW', 'th', 'en', 'vi'].includes(saved)) {
-      return saved;
+    try {
+      const saved = localStorage.getItem(storageKey) as Language;
+      if (saved && ['zh-TW', 'th', 'en', 'vi'].includes(saved)) {
+        return saved;
+      }
+    } catch {
+      // storage blocked (private mode / embedded webview) — fall through to the default
     }
-    return 'en'; // default to English or user's requested languages
+    // Vietnamese is the product's primary language: every t() fallback in the apps is
+    // written in Vietnamese, so any key missing from a dictionary renders Vietnamese
+    // anyway. Defaulting to anything else produced a half-translated screen.
+    return DEFAULT_LANGUAGE;
   });
 
   const [isLanguageModalOpen, setIsLanguageModalOpen] = useState<boolean>(false);
 
   const setLanguage = (lang: Language) => {
     setLanguageState(lang);
-    localStorage.setItem('app_language', lang);
+    try {
+      localStorage.setItem(storageKey, lang);
+    } catch {
+      // storage blocked (private mode / embedded webview): the choice still applies to
+      // this session, it simply will not be remembered. Never let it throw mid-render.
+    }
   };
 
   const currentLanguageOption = 
-    SUPPORTED_LANGUAGES.find(l => l.code === language) || SUPPORTED_LANGUAGES[2];
+    SUPPORTED_LANGUAGES.find(l => l.code === language) || DEFAULT_LANGUAGE_OPTION;
 
   const t = (key: string, fallback?: string): string => {
     const langDict = TRANSLATIONS[language];

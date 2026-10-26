@@ -10,10 +10,12 @@ import ReviewsManagerView from './components/dashboard/ReviewsManagerView';
 import LiveBookingsView from './views/LiveBookingsView';
 import ShopProfileView from './views/ShopProfileView';
 import ShopAuthScreen from './views/ShopAuthScreen';
+import { useShopI18n } from './i18n/useShopI18n';
 import { useShopAuth } from './context/ShopAuthContext';
 
 export default function App() {
   const { user, shops, activeShop, isLoading, setActiveShopId, logout } = useShopAuth();
+  const { t } = useShopI18n();
   const [view, setView] = useState<DashboardView>('bookings');
   const [pendingCount, setPendingCount] = useState(0);
 
@@ -25,7 +27,7 @@ export default function App() {
   if (isLoading) {
     return (
       <div className="min-h-[100dvh] flex items-center justify-center bg-gray-50 text-gray-500">
-        <Loader2 className="animate-spin mr-2" size={18} /> Đang tải…
+        <Loader2 className="animate-spin mr-2" size={18} /> {t('shop.common.loading')}
       </div>
     );
   }
@@ -36,8 +38,8 @@ export default function App() {
     return (
       <div className="min-h-[100dvh] flex flex-col items-center justify-center gap-3 bg-gray-50 p-6 text-center">
         <Store size={40} className="text-gray-300" />
-        <p className="font-bold text-gray-800">Tài khoản chưa gắn với quán nào.</p>
-        <button onClick={logout} className="px-4 py-2 rounded-xl bg-red-600 text-white font-bold text-sm">Đăng xuất</button>
+        <p className="font-bold text-gray-800">{t('shop.app.noShop')}</p>
+        <button onClick={logout} className="px-4 py-2 rounded-xl bg-red-600 text-white font-bold text-sm">{t('shop.nav.logout')}</button>
       </div>
     );
   }

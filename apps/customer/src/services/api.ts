@@ -3,6 +3,7 @@ import { HttpClient } from '@shared/api/http';
 import { AvailabilityResponse, BookingDTO } from '@shared/booking';
 import { LocalitySearchResponse } from '@shared/locality';
 import { ResolvedRank } from '@shared/ranks';
+import { ShopLoyalty } from '@shared/shopLoyalty';
 
 /** Customer-app session is stored separately from the shop app's session. */
 const TOKEN_KEY = 'mobler_customer_token';
@@ -82,6 +83,10 @@ class ApiService {
     return this.request<{ points: number; badges: string[]; vouchers: any[] }>('/me/rewards');
   }
 
+  public async getShopLoyalty() {
+    return this.request<{ shops: ShopLoyalty[] }>('/me/shop-loyalty');
+  }
+
   public async updateProfile(updates: Partial<UserAccount>) {
     return http.put<{ message: string; user: UserAccount }>('/auth/profile', updates);
   }
@@ -152,6 +157,35 @@ class ApiService {
       method: 'POST',
       body: JSON.stringify(payload)
     });
+  }
+
+  /** Upload one review photo; returns the URL to attach to the review. */
+  public async uploadImage(dataUrl: string) {
+    return this.request<{ url: string }>(`/me/uploads`, {
+      method: 'POST',
+      body: JSON.stringify({ dataUrl })
+    });
+  }
+
+  public async shopReviews(shopId: string) {
+    return this.request<{ reviews: Review[] }>(`/shops/${shopId}/reviews`);
+  }
+
+  /** Toggle this guest's like. The server decides the new state — never guess locally. */
+  public async toggleReviewLike(reviewId: string) {
+    return this.request<{ likes: number; likedByMe: boolean }>(`/reviews/${reviewId}/like`, { method: 'POST' });
+  }
+
+  public async addReviewComment(reviewId: string, content: string) {
+    return this.request<{ comment: any; comments: number }>(`/reviews/${reviewId}/comments`, {
+      method: 'POST',
+      body: JSON.stringify({ content })
+    });
+  }
+
+  /** The signed-in guest's own reviews — the real check-in diary. */
+  public async myReviews() {
+    return this.request<{ reviews: (Review & { shop_name: string; shop_address: string; shop_image: string })[] }>(`/me/reviews`);
   }
 
   public async toggleFavorite(shopId: string) {

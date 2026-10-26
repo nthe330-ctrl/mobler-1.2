@@ -7,6 +7,8 @@ interface ClockTimePickerProps {
   onSelectTime: (timeStr: string) => void;
   isTableAvailable?: (time: string) => boolean;
   isLight: boolean;
+  /** 'HH:MM – HH:MM' for this date, or null when the shop's hours are unknown. */
+  openWindowLabel?: string | null;
 }
 
 export default function ClockTimePicker({
@@ -14,6 +16,7 @@ export default function ClockTimePicker({
   onSelectTime,
   isTableAvailable,
   isLight,
+  openWindowLabel,
 }: ClockTimePickerProps) {
   const { t } = useLanguage();
 
@@ -116,7 +119,12 @@ export default function ClockTimePicker({
             <h3 className={`font-bold text-xs ${isLight ? 'text-[#1E1B18]' : 'text-[#EBE3DB]'}`}>
               {t('booking.clockTitle', 'Đồng hồ tròn chọn giờ')}
             </h3>
-            <p className="text-[10px] text-slate-500">{t('booking.clockSub', 'Chạm vào số trên mặt đồng hồ')}</p>
+            {/* The shop's real hours, so a greyed-out number has a visible reason. */}
+            <p className="text-[10px] text-slate-500">
+              {openWindowLabel
+                ? t('booking.openHours', 'Quán mở cửa {range}').replace('{range}', openWindowLabel)
+                : t('booking.clockSub', 'Chạm vào số trên mặt đồng hồ')}
+            </p>
           </div>
         </div>
 

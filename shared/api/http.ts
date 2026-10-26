@@ -62,7 +62,9 @@ export class HttpClient {
     try {
       res = await fetch(`${apiBaseUrl()}/api${endpoint}`, { ...options, headers });
     } catch {
-      throw new ApiError('Không kết nối được máy chủ. Kiểm tra mạng và thử lại.', 0, {});
+      // Never reached the server, so there is no server code to carry — this one is ours,
+      // and it is in the same vocabulary as the rest so one translator handles both.
+      throw new ApiError('Không kết nối được máy chủ. Kiểm tra mạng và thử lại.', 0, { code: 'NETWORK_UNREACHABLE' });
     }
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
@@ -70,7 +72,12 @@ export class HttpClient {
         this.setToken(null);
         this.onUnauthorized?.();
       }
-      throw new ApiError(data.error || `Yêu cầu thất bại (${res.status})`, res.status, data);
+      // A route that answers without a code still gets one, so the client always has
+      // something to look up; `data.error` remains the fallback text.
+      throw new ApiError(data.error || `Yêu cầu thất bại (${res.status})`, res.status, {
+        code: 'REQUEST_FAILED',
+        ...data
+      });
     }
     return data as T;
   }

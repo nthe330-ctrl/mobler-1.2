@@ -2,10 +2,11 @@ import crypto from 'crypto';
 import express, { Express, Request, Response } from 'express';
 import fs from 'fs';
 import path from 'path';
-import { db, VoucherRecord } from './db';
+import { db, isSettledOrder, VoucherRecord } from './db';
 import { AuthRequest, authenticateToken, requireAccount, requireShopAccess } from './auth';
 import { publish, topics } from './realtime';
 import { isActiveBooking } from '../../shared/booking';
+import { storage } from './storage';
 
 /**
  * Data that belongs to one shop and is created by its owner in the shop app:
@@ -25,7 +26,16 @@ const num = (v: unknown, min: number, max: number, def = 0) => {
 };
 const strList = (v: unknown, maxItems: number, maxLen: number) =>
   Array.isArray(v) ? v.map(x => str(x, maxLen)).filter(Boolean).slice(0, maxItems) : [];
-const isSafeImage = (u: string) => /^https:\/\//.test(u) || /^\/api\/media\/uploads\/[a-z0-9_.-]+$/i.test(u);
+/**
+ * An image URL safe to render on a public page: either an outside https:// address or a
+ * path this server itself handed back from an upload. Anything else — `javascript:`,
+ * `data:`, a bare http:// — is dropped rather than stored, because these strings end up
+ * inside an <img src> that other people's browsers load.
+ *
+ * Exported so the shop-profile route applies the same rule to the cover and gallery that
+ * the menu already applies to dish photos.
+ */
+export const isSafeImage = (u: string) => /^https:\/\//.test(u) || /^\/api\/media\/uploads\/[a-z0-9_.-]+$/i.test(u);
 
 export function sanitizeMenuItem(raw: any) {
   const name = str(raw?.name, 120);
@@ -155,8 +165,8 @@ export function registerShopDataRoutes(app: Express) {
 
   /** Replace the whole menu (the shop app sends its list after every add/edit/delete). */
   app.put('/api/merchant/shops/:id/menu', bigJson, ...shopOnly, (req: AuthRequest, res: Response) => {
-    if (!Array.isArray(req.body?.items)) return res.status(400).json({ error: 'items phải là danh sách' });
-    if (req.body.items.length > 300) return res.status(400).json({ error: 'Tối đa 300 món' });
+    if (!Array.isArray(req.body?.items)) return res.status(400).json({ error: 'items phải là danh sách', code: 'MENU_ITEMS_INVALID' });
+    if (req.body.items.length > 300) return res.status(400).json({ error: 'Tối đa 300 món', code: 'MENU_TOO_MANY', detail: { limit: 300 } });
     const seen = new Set<string>();
     const items = req.body.items
       .map(sanitizeMenuItem)
@@ -177,8 +187,8 @@ export function registerShopDataRoutes(app: Express) {
   });
 
   app.put('/api/merchant/shops/:id/vouchers', bigJson, ...shopOnly, (req: AuthRequest, res: Response) => {
-    if (!Array.isArray(req.body?.items)) return res.status(400).json({ error: 'items phải là danh sách' });
-    if (req.body.items.length > 200) return res.status(400).json({ error: 'Tối đa 200 voucher' });
+    if (!Array.isArray(req.body?.items)) return res.status(400).json({ error: 'items phải là danh sách', code: 'VOUCHER_ITEMS_INVALID' });
+    if (req.body.items.length > 200) return res.status(400).json({ error: 'Tối đa 200 voucher', code: 'VOUCHER_TOO_MANY', detail: { limit: 200 } });
     const codes = new Set<string>();
     const items = req.body.items.map(sanitizeVoucher).filter((v: any) => v && !codes.has(v.code) && codes.add(v.code));
     db.setShopCollection(req.params.id, 'vouchers', items);
@@ -188,14 +198,18 @@ export function registerShopDataRoutes(app: Express) {
   // ---------- image uploads (menu photos, banners) ----------
   app.post('/api/merchant/shops/:id/uploads', bigJson, ...shopOnly, (req: AuthRequest, res: Response) => {
     const m = /^data:(image\/[a-z]+);base64,([A-Za-z0-9+/=]+)$/.exec(String(req.body?.dataUrl || ''));
-    if (!m || !IMAGE_TYPES[m[1]]) return res.status(400).json({ error: 'Chỉ nhận ảnh JPG, PNG, WEBP hoặc GIF' });
+    if (!m || !IMAGE_TYPES[m[1]]) return res.status(400).json({ error: 'Chỉ nhận ảnh JPG, PNG, WEBP hoặc GIF', code: 'UPLOAD_BAD_TYPE' });
     const buf = Buffer.from(m[2], 'base64');
-    if (buf.length > MAX_UPLOAD_BYTES) return res.status(413).json({ error: 'Ảnh tối đa 3MB' });
-    fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+    if (buf.length > MAX_UPLOAD_BYTES) return res.status(413).json({ error: 'Ảnh tối đa 3MB', code: 'UPLOAD_TOO_LARGE', detail: { limit: '3MB' } });
     const name = `${req.params.id.replace(/[^a-z0-9-]/gi, '')}-${crypto.randomBytes(8).toString('hex')}.${IMAGE_TYPES[m[1]]}`;
-    fs.writeFileSync(path.join(UPLOAD_DIR, name), buf);
-    const base = (process.env.PUBLIC_API_URL || '').replace(/\/$/, '');
-    res.status(201).json({ url: `${base}/api/media/uploads/${name}` });
+    // Through the storage driver, so the same route works on local disk and on an
+    // S3-compatible bucket without the caller knowing which is active.
+    storage().put(name, buf, m[1])
+      .then(({ url }) => res.status(201).json({ url }))
+      .catch(err => {
+        console.error('[MOBLER API] upload failed', err);
+        res.status(502).json({ error: 'Không lưu được ảnh, vui lòng thử lại', code: 'UPLOAD_FAILED' });
+      });
   });
 
   app.get('/api/media/uploads/:file', (req: Request, res: Response) => {
@@ -236,15 +250,13 @@ export function registerShopDataRoutes(app: Express) {
       const c = get(b.user_id, b.user_name, b.user_phone);
       c.bookingCount++;
       if (b.status === 'completed' || b.status === 'arrived') c.visitCount++;
-      if (b.status !== 'cancelled' && b.status !== 'rejected') c.totalSpent += b.grand_total || 0;
       const when = `${b.date}T${b.time}`;
       if (!c.joinDate || when < c.joinDate) c.joinDate = when;
       if ((b.status === 'completed' || b.status === 'arrived') && when > c.lastVisit) c.lastVisit = when;
     }
     for (const o of db.getOrdersByShopId(shopId)) {
-      if (o.booking_id) continue; // already counted through the booking
       const c = get(o.user_id, o.user_name, '');
-      if (o.status !== 'cancelled') c.totalSpent += o.total || 0;
+      if (isSettledOrder(o)) c.totalSpent += o.total || 0;
       o.items.forEach(i => c._items.set(i.name, (c._items.get(i.name) || 0) + i.quantity));
       if (!c.joinDate || o.created_at < c.joinDate) c.joinDate = o.created_at;
       if (o.created_at > c.lastVisit) c.lastVisit = o.created_at;
@@ -276,7 +288,8 @@ export function registerShopDataRoutes(app: Express) {
     const shopId = req.params.id;
     const days = Math.min(90, Math.max(7, Number(req.query.days) || 14));
     const bookings = db.getBookingsByShopId(shopId);
-    const orders = db.getOrdersByShopId(shopId).filter(o => o.status !== 'cancelled');
+    const orders = db.getOrdersByShopId(shopId);
+    const settledOrders = orders.filter(isSettledOrder);
     const reviews = db.getReviewsByShopId(shopId);
 
     const series: { date: string; revenue: number; bookings: number; guests: number; orders: number }[] = [];
@@ -286,7 +299,7 @@ export function registerShopDataRoutes(app: Express) {
       series.push({ date: d, revenue: 0, bookings: 0, guests: 0, orders: 0 });
     }
     const idx = new Map(series.map((s, i) => [s.date, i]));
-    for (const o of orders) {
+    for (const o of settledOrders) {
       const i = idx.get(dayKey(o.created_at));
       if (i !== undefined) {
         series[i].revenue += o.total || 0;
@@ -303,7 +316,7 @@ export function registerShopDataRoutes(app: Express) {
     }
 
     const itemCount = new Map<string, { name: string; quantity: number; revenue: number }>();
-    for (const o of orders) for (const it of o.items) {
+    for (const o of settledOrders) for (const it of o.items) {
       const cur = itemCount.get(it.name) || { name: it.name, quantity: 0, revenue: 0 };
       cur.quantity += it.quantity;
       cur.revenue += (it.price || 0) * it.quantity;
@@ -313,13 +326,13 @@ export function registerShopDataRoutes(app: Express) {
     bookings.filter(b => b.status !== 'cancelled' && b.status !== 'rejected').forEach(b => hours[Number(b.time.slice(0, 2))].bookings++);
 
     const today = now.toISOString().slice(0, 10);
-    const totalRevenue = orders.reduce((s, o) => s + (o.total || 0), 0);
+    const totalRevenue = settledOrders.reduce((s, o) => s + (o.total || 0), 0);
     const ratings = reviews.map((r: any) => r.metrics?.accuracy).filter((x: any) => typeof x === 'number');
     res.json({
       totals: {
         revenue: totalRevenue,
-        todayRevenue: orders.filter(o => dayKey(o.created_at) === today).reduce((s, o) => s + (o.total || 0), 0),
-        orders: orders.length,
+        todayRevenue: settledOrders.filter(o => dayKey(o.created_at) === today).reduce((s, o) => s + (o.total || 0), 0),
+        orders: settledOrders.length,
         bookings: bookings.length,
         activeBookings: bookings.filter(b => isActiveBooking(b.status)).length,
         pendingBookings: bookings.filter(b => b.status === 'pending').length,

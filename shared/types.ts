@@ -1,3 +1,4 @@
+import type { CurrencyCode } from './currency';
 export type Mood = 'Làm việc / Học bài' | 'Hẹn hò' | 'Chụp ảnh / Check-in' | 'Tụ tập nhóm' | 'Thư giãn / Chill';
 
 export type Amenity = 
@@ -5,11 +6,9 @@ export type Amenity =
   | 'Chỗ sạc' 
   | 'WC' 
   | 'Parking' 
-  | 'Indoor'
-  | 'Outdoor'
-  | 'Điều hòa'
-  | 'Hóa đơn điện tử'
-  | 'Private'
+  | 'Indoor' 
+  | 'Outdoor' 
+  | 'Private' 
   | 'Shared' 
   | 'Table Service' 
   | 'Self Service';
@@ -62,13 +61,30 @@ export interface Review {
   date: string;
   images: string[];
   content: string;
+  /** Derived from liked_by; kept in step for clients that only read the count. */
   likes: number;
+  /** Derived from comment_list, same reason. */
   comments: number;
+  /** Ids of the customers who liked this. The counter alone could not be un-liked. */
+  liked_by?: string[];
+  comment_list?: ReviewComment[];
+  /** Set per viewer by the API; never stored. */
+  likedByMe?: boolean;
+  created_at?: string;
   metrics: {
     noise: number; // 1-5 (quiet to noisy or vice versa, let's say 5 is best)
     seating: number;
     accuracy: number;
   };
+}
+
+export interface ReviewComment {
+  id: string;
+  userId: string;
+  userName: string;
+  userAvatar: string;
+  content: string;
+  created_at: string;
 }
 
 export interface AiGeneratedAmenity {
@@ -200,6 +216,12 @@ export interface CoffeeShop {
   district?: string;
   ownerId?: string;
   description?: string;
+  /**
+   * ISO 4217 code the shop prices in. Absent on shops created before the setting existed;
+   * `toCurrencyCode()` reads those as VND, which is what their numbers always meant.
+   * Changing this NEVER converts a stored amount — see shared/currency.ts.
+   */
+  currency_code?: CurrencyCode;
   bookingSettings?: {
     /** Confirm new bookings automatically instead of waiting for staff. */
     autoConfirm: boolean;

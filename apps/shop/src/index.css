@@ -46,3 +46,264 @@ html {
   scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
 }
 
+.shop-auth-scene {
+  background: #8f241c;
+}
+
+/* Fixed, not absolute. The scene grows past the viewport on the register tab, and an
+   absolute backdrop would stretch with it — `cover` would then scale the artwork to the
+   full page height and zoom it hard. Pinning both layers to the viewport keeps the
+   backdrop the same size however long the form is, and the artwork staying put while the
+   card scrolls over it is the subtle parallax the design asks for. */
+.shop-auth-backdrop,
+.shop-auth-shade {
+  position: fixed;
+  inset: -2%;
+  pointer-events: none;
+}
+
+/* The still frame behind the video — the same frame the clip starts and ends on, so
+   the handover is invisible, and the screen still looks finished if the video never
+   runs. The old boba artwork stays in /public: putting it back is one line. */
+.shop-auth-backdrop {
+  z-index: -3;
+  background-image: url('/mobler-login-bg.webp');
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+}
+
+/* The poster has to follow the video, or a phone paints the landscape still frame for
+   a moment and then cuts to the portrait clip. Same breakpoint as the component. */
+@media (max-aspect-ratio: 3/4) {
+  .shop-auth-backdrop { background-image: url('/mobler-login-bg-portrait.webp'); }
+}
+
+.shop-auth-video {
+  position: fixed;
+  inset: -2%;
+  z-index: -2;
+  width: 104%;
+  height: 104%;
+  /* Tailwind's preflight caps every <video> at max-width:100%, which silently held this
+     layer 58px narrower than the poster behind it — a visible seam down the right edge
+     once the artwork had a bright side. The layer is deliberately oversized, so opt out. */
+  max-width: none;
+  object-fit: cover;     /* portrait phones crop the sides; the cup is centred, so it stays */
+  object-position: center;
+  pointer-events: none;
+}
+
+/* Warm espresso rather than the old wine wash, which was tuned for the flat boba
+   artwork and turned this cream-and-gold footage dusty pink. Vertical, not diagonal:
+   the text that needs covering sits in a band at the top and another at the bottom. */
+.shop-auth-shade {
+  z-index: -1;
+  background: linear-gradient(180deg,
+    rgba(42, 25, 16, .80) 0%,
+    rgba(42, 25, 16, .60) 24%,
+    rgba(42, 25, 16, .16) 48%,
+    rgba(36, 21, 13, .58) 74%,
+    rgba(36, 21, 13, .88) 100%);
+}
+
+.shop-glass-card {
+  background: linear-gradient(145deg, rgba(255,255,255,.91), rgba(255,255,255,.78));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.95), 0 24px 70px rgba(54,14,25,.25);
+}
+
+.shop-orb {
+  position: absolute;
+  z-index: 0;
+  pointer-events: none;
+  border: 1px solid rgba(255,255,255,.6);
+  border-radius: 999px;
+  background: radial-gradient(circle at 30% 25%, rgba(255,255,255,.9), rgba(255,255,255,.25) 34%, rgba(255,255,255,.07) 70%);
+  box-shadow: inset -5px -7px 14px rgba(121,35,55,.13), 0 12px 35px rgba(61,18,30,.14);
+  backdrop-filter: blur(5px);
+  animation: shop-float 8s ease-in-out infinite;
+}
+
+.shop-orb-one { width: 66px; height: 66px; top: 25%; left: 8%; }
+.shop-orb-two { width: 34px; height: 34px; top: 20%; right: 15%; animation-delay: -2.5s; }
+.shop-orb-three { width: 48px; height: 48px; bottom: 23%; right: 9%; animation-delay: -4.5s; }
+
+.shop-floating-dock {
+  animation: shop-dock-float 6s ease-in-out infinite;
+}
+
+@keyframes shop-float {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(10px, -18px, 0); }
+}
+
+/* translateY only. The horizontal centring is margin:auto in the markup — putting a -50%
+   here as well double-shifts the bar, because Tailwind v4's translate-* utilities write the
+   separate `translate` property and both land on the element. */
+@keyframes shop-dock-float {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(0, -5px, 0); }
+}
+
+/* Narrow screens: `cover` sizes the artwork by the viewport's HEIGHT once the viewport is
+   taller than it is wide, so on a phone a single cup blows up to nearly half the screen.
+   The artwork can't just be drawn smaller — its objects run off every edge, so repeating it
+   would show cut cups meeting other cut cups along a hard seam.
+   mobler-boba-tile.webp is built from the same stickers on the same flat ground
+   (rgb(198,77,41)), scattered with every stamp drawn at all nine wrapped offsets, so nothing
+   is ever cut and the tile repeats with no seam. Being tileable, it can be drawn small
+   enough that a cup keeps roughly the ~12% of screen width it has on desktop. */
+
+@media (prefers-reduced-motion: reduce) {
+  .shop-orb, .shop-floating-dock { animation: none; }
+  /* Someone who asked the system for less motion gets the still frame, not a loop
+     playing behind their password field. The poster is already there underneath. */
+  .shop-auth-video { display: none; }
+}
+
+
+/* ============================================================================
+   Floating bubble-tea objects
+   ----------------------------------------------------------------------------
+   The background is one flat illustration, so nothing in it can move on its own.
+   These are real cut-outs taken from that same artwork (transparent WebP, in
+   /boba/), layered over the untouched background — so when one drifts it leaves
+   no hole behind it.
+
+   Three depth tiers read as distance: far objects are small, dimmer, slightly
+   blurred and drift least; near ones are large, crisp and travel furthest.
+   Each carries --d (parallax depth), --dur and --delay so no two move alike.
+
+   Everything sits at z-index 0 inside .shop-auth-scene, below the header, card
+   and dock (z-10/z-20), and is pointer-events:none — decoration can never
+   intercept a click meant for the form.
+   ========================================================================== */
+
+.boba {
+  position: absolute;
+  z-index: 0;
+  pointer-events: none;
+  /* outer element carries the pointer parallax only; the drift lives on ::before
+     so the two transforms never overwrite each other */
+  transform: translate3d(calc(var(--mx, 0px) * var(--d)), calc(var(--my, 0px) * var(--d)), 0);
+  transition: transform .45s cubic-bezier(.22, 1, .36, 1);
+}
+
+.boba::before {
+  content: '';
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: center / contain no-repeat var(--img);
+  animation: boba-drift var(--dur, 8s) ease-in-out var(--delay, 0s) infinite;
+  filter: drop-shadow(0 14px 22px rgba(58, 14, 20, .34));
+  will-change: transform;
+}
+
+@keyframes boba-drift {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(0deg); }
+  33%      { transform: translate3d(5px, -16px, 0) rotate(1.6deg); }
+  66%      { transform: translate3d(-4px, -8px, 0) rotate(-1.2deg); }
+}
+
+/* near — large, crisp, most parallax */
+.boba-near  { --d: 1;   opacity: .97; }
+/* mid */
+.boba-mid   { --d: .62; opacity: .9; }
+/* far — small, hazy, barely moves, so it reads as distance */
+.boba-far   { --d: .3;  opacity: .72; filter: blur(1.1px); }
+
+/* Positions keep the side bands busy and the centre column clear: the auth card
+   is max 440px wide and centred, and the dock owns the bottom strip. */
+.boba-1 { --img: url('/boba/boba-cup-face.webp');    width: 190px; height: 380px; top: 14%;  left: 4%;   --dur: 9s;   --delay: -1s; }
+.boba-2 { --img: url('/boba/boba-cup-sundae.webp');  width: 150px; height: 312px; top: 8%;   right: 6%;  --dur: 10s;  --delay: -3s; }
+.boba-3 { --img: url('/boba/boba-cup-caramel.webp'); width: 132px; height: 224px; bottom: 16%; left: 9%;  --dur: 8.5s; --delay: -5s; }
+.boba-4 { --img: url('/boba/boba-pearls-bowl.webp'); width: 148px; height: 112px; bottom: 22%; right: 7%; --dur: 7.5s; --delay: -2s; }
+.boba-5 { --img: url('/boba/boba-scoop.webp');       width:  92px; height:  87px; top: 52%;   left: 17%;  --dur: 7s;   --delay: -4s; }
+.boba-6 { --img: url('/boba/boba-strawberry.webp');  width:  52px; height:  54px; top: 30%;   right: 18%; --dur: 6s;   --delay: -1.5s; }
+.boba-7 { --img: url('/boba/boba-leaf.webp');        width:  70px; height:  46px; top: 66%;   right: 21%; --dur: 6.5s; --delay: -3.5s; }
+.boba-8 { --img: url('/boba/boba-pearl.webp');       width:  34px; height:  34px; top: 22%;   left: 24%;  --dur: 5.5s; --delay: -2.2s; }
+.boba-9 { --img: url('/boba/boba-heart.webp');       width:  34px; height:  35px; bottom: 34%; left: 21%; --dur: 5s;   --delay: -4.4s; }
+
+/* Tablet: drop the two biggest so the card keeps its breathing room. */
+@media (max-width: 1100px) {
+  .boba-1, .boba-2 { display: none; }
+  .boba-3 { left: 3%; }
+  .boba-4 { right: 3%; }
+}
+
+/* Phone: a blurred layer per object is expensive and the card needs the width.
+   Keep three small ones, pushed to the top corners, away from inputs and dock. */
+@media (max-width: 680px) {
+  .boba-3, .boba-4, .boba-5, .boba-9 { display: none; }
+  /* The tiled background draws its cups at ~43px here, so the floating pieces are sized up
+     to stay clearly in front of it — at their desktop size they would read as part of the
+     pattern and the depth would be lost. All three sit in the header band, clear of the
+     card and of the dock. */
+  .boba-6 { top: 6%;  right: 5%;  width: 64px; height: 66px; }
+  .boba-7 { top: 11%; left: 4%; right: auto; width: 84px; height: 56px; }
+  .boba-8 { top: 3%;  left: 32%; width: 42px; height: 42px; }
+  .boba-far { filter: none; }   /* skip the blur filter on mobile GPUs */
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .boba { transition: none; transform: none; }
+  .boba::before { animation: none; }
+}
+
+/* ==========================================================================
+   Dashboard backdrop — the blurred coffee artwork behind the whole shop app.
+
+   The blur is baked into the file, not applied with `filter: blur()`. A CSS blur on a
+   full-viewport layer is re-rasterised on every scroll and repaint, which is exactly
+   the wrong cost on a dashboard that updates live; a pre-blurred image costs nothing
+   and, having no fine detail left, compresses to 5 KB and upscales without showing it.
+
+   The veil over it is what keeps a data screen readable: the artwork alone is too
+   saturated on its right-hand side, which is where the tables and charts sit.
+   ========================================================================== */
+/* The shell must stay transparent. It is the backdrop's parent and paints over it —
+   giving it the cream as an anti-flash colour hid the artwork completely. The colour
+   belongs on the backdrop itself, underneath the image, where it does that job. */
+.shop-dash-shell {
+  background-color: transparent;
+}
+
+.shop-dash-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-color: #f7f4ef;   /* the artwork's own cream, so there is no flash before it loads */
+  background-image:
+    linear-gradient(rgba(252, 250, 247, .62), rgba(252, 250, 247, .62)),
+    url('/mobler-app-bg.webp');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+/* Desktop: the clip puts its subject on the RIGHT and the sign-in card sits on the LEFT,
+   so the shade turns horizontal. Darkening the whole frame vertically (what phones need,
+   where the portrait clip runs behind centred text) would dim the glass that the layout
+   is built around. Here the left is covered for the heading, and the right is left alone. */
+@media (min-width: 1024px) {
+  .shop-auth-shade {
+    /* Two layers. The horizontal one covers the heading and card on the left and fades
+       out before the glass. The vertical one is a band under the floating dock, whose
+       white labels run across the full width and would otherwise sit on the bright half. */
+    background:
+      linear-gradient(180deg,
+        rgba(42, 25, 16, .30) 0%,
+        rgba(42, 25, 16, 0) 16%,
+        rgba(42, 25, 16, 0) 58%,
+        rgba(36, 21, 13, .62) 84%,
+        rgba(36, 21, 13, .84) 100%),
+      linear-gradient(90deg,
+        rgba(42, 25, 16, .74) 0%,
+        rgba(42, 25, 16, .60) 32%,
+        rgba(42, 25, 16, .24) 56%,
+        rgba(42, 25, 16, .04) 72%,
+        rgba(42, 25, 16, 0) 100%);
+  }
+}

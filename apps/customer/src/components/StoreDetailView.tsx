@@ -2,6 +2,8 @@ import { useState, useMemo, useEffect, type MouseEvent } from 'react';
 import { api } from '../services/api';
 import { ArrowLeft, Star, MapPin, Share2, Heart, Check, ShieldCheck, Navigation, ExternalLink, Sparkles, X, Coffee as CoffeeIcon, Calendar, CheckCircle2, Armchair, Image as ImageIcon, MessageSquare } from 'lucide-react';
 import FreeMap from './FreeMap';
+import ReviewCard from './ReviewCard';
+import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { ViewState, AppliedVoucherInfo } from '../App';
 import { MOCK_SHOPS, AMENITIES_CONFIG, SPECIAL_MODELS_CONFIG, STYLES_CONFIG } from '@shared/data';
@@ -85,6 +87,12 @@ export default function StoreDetailView({ id, shops, appliedVoucher, hasValidKey
   const [activePhoto, setActivePhoto] = useState<string | null>(null);
   const [activeReview, setActiveReview] = useState<Review | null>(null);
   const [showMapModal, setShowMapModal] = useState(false);
+  const { isAuthenticated, openAuthModal } = useAuth();
+  /* null until the request lands, then the authoritative list (with each viewer's own
+     like state). Kept separate from shop.reviews so a failed fetch degrades to the
+     payload that came with the shop instead of an empty section. */
+  const [liveReviews, setLiveReviews] = useState<Review[] | null>(null);
+
   const [currentHeroPhotoIndex, setCurrentHeroPhotoIndex] = useState(0);
   
   if (!shop) {
@@ -223,6 +231,19 @@ export default function StoreDetailView({ id, shops, appliedVoucher, hasValidKey
 
   const allImages = heroGallery;
 
+  // Reload when the shop changes, and whenever a review event arrives for it.
+  useEffect(() => {
+    if (!shop?.id) return;
+    let alive = true;
+    const load = () => api.shopReviews(shop.id)
+      .then(r => { if (alive) setLiveReviews(r.reviews || []); })
+      .catch(() => { if (alive) setLiveReviews(null); });
+    load();
+    const onReview = () => load();
+    window.addEventListener('mobler:review-changed', onReview);
+    return () => { alive = false; window.removeEventListener('mobler:review-changed', onReview); };
+  }, [shop?.id, isAuthenticated]);
+
   const cleanPlaceId = shop.id.startsWith('gplace_') 
     ? shop.id.replace('gplace_', '') 
     : shop.id;
@@ -290,28 +311,17 @@ export default function StoreDetailView({ id, shops, appliedVoucher, hasValidKey
 
           {/* Compact Bottom Hero Overlay (Streamlined to expose maximum photo canvas) */}
           <div className="relative z-20 p-4 sm:p-6 lg:p-8 text-white flex flex-col justify-end">
-            <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-              <span className="font-['Times_New_Roman',Times,serif] text-[10px] uppercase tracking-[0.15em] text-[#D4AF37] font-bold">
-                {t('store.concept', 'Specialty Experience')}
-              </span>
-              {shop.isGoogleVerified && (
+            {/* The photo is the hero; it only needs the one badge a guest actually acts on.
+                The concept label and the model/style chips moved out — four stacked chips
+                over the image buried the shop's own name. Model and style still appear in
+                the body, where there is room to read them. */}
+            {shop.isGoogleVerified && (
+              <div className="mb-1.5">
                 <span className="inline-flex items-center gap-1 bg-[#800020]/90 backdrop-blur-xs text-white px-2 py-0.5 rounded-full text-[9px] font-mono font-bold uppercase tracking-wider">
                   <ShieldCheck size={10} /> {t('home.verified', 'Đã xác thực')}
                 </span>
-              )}
-              {shop.primaryModel && (
-                <span className="inline-flex items-center gap-1 bg-amber-500/90 text-black px-2 py-0.5 rounded-full text-[9px] font-mono font-bold uppercase tracking-wider">
-                  <ModelIcon model={shop.primaryModel} size={11} className="text-black" />
-                  <span>{translateModel(shop.primaryModel)}</span>
-                </span>
-              )}
-              {shop.primaryStyle && (
-                <span className="inline-flex items-center gap-1 bg-purple-500/80 text-white px-2 py-0.5 rounded-full text-[9px] font-mono font-bold uppercase tracking-wider">
-                  <StyleIcon styleName={shop.primaryStyle} size={11} className="text-white" />
-                  <span>{translateStyle(shop.primaryStyle)}</span>
-                </span>
-              )}
-            </div>
+              </div>
+            )}
 
             <div className="flex items-center justify-between gap-2.5 mb-1.5 min-w-0 w-full">
               <h1 className="font-['Times_New_Roman',Times,serif] font-bold text-lg xs:text-xl sm:text-2xl lg:text-3xl leading-tight tracking-tight drop-shadow-md whitespace-nowrap overflow-hidden text-ellipsis min-w-0 flex-1 block">
@@ -451,28 +461,17 @@ export default function StoreDetailView({ id, shops, appliedVoucher, hasValidKey
               <MessageSquare size={13} className="text-amber-500 shrink-0" />
               <span>{t('store.verifiedReviews', 'Đánh giá xác thực')}</span>
             </div>
+            {/* Live reviews, so a photo posted a moment ago appears without a reload.
+                Falls back to whatever came with the shop payload if the fetch fails. */}
             <div className="space-y-3">
-              {shop.reviews.map((review) => (
-                <div key={review.id} className={`p-4 rounded-xl border ${
-                  isLight ? 'bg-white border-black/5 shadow-xs' : 'bg-[#221A14] border-white/5'
-                }`}>
-                  <div className="flex items-center gap-3 mb-2">
-                    <img 
-                      src={review.userAvatar} 
-                      alt={review.userName} 
-                      className="w-8 h-8 rounded-full object-cover border border-black/10 dark:border-white/10" 
-                    />
-                    <div>
-                      <p className="font-bold text-xs">{review.userName}</p>
-                      <p className="font-mono text-[9px] uppercase tracking-wider text-[#800020] dark:text-[#D4AF37]">
-                        {review.userSystemBadge || t('store.verifiedReviewer', 'Verified Reviewer')}
-                      </p>
-                    </div>
-                  </div>
-                  <p className="text-xs leading-relaxed opacity-80 italic">
-                    "{review.content}"
-                  </p>
-                </div>
+              {(liveReviews ?? shop.reviews).map((review) => (
+                <ReviewCard
+                  key={review.id}
+                  review={review}
+                  isLight={isLight}
+                  canInteract={isAuthenticated}
+                  onRequireAuth={() => openAuthModal('login')}
+                />
               ))}
             </div>
           </section>

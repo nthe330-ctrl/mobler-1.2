@@ -14,11 +14,15 @@ import {
 } from 'lucide-react';
 import { http } from '../../services/shopApi';
 import { useShopAuth } from '../../context/ShopAuthContext';
+import { useShopI18n } from '../../i18n/useShopI18n';
+import { useApiError } from '../../i18n/apiError';
 import { Review } from '../../types/dashboard';
 
 export default function ReviewsManagerView() {
   // Real reviews customers left for this shop — none for a new shop.
   const { activeShop } = useShopAuth();
+  const { t, tf, num } = useShopI18n();
+  const apiError = useApiError();
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loadingReviews, setLoadingReviews] = useState(true);
   useEffect(() => {
@@ -43,13 +47,13 @@ export default function ReviewsManagerView() {
   const handleSendReply = async (reviewId: string) => {
     const text = replyText[reviewId];
     if (!text || !text.trim()) {
-      alert('Vui lòng nhập nội dung phản hồi!');
+      alert(t('shop.rev.needText'));
       return;
     }
     try {
       await http.post(`/merchant/reviews/${reviewId}/reply`, { reply: text.trim() });
     } catch (err: any) {
-      alert(err?.message || 'Không gửi được phản hồi');
+      alert(apiError(err) || t('shop.rev.sendFailed'));
       return;
     }
 
@@ -59,7 +63,7 @@ export default function ReviewsManagerView() {
           ...r,
           shopReply: {
             content: text.trim(),
-            date: 'Vừa xong'
+            date: t('shop.rev.justNow')
           }
         };
       }
@@ -67,7 +71,7 @@ export default function ReviewsManagerView() {
     }));
 
     setReplyText(prev => ({ ...prev, [reviewId]: '' }));
-    triggerToast('Đã gửi phản hồi đến đánh giá của khách hàng!');
+    triggerToast(t('shop.rev.sent'));
   };
 
   const filteredReviews = reviews.filter(r => {
@@ -97,14 +101,14 @@ export default function ReviewsManagerView() {
       <div className="bg-white p-6 rounded-2xl border border-gray-200/80 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center space-x-3">
-            <h2 className="text-2xl font-extrabold text-gray-900">Đánh giá & Phản hồi Khách hàng</h2>
+            <h2 className="text-2xl font-extrabold text-gray-900">{t('shop.rev.title')}</h2>
             <span className="bg-amber-50 text-amber-800 text-xs font-bold px-3 py-1 rounded-full border border-amber-200 flex items-center gap-1.5">
               <Star size={14} className="fill-amber-500 text-amber-500" />
               <span>{avgRating} / 5.0 sao</span>
             </span>
           </div>
           <p className="text-gray-500 text-sm mt-1">
-            Lắng nghe nhận xét trải nghiệm đồ uống & không gian, tương tác trực tiếp với thực khách.
+            {t('shop.rev.subtitle')}
           </p>
         </div>
       </div>
@@ -116,7 +120,7 @@ export default function ReviewsManagerView() {
             <Star size={24} className="fill-amber-500" />
           </div>
           <div>
-            <p className="text-xs text-gray-500 font-medium">Điểm trung bình</p>
+            <p className="text-xs text-gray-500 font-medium">{t('shop.rev.statAvg')}</p>
             <p className="text-2xl font-black text-gray-900">{avgRating} / 5.0 ⭐</p>
           </div>
         </div>
@@ -126,8 +130,8 @@ export default function ReviewsManagerView() {
             <Sparkles size={24} />
           </div>
           <div>
-            <p className="text-xs text-gray-500 font-medium">Đánh giá 5 sao</p>
-            <p className="text-2xl font-black text-emerald-600">{fiveStarCount} / {reviews.length} đánh giá</p>
+            <p className="text-xs text-gray-500 font-medium">{t('shop.rev.statFiveStar')}</p>
+            <p className="text-2xl font-black text-emerald-600">{tf('shop.rev.fiveStarOf', { count: num(fiveStarCount), total: num(reviews.length) })}</p>
           </div>
         </div>
 
@@ -136,7 +140,7 @@ export default function ReviewsManagerView() {
             <MessageSquare size={24} />
           </div>
           <div>
-            <p className="text-xs text-gray-500 font-medium">Tỷ lệ đã phản hồi</p>
+            <p className="text-xs text-gray-500 font-medium">{t('shop.rev.statReplied')}</p>
             <p className="text-2xl font-black text-blue-600">{reviews.length ? Math.round((repliedCount / reviews.length) * 100) : 0}% ({repliedCount}/{reviews.length})</p>
           </div>
         </div>
@@ -149,7 +153,7 @@ export default function ReviewsManagerView() {
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
             <input 
               type="text" 
-              placeholder="Tìm theo tên khách, nội dung nhận xét..."
+              placeholder={t('shop.rev.searchPh')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-600 focus:bg-white text-sm transition-all"
@@ -157,7 +161,7 @@ export default function ReviewsManagerView() {
           </div>
 
           <div className="flex items-center gap-1.5 overflow-x-auto text-xs font-bold">
-            <span className="text-gray-400 font-semibold mr-1">Lọc sao:</span>
+            <span className="text-gray-400 font-semibold mr-1">{t('shop.rev.filterStars')}</span>
             {(['all', 5, 4, 3, 2, 1] as const).map(rating => (
               <button
                 key={rating}
@@ -168,7 +172,7 @@ export default function ReviewsManagerView() {
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
               >
-                {rating === 'all' ? 'Tất cả' : `${rating} ⭐`}
+                {rating === 'all' ? t('shop.rev.all') : `${rating} ⭐`}
               </button>
             ))}
           </div>
@@ -179,7 +183,7 @@ export default function ReviewsManagerView() {
       <div className="space-y-4">
         {filteredReviews.length === 0 && (
           <div className="bg-white p-12 rounded-2xl border border-dashed border-gray-300 text-center text-sm text-gray-500">
-            {loadingReviews ? 'Đang tải…' : reviews.length === 0 ? 'Chưa có đánh giá nào. Đánh giá khách gửi trên ứng dụng Mobler sẽ xuất hiện ở đây để bạn phản hồi.' : 'Không có đánh giá khớp bộ lọc.'}
+            {loadingReviews ? t('shop.common.loading') : reviews.length === 0 ? t('shop.rev.empty') : t('shop.rev.noMatch')}
           </div>
         )}
         {filteredReviews.map(review => (
@@ -207,11 +211,11 @@ export default function ReviewsManagerView() {
 
               {review.shopReply ? (
                 <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2.5 py-1 rounded-full border border-emerald-200">
-                  ✓ Đã phản hồi
+                  {t('shop.rev.replied')}
                 </span>
               ) : (
                 <span className="text-[10px] bg-amber-100 text-amber-800 font-bold px-2.5 py-1 rounded-full border border-amber-200">
-                  Chưa trả lời
+                  {t('shop.rev.notReplied')}
                 </span>
               )}
             </div>
@@ -226,7 +230,7 @@ export default function ReviewsManagerView() {
                 <div className="flex items-center justify-between font-bold text-gray-900">
                   <span className="flex items-center gap-1.5 text-red-600">
                     <CornerDownRight size={14} />
-                    <span>The Workshop Coffee (Chủ quán phản hồi):</span>
+                    <span>{tf('shop.rev.replyByline', { shop: activeShop?.name || '' })}</span>
                   </span>
                   <span className="text-gray-400 text-[10px]">{review.shopReply.date}</span>
                 </div>
@@ -239,7 +243,7 @@ export default function ReviewsManagerView() {
               <div className="ml-10 pt-2 flex gap-2">
                 <input 
                   type="text"
-                  placeholder="Nhập phản hồi cảm ơn hoặc hỗ trợ khách hàng..."
+                  placeholder={t('shop.rev.replyPh')}
                   value={replyText[review.id] || ''}
                   onChange={(e) => setReplyText({ ...replyText, [review.id]: e.target.value })}
                   onKeyDown={(e) => {
@@ -252,7 +256,7 @@ export default function ReviewsManagerView() {
                   className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl text-xs flex items-center space-x-1.5 shadow-xs transition-colors cursor-pointer shrink-0"
                 >
                   <Send size={14} />
-                  <span>Gửi</span>
+                  <span>{t('shop.rev.send')}</span>
                 </button>
               </div>
             )}

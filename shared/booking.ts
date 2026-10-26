@@ -29,11 +29,66 @@ export const SHOP_TRANSITIONS: Record<BookingStatus, BookingStatus[]> = {
   arrived: ['completed'],
   completed: [],
   cancelled: [],
-  // The shop can take a no-show back when it was recorded by mistake — the customer
-  // did turn up and nobody pressed check-in. See NO_SHOW_REVERT_WINDOW_MIN.
   rejected: [],
-  no_show: ['arrived', 'cancelled'],
+  /**
+   * Undoing a no-show returns the booking to `confirmed`, NOT straight to `arrived`.
+   *
+   * The shop records a no-show, then sees the guest was in fact there and takes it back.
+   * Presence, however, is only ever established by the guest's own code (see
+   * SCAN_ONLY_TRANSITIONS): letting the undo write `arrived` would hand the shop the one
+   * thing the scan gate exists to withhold. So the undo restores the hold and the guest
+   * checks in by QR as normal. See NO_SHOW_REVERT_WINDOW_MIN for how long it stays open.
+   */
+  no_show: ['confirmed', 'cancelled'],
 };
+
+/**
+ * `arrived` is reachable only by scanning (or typing) the guest's booking code at the
+ * check-in endpoint, never through the generic status endpoint — the server enforces this,
+ * so a shop cannot mark a guest present without the code the guest actually holds.
+ */
+export const SCAN_ONLY_TRANSITIONS: BookingStatus[] = ['arrived'];
+
+/** Only a confirmed booking can be checked in. */
+export const CHECK_IN_FROM_STATUS: BookingStatus = 'confirmed';
+
+/** The guest is physically at the shop: a real check-in has happened. */
+export const CHECKED_IN_STATUSES: BookingStatus[] = ['arrived', 'completed'];
+
+export function hasCheckedIn(status: BookingStatus | string): boolean {
+  return CHECKED_IN_STATUSES.includes(status as BookingStatus);
+}
+
+// ==================== Check-in QR contract ====================
+
+/**
+ * The exact text a booking ticket QR encodes and the shop scanner decodes.
+ * Customer ticket and shop scanner both go through the helpers below so the two
+ * can never drift apart.
+ */
+export const BOOKING_QR_PREFIX = 'MOBLER-BOOKING:';
+
+/** Payload for the QR printed on the customer's ticket. */
+export function bookingQrPayload(bookingId: string): string {
+  return `${BOOKING_QR_PREFIX}${String(bookingId || '').trim().toUpperCase()}`;
+}
+
+/** A booking code is uppercase alphanumeric with dashes — see generateBookingId on the server. */
+const BOOKING_CODE_REGEX = /^[A-Z0-9][A-Z0-9-]{2,63}$/;
+
+/**
+ * Extract the booking code from a scanned QR payload or a manually typed code.
+ * Accepts the full `MOBLER-BOOKING:<id>` payload or a bare code, and returns null for
+ * anything that cannot be a booking code at all (URLs, other apps' QRs, empty input).
+ * Whether the code names a real booking is decided by the server, never here.
+ */
+export function parseBookingQr(raw: string): string | null {
+  const trimmed = String(raw || '').trim();
+  if (!trimmed) return null;
+  const withPrefix = /^MOBLER-BOOKING:(.+)$/i.exec(trimmed);
+  const code = (withPrefix ? withPrefix[1] : trimmed).trim().toUpperCase();
+  return BOOKING_CODE_REGEX.test(code) ? code : null;
+}
 
 export const BOOKING_STATUS_LABEL_VI: Record<BookingStatus, string> = {
   pending: 'Chờ quán xác nhận',
@@ -102,6 +157,7 @@ export interface BookingDTO {
   user_id: string;
   user_name: string;
   user_phone: string;
+  user_avatar?: string;
   table_id?: string;
   table_name?: string;
   /** YYYY-MM-DD */
@@ -123,6 +179,15 @@ export interface BookingDTO {
   deposit_fee?: number;
   discount_amount?: number;
   grand_total?: number;
+  /**
+   * ISO 4217 code the amounts on this booking were agreed in, stamped when the booking is
+   * created and never recomputed. A booking carries real money — a deposit, a pre-order
+   * total, a discount — so if the shop later switches from VND to TWD, reading these
+   * numbers in the shop's *current* currency would restate a 450,000₫ pre-order as
+   * NT$450,000. Absent on bookings made before the field existed; `toCurrencyCode`
+   * resolves those to VND, which is what they were actually taken in.
+   */
+  currency_code?: string;
   /** Minutes the customer pushed the hold out with "I'm on my way". Granted once. */
   late_extension_min?: number;
   /** When the hold was released as a no-show, so the shop's undo window can be checked. */

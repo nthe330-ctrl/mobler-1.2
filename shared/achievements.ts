@@ -5,8 +5,11 @@
  * Rules the user asked for:
  *  - Points come ONLY from completing missions. There is no per-booking point drip.
  *  - Each mission has a difficulty (easy / medium / hard) that decides its points.
- *  - Progress counts a visit ONLY when the booking is COMPLETED — i.e. the customer
- *    actually checked in at the shop. Confirmed / arrived alone never count.
+ *  - Progress counts a visit from the moment the guest is really CHECKED IN — the shop
+ *    scanned the guest's booking QR and the booking moved to `arrived` — and keeps counting
+ *    once the visit is wrapped up as `completed`. A merely `pending` or `confirmed` booking
+ *    never counts, and because progress is recomputed from the bookings table, the same
+ *    visit is counted exactly once however many times it is re-scanned or reloaded.
  *
  * A new account starts at 0 on every mission. When a mission is completed its reward
  * (points, and sometimes a personal voucher) is granted automatically, exactly once.
@@ -42,17 +45,17 @@ export interface AchievementReward {
   };
 }
 
-/** Which metric a mission measures. All come from COMPLETED (checked-in) activity. */
+/** Which metric a mission measures. All come from checked-in activity (arrived or completed). */
 export type AchievementMetric =
-  | 'shops_visited'       // distinct shops with a COMPLETED booking (checked in)
+  | 'shops_visited'       // distinct shops the customer has checked in at
   | 'reviews_with_photo'  // reviews the customer posted that include at least one photo
   | 'photos_posted'       // total photos across the customer's reviews
-  | 'morning_bookings'    // COMPLETED visits that started before 08:00
-  | 'vip_shops'           // shops where the customer has 5+ COMPLETED visits
-  | 'districts_visited'   // distinct districts of COMPLETED visits
+  | 'morning_bookings'    // checked-in visits that started before 08:00
+  | 'vip_shops'           // shops where the customer has 5+ checked-in visits
+  | 'districts_visited'   // distinct districts of checked-in visits
   | 'travel_distance_km'  // cumulative km between consecutively checked-in shops
   | 'review_likes'        // likes received across the customer's reviews
-  | 'night_bookings';     // COMPLETED visits at/after 23:00
+  | 'night_bookings';     // checked-in visits at/after 23:00
 
 export interface AchievementDef {
   id: string;
@@ -80,7 +83,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
     metric: 'night_bookings',
     target: 1,
     title: 'Cú Đêm Cà Phê',
-    description: 'Check-in hoàn tất tại 1 quán sau 23:00',
+    description: 'Check-in tại 1 quán sau 23:00',
     rewardLabel: label(300, 'Voucher Đêm Cà Phê'),
     reward: {
       points: 300,
@@ -94,7 +97,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
     metric: 'morning_bookings',
     target: 3,
     title: 'Thợ Săn Bình Minh',
-    description: 'Check-in hoàn tất trước 08:00 sáng 3 lần',
+    description: 'Check-in trước 08:00 sáng 3 lần',
     rewardLabel: label(800, 'Voucher Mua 1 Tặng 1'),
     reward: {
       points: 800,
@@ -133,7 +136,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
     metric: 'shops_visited',
     target: 20,
     title: 'Tín Đồ Cà Phê',
-    description: 'Check-in hoàn tất tại 20 quán cà phê khác nhau',
+    description: 'Check-in tại 20 quán cà phê khác nhau',
     rewardLabel: label(2000, 'Huy hiệu Tín Đồ'),
     reward: { points: 2000 }
   },
@@ -175,7 +178,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
 /** Total points obtainable from completing every mission (used to size the rank ladder). */
 export const TOTAL_MISSION_POINTS = ACHIEVEMENTS.reduce((s, a) => s + a.reward.points, 0);
 
-/** The raw counts the engine needs, all measured from real COMPLETED activity. */
+/** The raw counts the engine needs, all measured from real checked-in activity. */
 export interface AchievementStats {
   shops_visited: number;
   reviews_with_photo: number;

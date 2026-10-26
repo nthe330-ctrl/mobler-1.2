@@ -1,0 +1,5 @@
+@import "tailwindcss";
+/* Vite's root here is celebtest/, so Tailwind would only scan this folder. Point it at
+   the real component and the shared contexts, otherwise the modal renders unstyled. */
+@source "../apps/customer/src";
+@source "../shared";

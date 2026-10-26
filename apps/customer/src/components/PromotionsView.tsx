@@ -164,7 +164,7 @@ export default function PromotionsView({ onNavigate }: Props) {
   };
 
   return (
-    <div className={`flex flex-col min-h-full max-w-6xl mx-auto w-full px-4 md:px-8 py-6 animate-in fade-in pb-28 transition-colors duration-300 ${isLight ? 'bg-[#F0F3F7]' : 'bg-transparent'}`}>
+    <div className={`flex flex-col min-h-full max-w-6xl mx-auto w-full px-4 md:px-8 py-6 animate-in fade-in pb-28 transition-colors duration-300`}>
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <Gift className={isLight ? 'text-[#800020]' : 'text-[#D4AF37]'} size={28} />
